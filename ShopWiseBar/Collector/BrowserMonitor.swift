@@ -44,7 +44,7 @@ final class BrowserMonitor {
             if let url {
                 if url != lastURL {
                     lastURL = url
-                    updateSuggestion(from: url, source: "browser")
+                    await updateSuggestion(from: url, source: "browser")
                 }
                 if MallParser.parse(url) != nil {
                     return // 브라우저가 상품 페이지 중 — 클립보드 제안 무시
@@ -56,22 +56,46 @@ final class BrowserMonitor {
         let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
         if !clipboard.isEmpty && clipboard != lastClipboardURL {
             lastClipboardURL = clipboard
-            updateSuggestion(from: clipboard, source: "clipboard")
+            await updateSuggestion(from: clipboard, source: "clipboard")
         }
     }
 
-    private func updateSuggestion(from text: String, source: String) {
-        if MallParser.parse(text) != nil {
-            PopoverState.shared.suggestedURL = text
-            DebugLogger.shared.push(
-                level: .INFO,
-                category: "MONITOR",
-                message: "상품 페이지 감지",
-                meta: ["source": source, "url": text]
-            )
-        } else {
+    private func updateSuggestion(from text: String, source: String) async {
+        guard let parsed = MallParser.parse(text) else {
             PopoverState.shared.clearSuggestion()
+            return
         }
+        // P5-T53: 서버 조회 — 관심 상품이면 메뉴바 자동 팝오버, 아니면 추적 제안
+        do {
+            if let serverProduct = try await ServerClient.shared.getProduct(productID: parsed.productID) {
+                if serverProduct.is_watched {
+                    DebugLogger.shared.push(
+                        level: .INFO,
+                        category: "MONITOR",
+                        message: "관심 상품 감지 — 팝오버 자동 표시",
+                        meta: ["source": source, "productID": parsed.productID, "price": serverProduct.last_price ?? 0]
+                    )
+                    PopoverState.shared.autoShowProductID = parsed.productID
+                    MenuBarController.shared.autoShowPopover()
+                    return
+                }
+            }
+        } catch {
+            // 서버 오류 시 기존 추적 제안 유지 (캐치 기능은 로컬에서 계속 동작)
+            DebugLogger.shared.push(
+                level: .WARN,
+                category: "SERVER",
+                message: "상품 서버 조회 실패 — 로컬 제안으로 폴백",
+                meta: ["code": (error as? AppError)?.code ?? "unknown"]
+            )
+        }
+        PopoverState.shared.suggestedURL = text
+        DebugLogger.shared.push(
+            level: .INFO,
+            category: "MONITOR",
+            message: "상품 페이지 감지",
+            meta: ["source": source, "url": text]
+        )
     }
 
     private func activeTabURL(browser: String) async -> String? {

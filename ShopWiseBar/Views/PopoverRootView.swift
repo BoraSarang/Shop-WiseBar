@@ -111,10 +111,30 @@ struct PopoverRootView: View {
             LazyVStack(spacing: 8) {
                 ForEach(store.products) { product in
                     ProductCardView(store: store, product: product)
+                        .overlay {
+                            if popoverState.autoShowProductID == product.productID {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.accentColor, lineWidth: 2)
+                            }
+                        }
                 }
             }
         }
         .scrollIndicators(.automatic)
+        .onChange(of: popoverState.autoShowProductID) { productID in
+            if productID != nil {
+                DebugLogger.shared.push(
+                    level: .ACTION,
+                    category: "MONITOR",
+                    message: "관심 상품 카드 강조 표시",
+                    meta: ["productID": productID ?? ""]
+                )
+                // 6초 후 강조 해제
+                DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+                    popoverState.clearAutoShow()
+                }
+            }
+        }
     }
 
     private var emptyState: some View {

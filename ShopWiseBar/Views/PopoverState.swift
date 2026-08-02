@@ -15,6 +15,9 @@ final class PopoverState: ObservableObject {
     /// 제안 URL을 "추적" 버튼에 등록한 상품 — 등록 중 UI 표시용
     @Published var isAddingSuggested = false
 
+    /// 서버에서 관심 상품으로 확인된 캐치 상품 — 팝오버 자동 오픈 시 해당 카드 하이라이트 (P5-T53)
+    @Published var autoShowProductID: String?
+
     private init() {}
 
     func requestAddFocus() {
@@ -23,5 +26,9 @@ final class PopoverState: ObservableObject {
 
     func clearSuggestion() {
         suggestedURL = nil
+    }
+
+    func clearAutoShow() {
+        autoShowProductID = nil
     }
 }

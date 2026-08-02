@@ -69,6 +69,20 @@ extension AppError {
         AppError(code: "E-MAC-BROWSER-3001", debugMessage: "브라우저 자동화 권한 부족 또는 미실행")
     }
 
+    // MARK: - 서버 연동 (P5-T53)
+
+    static func serverUnreachable(cause: Error? = nil) -> AppError {
+        AppError(code: "E-MAC-NET-2001", debugMessage: "중앙 서버 연결 실패", cause: cause)
+    }
+
+    static func serverParseFailed(cause: Error? = nil) -> AppError {
+        AppError(code: "E-MAC-NET-2002", debugMessage: "서버 응답 해석 실패", cause: cause)
+    }
+
+    static func serverURLFailed() -> AppError {
+        AppError(code: "E-MAC-NET-2003", debugMessage: "서버 URL 구성 실패")
+    }
+
     /// cause 유지한 채 에러 재구성
     func with(cause: Error?) -> AppError {
         guard let cause else { return self }

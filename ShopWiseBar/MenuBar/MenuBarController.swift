@@ -145,6 +145,17 @@ final class MenuBarController: NSObject {
         DebugLogger.shared.push(level: .ACTION, category: "MENU", message: "팝오버 열림 (메뉴)")
     }
 
+    /// 관심 상품 감지 시 자동 오픈 (P5-T53) — BrowserMonitor에서 호출
+    func autoShowPopover() {
+        guard let popover, let button = statusItem?.button, !popover.isShown else { return }
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            popover.contentViewController?.view.window?.makeKey()
+        }
+        DebugLogger.shared.push(level: .ACTION, category: "MENU", message: "팝오버 자동 열림 (관심 상품 감지)")
+    }
+
     // MARK: - Cmd+D 전역 키
 
     private func installKeyMonitor() {
