@@ -17,6 +17,8 @@ struct ShopWiseBarApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         MenuBarController.shared.start()
+        NotificationEngine.shared.requestAuthorization()
+        RefreshScheduler.shared.start()
         DebugLogger.shared.push(
             level: .SYSTEM,
             category: "APP",

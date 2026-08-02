@@ -21,6 +21,7 @@ targets:
     platform: macOS
     sources:
       - path: ShopWiseBar
+      - path: error_message_ko.json
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.borasarang.ShopWiseBar
@@ -28,6 +29,8 @@ targets:
         INFOPLIST_FILE: ShopWiseBar/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         COMBINE_HIDPI_IMAGES: YES
+    dependencies:
+      - sdk: Charts.framework
 schemes:
   ShopWiseBar:
     build:

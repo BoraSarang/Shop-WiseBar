@@ -62,6 +62,11 @@ final class MenuBarController: NSObject {
         } else {
             DebugLogger.shared.push(level: .ACTION, category: "MENU", message: "팝오버 열림")
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            // LSUIElement 앱은 키보드 포커스가 다른 앱에 남아 있으므로 강제 활성화
+            NSApp.activate(ignoringOtherApps: true)
+            DispatchQueue.main.async {
+                popover.contentViewController?.view.window?.makeKey()
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 DebugLogger.shared.push(
                     level: .INFO,
@@ -79,8 +84,9 @@ final class MenuBarController: NSObject {
         popover?.performClose(nil)
 
         let menu = NSMenu()
-        menu.addItem(makeItem("찜한 상품 관리", #selector(openWishlist(_:)), enabled: false))
-        menu.addItem(makeItem("지금 상품 추가…", #selector(addProductPlaceholder(_:))))
+        menu.addItem(makeItem("찜한 상품 관리", #selector(openWishlist(_:))))
+        menu.addItem(makeItem("지금 상품 추가…", #selector(addProductNow(_:))))
+        menu.addItem(makeItem("지금 갱신", #selector(refreshNow(_:))))
         menu.addItem(.separator())
         menu.addItem(makeItem("설정…", #selector(openSettings(_:))))
         menu.addItem(makeItem("Debug Panel", #selector(toggleDebugPanel)))
@@ -97,6 +103,18 @@ final class MenuBarController: NSObject {
         item.target = self
         item.isEnabled = enabled
         return item
+    }
+
+    /// 팝오버 열기 (우클릭 메뉴 → 찜한 상품 관리 등)
+    @objc private func openPopover() {
+        guard let popover, let button = statusItem?.button else { return }
+        if popover.isShown { return }
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            popover.contentViewController?.view.window?.makeKey()
+        }
+        DebugLogger.shared.push(level: .ACTION, category: "MENU", message: "팝오버 열림 (메뉴)")
     }
 
     // MARK: - Cmd+D 전역 키
@@ -121,11 +139,22 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func openWishlist(_ sender: Any?) {
-        DebugLogger.shared.push(level: .INFO, category: "MENU", message: "찜한 상품 관리 — P1에서 구현")
+        openPopover()
     }
 
-    @objc private func addProductPlaceholder(_ sender: Any?) {
-        DebugLogger.shared.push(level: .INFO, category: "MENU", message: "지금 상품 추가 — P1에서 구현")
+    @objc private func addProductNow(_ sender: Any?) {
+        Task { @MainActor in
+            PopoverState.shared.requestAddFocus()
+        }
+        openPopover()
+        DebugLogger.shared.push(level: .ACTION, category: "MENU", message: "상품 추가 모드 시작")
+    }
+
+    @objc private func refreshNow(_ sender: Any?) {
+        DebugLogger.shared.push(level: .ACTION, category: "MENU", message: "메뉴에서 수동 갱신")
+        Task { @MainActor in
+            await RefreshScheduler.shared.runNow()
+        }
     }
 
     @objc private func openSettings(_ sender: Any?) {

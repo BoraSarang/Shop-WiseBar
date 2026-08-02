@@ -11,24 +11,81 @@
 		0A7823223CF3F5917AA53731 /* DebugPanelWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46FE35DCC37A268241E382EC /* DebugPanelWindow.swift */; };
 		111EA9F0DEA7CD23C17D7DC2 /* DebugLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D494807DE82ED778AC1A74ED /* DebugLogger.swift */; };
 		1238C81E2247F02653EEC08D /* PopoverRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E078824BE1773AE95C7F28E /* PopoverRootView.swift */; };
+		232563A881F2F86F6D17A9E7 /* Charts.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1627771E38C10AC889DE4628 /* Charts.framework */; };
+		29A0D3E52DD38F7FA545964C /* Mall.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49C57D38E9BBA81D351A13E /* Mall.swift */; };
+		2C39B2905E6CC26A65D7AEEF /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC27AB407D6B8C022C5509B /* SettingsStore.swift */; };
+		3B799F2F16FE566E2DCD250A /* CoupangFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49A594E1447CB93936D1DA03 /* CoupangFetcher.swift */; };
+		3FDB43FFBCBD72AEAABF726D /* HTMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EBE2E954F0994DE27619D0F /* HTMLParser.swift */; };
+		465FDDF5805FAB834FD5F9FE /* PriceFetchCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C98E9BFA367F8B785BF72E /* PriceFetchCoordinator.swift */; };
+		5796DDE179E937FEE2FF2500 /* MallParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF6512FEA8F457A35731F0EC /* MallParser.swift */; };
 		5AF48D102802A1997178E5AE /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8011B59BC2E9D83F4FB602BB /* SettingsWindow.swift */; };
+		6498614459C24050D4491770 /* error_message_ko.json in Resources */ = {isa = PBXBuildFile; fileRef = 08251964560A4658BF266AE0 /* error_message_ko.json */; };
+		6733B18356FC0BE58C9CCE23 /* AppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 506E0580D005C8B7C78A364D /* AppError.swift */; };
+		768BCB80F96659A926D66FF3 /* PriceHistoryChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56E89AF6CFAFDD3C2F4FB627 /* PriceHistoryChartView.swift */; };
+		7836F115D47424FD056A5714 /* NotificationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D20FE719C7AB27A48538FCD /* NotificationEngine.swift */; };
+		7D334821BD7E30DF7F5F5CCC /* RefreshScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE578A214FE4C8107284C1F /* RefreshScheduler.swift */; };
+		8FBD254E431C965BE8A275D9 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC2A3C4CF83CB318A39BFD34 /* Models.swift */; };
 		9DA45811BE5BC073F01DF54E /* ShopWiseBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36180C257E3B6F1834912192 /* ShopWiseBarApp.swift */; };
+		A5C8CFC853850EEBA2CD1117 /* OliveYoungFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5C618495948EE91DB7C3F02 /* OliveYoungFetcher.swift */; };
+		BACF4F3C37B32D1CA37DDAD9 /* NaverFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3CFFC9D3E5F186D59C6088 /* NaverFetcher.swift */; };
+		C20B036F664793AB34C95362 /* PopoverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E276354877293AAF2E6321 /* PopoverState.swift */; };
+		CC4F3E83C93C7B63E7FD8E77 /* ProductCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F786FD86FEA73EF4E468E075 /* ProductCardView.swift */; };
+		E7FA9523D33CB913765D46E0 /* ProductStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 317F9FF0157A37C1992740E7 /* ProductStore.swift */; };
+		F6AE804A3994174557522E72 /* ProductInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71D9D31EDF2625BAE030C425 /* ProductInfo.swift */; };
 		FC9A79F873AAD7FDF7900EDF /* DebugPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36315C309A43AD314DC711E0 /* DebugPanelView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		01E86B5CBBDFB532F0E9F1A3 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
+		08251964560A4658BF266AE0 /* error_message_ko.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = error_message_ko.json; sourceTree = "<group>"; };
+		15C98E9BFA367F8B785BF72E /* PriceFetchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceFetchCoordinator.swift; sourceTree = "<group>"; };
+		1627771E38C10AC889DE4628 /* Charts.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Charts.framework; path = System/Library/Frameworks/Charts.framework; sourceTree = SDKROOT; };
 		2A8FE36CB878D580C3B5A32E /* ShopWiseBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShopWiseBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2D20FE719C7AB27A48538FCD /* NotificationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationEngine.swift; sourceTree = "<group>"; };
+		317F9FF0157A37C1992740E7 /* ProductStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductStore.swift; sourceTree = "<group>"; };
 		36180C257E3B6F1834912192 /* ShopWiseBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopWiseBarApp.swift; sourceTree = "<group>"; };
 		36315C309A43AD314DC711E0 /* DebugPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPanelView.swift; sourceTree = "<group>"; };
 		46FE35DCC37A268241E382EC /* DebugPanelWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPanelWindow.swift; sourceTree = "<group>"; };
+		48E276354877293AAF2E6321 /* PopoverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverState.swift; sourceTree = "<group>"; };
+		49A594E1447CB93936D1DA03 /* CoupangFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoupangFetcher.swift; sourceTree = "<group>"; };
+		506E0580D005C8B7C78A364D /* AppError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppError.swift; sourceTree = "<group>"; };
+		56E89AF6CFAFDD3C2F4FB627 /* PriceHistoryChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceHistoryChartView.swift; sourceTree = "<group>"; };
+		5BE578A214FE4C8107284C1F /* RefreshScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshScheduler.swift; sourceTree = "<group>"; };
 		6E078824BE1773AE95C7F28E /* PopoverRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverRootView.swift; sourceTree = "<group>"; };
+		6EBE2E954F0994DE27619D0F /* HTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLParser.swift; sourceTree = "<group>"; };
+		71D9D31EDF2625BAE030C425 /* ProductInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductInfo.swift; sourceTree = "<group>"; };
 		8011B59BC2E9D83F4FB602BB /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
+		9C3CFFC9D3E5F186D59C6088 /* NaverFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NaverFetcher.swift; sourceTree = "<group>"; };
+		AF6512FEA8F457A35731F0EC /* MallParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MallParser.swift; sourceTree = "<group>"; };
+		B49C57D38E9BBA81D351A13E /* Mall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mall.swift; sourceTree = "<group>"; };
 		B9EBBEF7678873711C8F457A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BCC27AB407D6B8C022C5509B /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		D494807DE82ED778AC1A74ED /* DebugLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogger.swift; sourceTree = "<group>"; };
+		DC2A3C4CF83CB318A39BFD34 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		F5C618495948EE91DB7C3F02 /* OliveYoungFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OliveYoungFetcher.swift; sourceTree = "<group>"; };
+		F786FD86FEA73EF4E468E075 /* ProductCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductCardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		F2A12BA592CA20CF39FFBFA2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				232563A881F2F86F6D17A9E7 /* Charts.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
+		05E89842D97A51F1C5431A89 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1627771E38C10AC889DE4628 /* Charts.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		170938D18D662B2E9F66DFE3 /* MenuBar */ = {
 			isa = PBXGroup;
 			children = (
@@ -41,6 +98,9 @@
 			isa = PBXGroup;
 			children = (
 				6E078824BE1773AE95C7F28E /* PopoverRootView.swift */,
+				48E276354877293AAF2E6321 /* PopoverState.swift */,
+				56E89AF6CFAFDD3C2F4FB627 /* PriceHistoryChartView.swift */,
+				F786FD86FEA73EF4E468E075 /* ProductCardView.swift */,
 				8011B59BC2E9D83F4FB602BB /* SettingsWindow.swift */,
 			);
 			path = Views;
@@ -56,6 +116,28 @@
 			path = Debug;
 			sourceTree = "<group>";
 		};
+		35312AD40CB31862ACE8A7B2 /* Collector */ = {
+			isa = PBXGroup;
+			children = (
+				49A594E1447CB93936D1DA03 /* CoupangFetcher.swift */,
+				6EBE2E954F0994DE27619D0F /* HTMLParser.swift */,
+				9C3CFFC9D3E5F186D59C6088 /* NaverFetcher.swift */,
+				F5C618495948EE91DB7C3F02 /* OliveYoungFetcher.swift */,
+				15C98E9BFA367F8B785BF72E /* PriceFetchCoordinator.swift */,
+				71D9D31EDF2625BAE030C425 /* ProductInfo.swift */,
+				5BE578A214FE4C8107284C1F /* RefreshScheduler.swift */,
+			);
+			path = Collector;
+			sourceTree = "<group>";
+		};
+		6E5627BBB7A5DF3CEED4BAA7 /* Errors */ = {
+			isa = PBXGroup;
+			children = (
+				506E0580D005C8B7C78A364D /* AppError.swift */,
+			);
+			path = Errors;
+			sourceTree = "<group>";
+		};
 		9163749AF27B025BCDDE4ECC /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -69,17 +151,42 @@
 			children = (
 				B9EBBEF7678873711C8F457A /* Info.plist */,
 				F1A9E1B8131DFDF4F9588B85 /* App */,
+				35312AD40CB31862ACE8A7B2 /* Collector */,
 				2EDD75B84B8EF84DE2C899F9 /* Debug */,
+				6E5627BBB7A5DF3CEED4BAA7 /* Errors */,
+				F2BF49FF55D7C24388CF1303 /* Mall */,
 				170938D18D662B2E9F66DFE3 /* MenuBar */,
+				A60165D9DE6C96297E37F733 /* Notifications */,
+				C8526CB1B21048DC6ED16471 /* Store */,
 				2285EB7CD0D1074019EFB5C2 /* Views */,
 			);
 			path = ShopWiseBar;
 			sourceTree = "<group>";
 		};
+		A60165D9DE6C96297E37F733 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				2D20FE719C7AB27A48538FCD /* NotificationEngine.swift */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
+		C8526CB1B21048DC6ED16471 /* Store */ = {
+			isa = PBXGroup;
+			children = (
+				DC2A3C4CF83CB318A39BFD34 /* Models.swift */,
+				317F9FF0157A37C1992740E7 /* ProductStore.swift */,
+				BCC27AB407D6B8C022C5509B /* SettingsStore.swift */,
+			);
+			path = Store;
+			sourceTree = "<group>";
+		};
 		DC206A6C33620502618E34A5 = {
 			isa = PBXGroup;
 			children = (
+				08251964560A4658BF266AE0 /* error_message_ko.json */,
 				9D574B5D11842746FF7FE72E /* ShopWiseBar */,
+				05E89842D97A51F1C5431A89 /* Frameworks */,
 				9163749AF27B025BCDDE4ECC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -92,6 +199,15 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		F2BF49FF55D7C24388CF1303 /* Mall */ = {
+			isa = PBXGroup;
+			children = (
+				B49C57D38E9BBA81D351A13E /* Mall.swift */,
+				AF6512FEA8F457A35731F0EC /* MallParser.swift */,
+			);
+			path = Mall;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -100,6 +216,8 @@
 			buildConfigurationList = 092D8E0BE6ACA45CC0A0AD96 /* Build configuration list for PBXNativeTarget "ShopWiseBar" */;
 			buildPhases = (
 				D628C29C939E7C37C9BE2ED0 /* Sources */,
+				0CD5E4571FD7166708586790 /* Resources */,
+				F2A12BA592CA20CF39FFBFA2 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -145,16 +263,44 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		0CD5E4571FD7166708586790 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6498614459C24050D4491770 /* error_message_ko.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		D628C29C939E7C37C9BE2ED0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6733B18356FC0BE58C9CCE23 /* AppError.swift in Sources */,
+				3B799F2F16FE566E2DCD250A /* CoupangFetcher.swift in Sources */,
 				111EA9F0DEA7CD23C17D7DC2 /* DebugLogger.swift in Sources */,
 				FC9A79F873AAD7FDF7900EDF /* DebugPanelView.swift in Sources */,
 				0A7823223CF3F5917AA53731 /* DebugPanelWindow.swift in Sources */,
+				3FDB43FFBCBD72AEAABF726D /* HTMLParser.swift in Sources */,
+				29A0D3E52DD38F7FA545964C /* Mall.swift in Sources */,
+				5796DDE179E937FEE2FF2500 /* MallParser.swift in Sources */,
 				081AA863B7A66C08FB86501D /* MenuBarController.swift in Sources */,
+				8FBD254E431C965BE8A275D9 /* Models.swift in Sources */,
+				BACF4F3C37B32D1CA37DDAD9 /* NaverFetcher.swift in Sources */,
+				7836F115D47424FD056A5714 /* NotificationEngine.swift in Sources */,
+				A5C8CFC853850EEBA2CD1117 /* OliveYoungFetcher.swift in Sources */,
 				1238C81E2247F02653EEC08D /* PopoverRootView.swift in Sources */,
+				C20B036F664793AB34C95362 /* PopoverState.swift in Sources */,
+				465FDDF5805FAB834FD5F9FE /* PriceFetchCoordinator.swift in Sources */,
+				768BCB80F96659A926D66FF3 /* PriceHistoryChartView.swift in Sources */,
+				CC4F3E83C93C7B63E7FD8E77 /* ProductCardView.swift in Sources */,
+				F6AE804A3994174557522E72 /* ProductInfo.swift in Sources */,
+				E7FA9523D33CB913765D46E0 /* ProductStore.swift in Sources */,
+				7D334821BD7E30DF7F5F5CCC /* RefreshScheduler.swift in Sources */,
+				2C39B2905E6CC26A65D7AEEF /* SettingsStore.swift in Sources */,
 				5AF48D102802A1997178E5AE /* SettingsWindow.swift in Sources */,
 				9DA45811BE5BC073F01DF54E /* ShopWiseBarApp.swift in Sources */,
 			);
