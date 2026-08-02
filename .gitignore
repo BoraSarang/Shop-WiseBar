@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+build/
+.derivedData/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# 시크릿 (커밋 금지)
+.env
+*.p12
+*.mobileprovision
+*.jks
+local.properties
+google-services.json
+
+# Xcode/기타
+*.xcscmblueprint
+*.xccheckout
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata

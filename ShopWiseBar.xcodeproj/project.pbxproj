@@ -1,0 +1,357 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		081AA863B7A66C08FB86501D /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E86B5CBBDFB532F0E9F1A3 /* MenuBarController.swift */; };
+		0A7823223CF3F5917AA53731 /* DebugPanelWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46FE35DCC37A268241E382EC /* DebugPanelWindow.swift */; };
+		111EA9F0DEA7CD23C17D7DC2 /* DebugLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D494807DE82ED778AC1A74ED /* DebugLogger.swift */; };
+		1238C81E2247F02653EEC08D /* PopoverRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E078824BE1773AE95C7F28E /* PopoverRootView.swift */; };
+		5AF48D102802A1997178E5AE /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8011B59BC2E9D83F4FB602BB /* SettingsWindow.swift */; };
+		9DA45811BE5BC073F01DF54E /* ShopWiseBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36180C257E3B6F1834912192 /* ShopWiseBarApp.swift */; };
+		FC9A79F873AAD7FDF7900EDF /* DebugPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36315C309A43AD314DC711E0 /* DebugPanelView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		01E86B5CBBDFB532F0E9F1A3 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
+		2A8FE36CB878D580C3B5A32E /* ShopWiseBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShopWiseBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		36180C257E3B6F1834912192 /* ShopWiseBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopWiseBarApp.swift; sourceTree = "<group>"; };
+		36315C309A43AD314DC711E0 /* DebugPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPanelView.swift; sourceTree = "<group>"; };
+		46FE35DCC37A268241E382EC /* DebugPanelWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPanelWindow.swift; sourceTree = "<group>"; };
+		6E078824BE1773AE95C7F28E /* PopoverRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverRootView.swift; sourceTree = "<group>"; };
+		8011B59BC2E9D83F4FB602BB /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
+		B9EBBEF7678873711C8F457A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D494807DE82ED778AC1A74ED /* DebugLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogger.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		170938D18D662B2E9F66DFE3 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				01E86B5CBBDFB532F0E9F1A3 /* MenuBarController.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
+		2285EB7CD0D1074019EFB5C2 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				6E078824BE1773AE95C7F28E /* PopoverRootView.swift */,
+				8011B59BC2E9D83F4FB602BB /* SettingsWindow.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		2EDD75B84B8EF84DE2C899F9 /* Debug */ = {
+			isa = PBXGroup;
+			children = (
+				D494807DE82ED778AC1A74ED /* DebugLogger.swift */,
+				36315C309A43AD314DC711E0 /* DebugPanelView.swift */,
+				46FE35DCC37A268241E382EC /* DebugPanelWindow.swift */,
+			);
+			path = Debug;
+			sourceTree = "<group>";
+		};
+		9163749AF27B025BCDDE4ECC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2A8FE36CB878D580C3B5A32E /* ShopWiseBar.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		9D574B5D11842746FF7FE72E /* ShopWiseBar */ = {
+			isa = PBXGroup;
+			children = (
+				B9EBBEF7678873711C8F457A /* Info.plist */,
+				F1A9E1B8131DFDF4F9588B85 /* App */,
+				2EDD75B84B8EF84DE2C899F9 /* Debug */,
+				170938D18D662B2E9F66DFE3 /* MenuBar */,
+				2285EB7CD0D1074019EFB5C2 /* Views */,
+			);
+			path = ShopWiseBar;
+			sourceTree = "<group>";
+		};
+		DC206A6C33620502618E34A5 = {
+			isa = PBXGroup;
+			children = (
+				9D574B5D11842746FF7FE72E /* ShopWiseBar */,
+				9163749AF27B025BCDDE4ECC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F1A9E1B8131DFDF4F9588B85 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				36180C257E3B6F1834912192 /* ShopWiseBarApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B9055F40CC5D08653C2BF769 /* ShopWiseBar */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 092D8E0BE6ACA45CC0A0AD96 /* Build configuration list for PBXNativeTarget "ShopWiseBar" */;
+			buildPhases = (
+				D628C29C939E7C37C9BE2ED0 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShopWiseBar;
+			packageProductDependencies = (
+			);
+			productName = ShopWiseBar;
+			productReference = 2A8FE36CB878D580C3B5A32E /* ShopWiseBar.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		360ADA396D347387A270F77D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					B9055F40CC5D08653C2BF769 = {
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = C02349E03407A85371E9E2D0 /* Build configuration list for PBXProject "ShopWiseBar" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = DC206A6C33620502618E34A5;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 9163749AF27B025BCDDE4ECC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B9055F40CC5D08653C2BF769 /* ShopWiseBar */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D628C29C939E7C37C9BE2ED0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				111EA9F0DEA7CD23C17D7DC2 /* DebugLogger.swift in Sources */,
+				FC9A79F873AAD7FDF7900EDF /* DebugPanelView.swift in Sources */,
+				0A7823223CF3F5917AA53731 /* DebugPanelWindow.swift in Sources */,
+				081AA863B7A66C08FB86501D /* MenuBarController.swift in Sources */,
+				1238C81E2247F02653EEC08D /* PopoverRootView.swift in Sources */,
+				5AF48D102802A1997178E5AE /* SettingsWindow.swift in Sources */,
+				9DA45811BE5BC073F01DF54E /* ShopWiseBarApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2A0FE9118D9B47E172F03CB8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		2FCEFA6E81D1F007E4A23D3B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShopWiseBar/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.borasarang.ShopWiseBar;
+				PRODUCT_NAME = ShopWiseBar;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		5BFFF7B518BD02C8A1FF7F6B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShopWiseBar/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.borasarang.ShopWiseBar;
+				PRODUCT_NAME = ShopWiseBar;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		8F7DFF36D2A5904A9E186491 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		092D8E0BE6ACA45CC0A0AD96 /* Build configuration list for PBXNativeTarget "ShopWiseBar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5BFFF7B518BD02C8A1FF7F6B /* Debug */,
+				2FCEFA6E81D1F007E4A23D3B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C02349E03407A85371E9E2D0 /* Build configuration list for PBXProject "ShopWiseBar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2A0FE9118D9B47E172F03CB8 /* Debug */,
+				8F7DFF36D2A5904A9E186491 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 360ADA396D347387A270F77D /* Project object */;
+}
