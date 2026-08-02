@@ -1,15 +1,14 @@
-# 세션 — 2026-08-02 (macOS) — P1 가격 추적 MVP
+# 세션 — 2026-08-02 (macOS) — P2 브라우저 세션 수집
 
 ## 6줄 요약
 
-1. **무엇을**: P1 가격 추적 MVP 구현 — 몰 레지스트리/URL 파서, SwiftData 저장소, PriceFetcher, 갱신 스케줄러, 알림, 통계+Charts, 팝오버 상품 카드 UI, 우클릭 메뉴 실기능
-2. **플랫폼**: macos (SwiftUI+AppKit, Charts.framework 추가, project.yml에 error_message_ko.json 리소스 등록)
-3. **빌드 결과**: `./build_and_run.sh debug macos` 성공 (gitleaks/env-expiry 통과)
-4. **PERF**: 갱신 366~707ms (병렬화 후), 단일 조회 471ms — 예산 내. 네이버 응답 지연 시 40초+ → 타임아웃 8/12초 + 몰 간 병렬로 해결
-5. **남은 TODO**: 그래프 실데이터(가격 변동 대기), 알림 권한(ad-hoc 서명 → 개발자 서명 필요), 네이버/쿠팡 브라우저 세션(P2)
-6. **다음 에이전트 전달**: ①네이버 HTTP 429 확정 → P2 브라우저 세션(m. 페이지 + `__PRELOADED_STATE__` + `:undefined→:null` 치환 + 가격은 body 텍스트) ②올리브영은 `salePrice\\":(\d+)` + og 태그 파싱 완전 동작 ③테스트 툴: `/tmp/popover_add`, `/tmp/menu_refresh`, `/tmp/wl4`, 로그 캡처 `script -q /dev/null ... > /tmp/swb_p4.log` ④에러코드: E-MAC-VALID-2003 추가됨 ⑤빌드 후 앱은 ~/Applications/ShopWiseBar.app (강제종료 시 pkill -9)
+1. **무엇을**: P2 브라우저 세션 수집 — 네이버/쿠팡 모두 Chrome AppleScript 세션으로 전환 (HTTP 차단 우회)
+2. **플랫폼**: macos (BrowserSessionFetcher: 새 탭→로드→JS base64→탭 닫기, E-MAC-BROWSER-3001)
+3. **빌드 결과**: `./build_and_run.sh debug macos` 성공, 커밋 `7a73df1 feat(macos): P2 브라우저 세션 수집 — 네이버/쿠팡 실상품 검증`
+4. **PERF**: 전체 갱신 4,250ms (브라우저 탭 로드 4초 포함, 15분 주기 내 허용) — 이전 HTTP 366ms보다 느리지만 차단 극복이 우선
+5. **남은 TODO**: 쿠팡 옵션 상품 가격 변동(옵션 기본값), 웨일 실측, 브라우저 모니터링(제안 UI), 카탈로그 c: 실측
+6. **다음 에이전트 전달**: ①네이버 패턴: body 텍스트 `상품 가격` 다음 금액 (데스크톱/모바일 4페이지 실측) — m. 도메인 우선 ②쿠팡 패턴: `N%\n금액원` (2상품 실측) — 옵션 기본값 따라 변동 주의 ③디버그 훅: `defaults write com.borasarang.ShopWiseBar AutoAddURL -string "<url>"` (앱 시작 시 자동 등록, #if DEBUG) ④xcodegen은 /opt/homebrew/bin/xcodegen (PATH 미포함) + project.yml보다 새 파일은 pbxproj 재생성 필요 ⑤CGWindowList에 팝오버 미노출 (가상 디스플레이 환경) → 좌표 자동화 포기, 앱 내부 훅 사용 ⑥테스트: docs/tests/v0.2.1_macos.md, 스크린샷 v0_1_after_build.png
 
 ## 커밋 상태
 
-- P0 커밋 완료: `feat(macos): P0 프로젝트 골격 + 자동화 테스트 [E-MAC-UI-6001]`
-- P1 커밋 미완료 (변경 17파일 + 신규 12파일 대기)
+- P0: `4488e5d` / P1: `a510798` / P2: `7a73df1` — 모두 커밋 완료

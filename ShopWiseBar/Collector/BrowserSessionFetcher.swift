@@ -1,5 +1,6 @@
 // BrowserSessionFetcher.swift — AppleScript 브라우저 세션 실행 유틸 (P2)
 // 방식: 새 탭 → URL 로드 → execute javascript (base64 전달) → 탭 닫기
+//   다단계 처리(옵션 클릭 후 재추출 등)를 위해 openTab/exec/closeTab 분리
 // 브라우저: SettingsStore.browserName (Chrome/Whale/Edge 공통 AppleScript)
 // PLATFORM: macos
 import Foundation
@@ -18,6 +19,9 @@ struct BrowserSessionResult: Decodable {
 final class BrowserSessionFetcher {
     static let shared = BrowserSessionFetcher()
 
+    /// 브라우저 탭 세션 직렬 큐 — 몰 간 병렬 갱신 시 탭 동시 생성 경합 방지
+    private let sessionQueue = DispatchQueue(label: "com.borasarang.browser-session")
+
     private init() {}
 
     /// 네이버 상품 페이지 가격 추출 (m. 모바일 페이지 권장)
@@ -32,17 +36,27 @@ final class BrowserSessionFetcher {
           return JSON.stringify({price: m1 ? m1[1] : null, title: ogt ? ogt.content : null, image: ogi ? ogi.content : null});
         })()
         """
-        let output = try await executeJavaScript(js, url: url)
+        let output = try await runSession(url: url, steps: [(js, 0)])
         return try parse(output)
     }
 
     /// 쿠팡 상품 페이지 가격 추출
-    /// 패턴: "N%" 다음 줄 첫 금액이 현재가 (2개 상품 실측: 게이밍PC 27%→1,339,000원, 숟가락 23%→6,140원)
-    /// 폴백: body 첫 금액
+    /// 1) 첫 옵션(.select-item) 클릭 → 옵션 기본값에 따른 가격 변동 방지 (실측: 게임용11번→27%→1,339,000원)
+    /// 2) 2.5초 후 "N%" 다음 줄 금액 추출 (폴백: body 첫 금액)
+    /// 쿠팡 첫 로드는 느림(6초 이상) — loadDelay 확장
     func fetchCoupangProduct(url: URL) async throws -> BrowserSessionResult {
-        let js = """
+        let clickJS = """
+        (function(){
+          var items = document.querySelectorAll('.select-item');
+          if (items.length === 0) return 'no-option';
+          items[0].click();
+          return 'clicked';
+        })()
+        """
+        let extractJS = """
         (function(){
           var b = document.body.innerText;
+          if (b.indexOf('쿠팡') < 0) return JSON.stringify({price: null, title: null, image: null});
           var m = b.match(/([0-9]{1,2})%\\s*\\n\\s*([0-9][0-9,]*)\\s*원/);
           var fallback = b.match(/[0-9][0-9,]*\\s*원/);
           var ogt = document.querySelector('meta[property="og:title"]');
@@ -50,35 +64,45 @@ final class BrowserSessionFetcher {
           return JSON.stringify({price: m ? m[2] : (fallback ? fallback[0] : null), title: ogt ? ogt.content : null, image: ogi ? ogi.content : null});
         })()
         """
-        let output = try await executeJavaScript(js, url: url)
+        let output = try await runSession(url: url, loadDelay: 6, steps: [(clickJS, 2.5), (extractJS, 0)])
         return try parse(output)
     }
 
     // MARK: - 실행
 
-    private func executeJavaScript(_ js: String, url: URL) async throws -> String {
-        let b64 = Data(js.utf8).base64EncodedString()
+    /// 단일 osascript로 탭 세션 실행: 탭 생성 → URL 로드 → JS 스텝 실행 → 탭 닫기
+    /// (탭 참조를 한 스크립트 내에서 유지 — 별도 osascript의 tab id 접근 불가 문제 해결, 몰 간 병렬 안전)
+    private func runSession(url: URL, loadDelay: Double = 4, steps: [(js: String, delayBefore: TimeInterval)]) async throws -> String {
         let safeURL = url.absoluteString.replacingOccurrences(of: "\"", with: "\\\"")
-        let script = """
-        tell application "\(browserName)"
-            set newTab to make new tab at end of tabs of front window
-            set URL of newTab to "\(safeURL)"
-            delay 4
-            set jsText to do shell script "echo '\(b64)' | base64 -d"
-            set resultText to execute newTab javascript jsText
-            close newTab
-            return resultText
-        end tell
-        """
+        let encodedSteps = steps.map { Data($0.js.utf8).base64EncodedString() }
+
+        var lines: [String] = [
+            "tell application \"\(browserName)\"",
+            "    set newTab to make new tab at end of tabs of front window",
+            "    set URL of newTab to \"\(safeURL)\"",
+            "    delay \(loadDelay)",
+        ]
+        for (i, b64) in encodedSteps.enumerated() {
+            if steps[i].delayBefore > 0 {
+                lines.append("    delay \(steps[i].delayBefore)")
+            }
+            lines.append("    set js\(i) to do shell script \"echo '\(b64)' | base64 -d\"")
+            lines.append("    execute newTab javascript js\(i)")
+        }
+        let last = encodedSteps.count - 1
+        lines.append("    set resultText to execute newTab javascript js\(last)")
+        lines.append("    close newTab")
+        lines.append("    return resultText")
+        lines.append("end tell")
 
         DebugLogger.shared.push(
             level: .API_REQ,
             category: "BROWSER",
             message: "브라우저 세션 시작",
-            meta: ["browser": browserName, "url": url.absoluteString]
+            meta: ["browser": browserName, "url": url.absoluteString, "steps": steps.count]
         )
 
-        let (output, error) = try await runAppleScript(script)
+        let (output, error) = try await runAppleScript(lines.joined(separator: "\n"))
         if !error.isEmpty {
             DebugLogger.shared.push(
                 level: .WARN,
@@ -113,10 +137,10 @@ final class BrowserSessionFetcher {
         return result
     }
 
-    /// osascript 실행 (비동기)
+    /// osascript 실행 (직렬 큐 — 브라우저 탭 동시 생성 경합 방지)
     private func runAppleScript(_ script: String) async throws -> (output: String, error: String) {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<(String, String), Error>) in
-            Task.detached {
+            sessionQueue.async {
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
                 process.arguments = ["-e", script]
