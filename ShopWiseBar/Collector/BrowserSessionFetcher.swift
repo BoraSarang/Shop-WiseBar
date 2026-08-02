@@ -104,13 +104,16 @@ final class BrowserSessionFetcher {
 
         let (output, error) = try await runAppleScript(lines.joined(separator: "\n"))
         if !error.isEmpty {
+            // 웨일(Whale)은 AppleScript JS 실행 미지원 (2026-08-02 실측: 설정 키 미지원)
+            let isWhaleDisabled = error.contains("AppleScript를 통한 자바스크립트")
+            let code = isWhaleDisabled ? "E-MAC-BROWSER-3002" : "E-MAC-BROWSER-3001"
             DebugLogger.shared.push(
                 level: .WARN,
                 category: "BROWSER",
                 message: "AppleScript 오류",
-                meta: ["code": "E-MAC-BROWSER-3001", "error": String(error.prefix(200))]
+                meta: ["code": code, "error": String(error.prefix(200))]
             )
-            throw AppError.browserUnavailable()
+            throw AppError(code: code, debugMessage: isWhaleDisabled ? "웨일은 AppleScript JS 실행 미지원 — Google Chrome 선택 필요" : "브라우저 자동화 실패")
         }
         return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }

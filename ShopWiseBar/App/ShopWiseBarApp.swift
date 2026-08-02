@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MenuBarController.shared.start()
         NotificationEngine.shared.requestAuthorization()
         RefreshScheduler.shared.start()
+        BrowserMonitor.shared.start()
         DebugLogger.shared.push(
             level: .SYSTEM,
             category: "APP",

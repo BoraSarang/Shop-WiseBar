@@ -17,6 +17,9 @@ struct PopoverRootView: View {
     var body: some View {
         VStack(spacing: 10) {
             header
+            if let suggested = popoverState.suggestedURL {
+                suggestionBanner(url: suggested)
+            }
             if store.products.isEmpty {
                 emptyState
             } else {
@@ -129,6 +132,73 @@ struct PopoverRootView: View {
                 .frame(maxWidth: 260)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - 브라우저 감지 제안 (T-21)
+
+    @ViewBuilder
+    private func suggestionBanner(url: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(Color.accentColor)
+                Text("브라우저에서 상품 페이지를 보고 있어요")
+                    .font(.caption).bold()
+                Spacer()
+            }
+            if let parsed = MallParser.parse(url) {
+                Text("\(parsed.mall.displayName) 상품을 추적할까요?")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Button {
+                        Task { await addSuggested(url: url) }
+                    } label: {
+                        if popoverState.isAddingSuggested {
+                            ProgressView().controlSize(.mini)
+                        } else {
+                            Text("추적 시작")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(popoverState.isAddingSuggested)
+                    Button("닫기") { popoverState.clearSuggestion() }
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
+                }
+            } else {
+                Text("지원하는 상품 페이지가 아닙니다")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func addSuggested(url: String) async {
+        popoverState.isAddingSuggested = true
+        defer { popoverState.isAddingSuggested = false }
+        let result = await PriceFetchCoordinator.shared.addFromURL(url)
+        switch result {
+        case .success(let product):
+            popoverState.clearSuggestion()
+            DebugLogger.shared.push(
+                level: .ACTION,
+                category: "ADD",
+                message: "추적 제안 → 등록 완료",
+                meta: ["productID": product.productID]
+            )
+        case .failure(let error):
+            DebugLogger.shared.push(
+                level: .WARN,
+                category: "ADD",
+                message: "추적 제안 등록 실패",
+                meta: ["code": error.code]
+            )
+        }
     }
 
     // MARK: - 액션

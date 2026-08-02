@@ -28,6 +28,7 @@
 		9DA45811BE5BC073F01DF54E /* ShopWiseBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36180C257E3B6F1834912192 /* ShopWiseBarApp.swift */; };
 		9FF45875522EAA54ED4E83A8 /* BrowserSessionFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CA83F8FFC22941FF607077 /* BrowserSessionFetcher.swift */; };
 		A5C8CFC853850EEBA2CD1117 /* OliveYoungFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5C618495948EE91DB7C3F02 /* OliveYoungFetcher.swift */; };
+		B9CA6788413F59A1082F68DC /* BrowserMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F5C3F57FFCA560E713C7B3C /* BrowserMonitor.swift */; };
 		BACF4F3C37B32D1CA37DDAD9 /* NaverFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3CFFC9D3E5F186D59C6088 /* NaverFetcher.swift */; };
 		C20B036F664793AB34C95362 /* PopoverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E276354877293AAF2E6321 /* PopoverState.swift */; };
 		CC4F3E83C93C7B63E7FD8E77 /* ProductCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F786FD86FEA73EF4E468E075 /* ProductCardView.swift */; };
@@ -41,6 +42,7 @@
 		08251964560A4658BF266AE0 /* error_message_ko.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = error_message_ko.json; sourceTree = "<group>"; };
 		15C98E9BFA367F8B785BF72E /* PriceFetchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceFetchCoordinator.swift; sourceTree = "<group>"; };
 		1627771E38C10AC889DE4628 /* Charts.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Charts.framework; path = System/Library/Frameworks/Charts.framework; sourceTree = SDKROOT; };
+		1F5C3F57FFCA560E713C7B3C /* BrowserMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserMonitor.swift; sourceTree = "<group>"; };
 		2A8FE36CB878D580C3B5A32E /* ShopWiseBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShopWiseBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D20FE719C7AB27A48538FCD /* NotificationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationEngine.swift; sourceTree = "<group>"; };
 		317F9FF0157A37C1992740E7 /* ProductStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductStore.swift; sourceTree = "<group>"; };
@@ -121,6 +123,7 @@
 		35312AD40CB31862ACE8A7B2 /* Collector */ = {
 			isa = PBXGroup;
 			children = (
+				1F5C3F57FFCA560E713C7B3C /* BrowserMonitor.swift */,
 				50CA83F8FFC22941FF607077 /* BrowserSessionFetcher.swift */,
 				49A594E1447CB93936D1DA03 /* CoupangFetcher.swift */,
 				6EBE2E954F0994DE27619D0F /* HTMLParser.swift */,
@@ -283,6 +286,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6733B18356FC0BE58C9CCE23 /* AppError.swift in Sources */,
+				B9CA6788413F59A1082F68DC /* BrowserMonitor.swift in Sources */,
 				9FF45875522EAA54ED4E83A8 /* BrowserSessionFetcher.swift in Sources */,
 				3B799F2F16FE566E2DCD250A /* CoupangFetcher.swift in Sources */,
 				111EA9F0DEA7CD23C17D7DC2 /* DebugLogger.swift in Sources */,
