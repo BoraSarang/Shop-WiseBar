@@ -1,0 +1,102 @@
+# 관심 상품 라우터 — 관심 CRUD + 폴링 알림 (하락/목표가 도달 감지)
+# PLATFORM: server
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import Device, PricePoint, Product, Watch
+from app.schemas import AlertOut, WatchIn, WatchOut
+
+router = APIRouter(tags=["watches"])
+
+
+def _get_device_or_404(db: Session, device_id: str) -> Device:
+    device = db.get(Device, device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1002", "message": "기기를 찾을 수 없습니다"})
+    return device
+
+
+@router.put("/devices/{device_id}/watches/{product_id}", response_model=WatchOut)
+def add_watch(device_id: str, product_id: str, payload: WatchIn, db: Session = Depends(get_db)) -> WatchOut:
+    """관심 상품 등록 (목표가 선택) — 추적 제안 배너의 '추적 시작'"""
+    _get_device_or_404(db, device_id)
+    if db.get(Product, product_id) is None:
+        raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1001", "message": "상품을 찾을 수 없습니다"})
+    watch = db.scalar(select(Watch).where(Watch.device_id == device_id, Watch.product_id == product_id))
+    if watch is None:
+        watch = Watch(device_id=device_id, product_id=product_id, target_price=payload.target_price)
+        db.add(watch)
+    else:
+        watch.target_price = payload.target_price
+    db.commit()
+    db.refresh(watch)
+    return WatchOut(product_id=watch.product_id, target_price=watch.target_price, created_at=watch.created_at)
+
+
+@router.delete("/devices/{device_id}/watches/{product_id}", status_code=204)
+def remove_watch(device_id: str, product_id: str, db: Session = Depends(get_db)) -> None:
+    _get_device_or_404(db, device_id)
+    db.execute(
+        delete(Watch).where(Watch.device_id == device_id, Watch.product_id == product_id)
+    )
+    db.commit()
+
+
+@router.get("/devices/{device_id}/watches", response_model=list[WatchOut])
+def list_watches(device_id: str, db: Session = Depends(get_db)) -> list[WatchOut]:
+    """관심 상품 목록 (앱 시작 시 동기화용)"""
+    _get_device_or_404(db, device_id)
+    watches = db.scalars(select(Watch).where(Watch.device_id == device_id)).all()
+    return [WatchOut(product_id=w.product_id, target_price=w.target_price, created_at=w.created_at) for w in watches]
+
+
+@router.get("/devices/{device_id}/alerts", response_model=list[AlertOut])
+def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depends(get_db)) -> list[AlertOut]:
+    """폴링 알림 — since 이후 가격이 (a)목표가 이하 도달 (b)이전 가격 대비 하락한 관심 상품 목록"""
+    _get_device_or_404(db, device_id)
+    watches = db.scalars(select(Watch).where(Watch.device_id == device_id)).all()
+    alerts: list[AlertOut] = []
+    for w in watches:
+        query = (
+            select(PricePoint)
+            .where(PricePoint.product_id == w.product_id)
+            .order_by(PricePoint.captured_at.desc())
+            .limit(2)
+        )
+        if since is not None:
+            query = (
+                select(PricePoint)
+                .where(PricePoint.product_id == w.product_id, PricePoint.captured_at >= since)
+                .order_by(PricePoint.captured_at.desc())
+                .limit(2)
+            )
+        points = list(db.scalars(query).all())
+        if not points:
+            continue
+        latest = points[0]
+        previous = points[1] if len(points) > 1 else None
+        if w.target_price is not None and latest.price <= w.target_price:
+            alerts.append(
+                AlertOut(
+                    product_id=w.product_id,
+                    alert_type="target_reached",
+                    price=latest.price,
+                    previous_price=previous.price if previous else None,
+                    captured_at=latest.captured_at,
+                )
+            )
+        elif previous is not None and latest.price < previous.price:
+            alerts.append(
+                AlertOut(
+                    product_id=w.product_id,
+                    alert_type="price_dropped",
+                    price=latest.price,
+                    previous_price=previous.price,
+                    captured_at=latest.captured_at,
+                )
+            )
+    return alerts
