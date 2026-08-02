@@ -37,7 +37,8 @@ final class BrowserSessionFetcher {
           return JSON.stringify({price: m1 ? m1[1] : null, title: ogt ? ogt.content : null, image: ogi ? ogi.content : null});
         })()
         """
-        let output = try await runSession(url: url, mall: "naver", loadDelay: 5, steps: [(js, 0)])
+        // 간헐적 로드 지연 대비: 동일 추출 JS를 2초 간격 2회 (첫 실패 시 재시도 효과)
+        let output = try await runSession(url: url, mall: "naver", loadDelay: 5, steps: [(js, 2), (js, 0)])
         return try parse(output)
     }
 

@@ -2,6 +2,7 @@
 // Chrome/Whale 활성 탭 URL을 주기 폴링 → 지원 상품 페이지면 추적 제안
 // 로그는 상태 변경(감지/해제) 시에만 — AGENTS.md 11.2 준수 (폴링 로깅 금지)
 // PLATFORM: macos
+import AppKit
 import Foundation
 
 @MainActor
@@ -11,6 +12,7 @@ final class BrowserMonitor {
     private let pollInterval: TimeInterval = 3
     private var task: Task<Void, Never>?
     private var lastURL: String?
+    private var lastClipboardURL: String?
 
     private init() {}
 
@@ -33,21 +35,39 @@ final class BrowserMonitor {
     // MARK: - 폴링
 
     private func pollOnce() async {
+        // 갱신 중 브라우저 세션이 Chrome 탭을 만들고 닫음 — 자기 탭 감지 방지
+        if RefreshScheduler.shared.isRunning { return }
+
         let browser = SettingsStore.shared.browserName
-        guard browser != "Safari" else { return } // Safari는 AppleScript JS 설정 필요 — 추후 지원
+        if browser != "Safari" {
+            let url = await activeTabURL(browser: browser)
+            if let url {
+                if url != lastURL {
+                    lastURL = url
+                    updateSuggestion(from: url, source: "browser")
+                }
+                if MallParser.parse(url) != nil {
+                    return // 브라우저가 상품 페이지 중 — 클립보드 제안 무시
+                }
+            }
+        }
 
-        let url = await activeTabURL(browser: browser)
-        guard let url else { return }
-        guard url != lastURL else { return }
+        // 브라우저가 비상품 페이지/미지원일 때 클립보드 감지 (P3)
+        let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
+        if !clipboard.isEmpty && clipboard != lastClipboardURL {
+            lastClipboardURL = clipboard
+            updateSuggestion(from: clipboard, source: "clipboard")
+        }
+    }
 
-        lastURL = url
-        if MallParser.parse(url) != nil {
-            PopoverState.shared.suggestedURL = url
+    private func updateSuggestion(from text: String, source: String) {
+        if MallParser.parse(text) != nil {
+            PopoverState.shared.suggestedURL = text
             DebugLogger.shared.push(
                 level: .INFO,
                 category: "MONITOR",
                 message: "상품 페이지 감지",
-                meta: ["browser": browser, "url": url]
+                meta: ["source": source, "url": text]
             )
         } else {
             PopoverState.shared.clearSuggestion()
