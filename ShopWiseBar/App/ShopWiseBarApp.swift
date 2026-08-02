@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationEngine.shared.requestAuthorization()
         RefreshScheduler.shared.start()
         BrowserMonitor.shared.start()
+        AlertPoller.shared.start()
         Task {
             // P5-T53: 앱 시작 시 익명 기기ID 발급 (서버 연동 전제)
             do {
