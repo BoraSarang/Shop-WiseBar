@@ -19,8 +19,9 @@ struct BrowserSessionResult: Decodable {
 final class BrowserSessionFetcher {
     static let shared = BrowserSessionFetcher()
 
-    /// 브라우저 탭 세션 직렬 큐 — 몰 간 병렬 갱신 시 탭 동시 생성 경합 방지
-    private let sessionQueue = DispatchQueue(label: "com.borasarang.browser-session")
+    /// 몰별 직렬 세마포어 — 같은 몰의 탭 세션은 순차, 몰 간은 병렬 (탭 동시 생성 경합은 몰 내에서만 방지)
+    private let mallLock = NSLock()
+    private var mallBusy: [String: Bool] = [:]
 
     private init() {}
 
@@ -36,7 +37,7 @@ final class BrowserSessionFetcher {
           return JSON.stringify({price: m1 ? m1[1] : null, title: ogt ? ogt.content : null, image: ogi ? ogi.content : null});
         })()
         """
-        let output = try await runSession(url: url, steps: [(js, 0)])
+        let output = try await runSession(url: url, mall: "naver", loadDelay: 5, steps: [(js, 0)])
         return try parse(output)
     }
 
@@ -64,7 +65,7 @@ final class BrowserSessionFetcher {
           return JSON.stringify({price: m ? m[2] : (fallback ? fallback[0] : null), title: ogt ? ogt.content : null, image: ogi ? ogi.content : null});
         })()
         """
-        let output = try await runSession(url: url, loadDelay: 6, steps: [(clickJS, 2.5), (extractJS, 0)])
+        let output = try await runSession(url: url, mall: "coupang", loadDelay: 6, steps: [(clickJS, 2.5), (extractJS, 0)])
         return try parse(output)
     }
 
@@ -72,7 +73,7 @@ final class BrowserSessionFetcher {
 
     /// 단일 osascript로 탭 세션 실행: 탭 생성 → URL 로드 → JS 스텝 실행 → 탭 닫기
     /// (탭 참조를 한 스크립트 내에서 유지 — 별도 osascript의 tab id 접근 불가 문제 해결, 몰 간 병렬 안전)
-    private func runSession(url: URL, loadDelay: Double = 4, steps: [(js: String, delayBefore: TimeInterval)]) async throws -> String {
+    private func runSession(url: URL, mall: String, loadDelay: Double = 4, steps: [(js: String, delayBefore: TimeInterval)]) async throws -> String {
         let safeURL = url.absoluteString.replacingOccurrences(of: "\"", with: "\\\"")
         let encodedSteps = steps.map { Data($0.js.utf8).base64EncodedString() }
 
@@ -102,7 +103,7 @@ final class BrowserSessionFetcher {
             meta: ["browser": browserName, "url": url.absoluteString, "steps": steps.count]
         )
 
-        let (output, error) = try await runAppleScript(lines.joined(separator: "\n"))
+        let (output, error) = try await runAppleScript(lines.joined(separator: "\n"), mall: mall)
         if !error.isEmpty {
             // 웨일(Whale)은 AppleScript JS 실행 미지원 (2026-08-02 실측: 설정 키 미지원)
             let isWhaleDisabled = error.contains("AppleScript를 통한 자바스크립트")
@@ -140,10 +141,12 @@ final class BrowserSessionFetcher {
         return result
     }
 
-    /// osascript 실행 (직렬 큐 — 브라우저 탭 동시 생성 경합 방지)
-    private func runAppleScript(_ script: String) async throws -> (output: String, error: String) {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<(String, String), Error>) in
-            sessionQueue.async {
+    /// osascript 실행 (몰별 직렬 세마포어 — 몰 내 탭 경합 방지, 몰 간은 병렬)
+    private func runAppleScript(_ script: String, mall: String) async throws -> (output: String, error: String) {
+        await acquireMall(mall)
+        defer { releaseMall(mall) }
+        return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<(String, String), Error>) in
+            Task.detached {
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
                 process.arguments = ["-e", script]
@@ -164,5 +167,27 @@ final class BrowserSessionFetcher {
                 }
             }
         }
+    }
+
+    // MARK: - 몰별 직렬 세마포어
+
+    private func acquireMall(_ mall: String) async {
+        while true {
+            mallLock.lock()
+            let busy = mallBusy[mall] ?? false
+            if !busy {
+                mallBusy[mall] = true
+                mallLock.unlock()
+                return
+            }
+            mallLock.unlock()
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+    }
+
+    private func releaseMall(_ mall: String) {
+        mallLock.lock()
+        mallBusy[mall] = false
+        mallLock.unlock()
     }
 }
