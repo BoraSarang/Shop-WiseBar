@@ -31,6 +31,16 @@ struct PopoverRootView: View {
             if pasteboard.string(forType: .string)?.isSupportedProductURL == true {
                 urlText = pasteboard.string(forType: .string) ?? ""
             }
+            // 디버그 자동화: AutoAddURL에 등록할 URL을 넣으면 자동 등록
+            // 트리거: `defaults write com.borasarang.ShopWiseBar AutoAddURL -string "<url>"`
+            #if DEBUG
+            if let autoURL = UserDefaults.standard.string(forKey: "AutoAddURL"), !autoURL.isEmpty {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    urlText = autoURL
+                    addProduct()
+                }
+            }
+            #endif
         }
         .onChange(of: popoverState.focusAddField) { focused in
             if focused {

@@ -26,6 +26,7 @@
 		7D334821BD7E30DF7F5F5CCC /* RefreshScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE578A214FE4C8107284C1F /* RefreshScheduler.swift */; };
 		8FBD254E431C965BE8A275D9 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC2A3C4CF83CB318A39BFD34 /* Models.swift */; };
 		9DA45811BE5BC073F01DF54E /* ShopWiseBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36180C257E3B6F1834912192 /* ShopWiseBarApp.swift */; };
+		9FF45875522EAA54ED4E83A8 /* BrowserSessionFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CA83F8FFC22941FF607077 /* BrowserSessionFetcher.swift */; };
 		A5C8CFC853850EEBA2CD1117 /* OliveYoungFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5C618495948EE91DB7C3F02 /* OliveYoungFetcher.swift */; };
 		BACF4F3C37B32D1CA37DDAD9 /* NaverFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3CFFC9D3E5F186D59C6088 /* NaverFetcher.swift */; };
 		C20B036F664793AB34C95362 /* PopoverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E276354877293AAF2E6321 /* PopoverState.swift */; };
@@ -49,6 +50,7 @@
 		48E276354877293AAF2E6321 /* PopoverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverState.swift; sourceTree = "<group>"; };
 		49A594E1447CB93936D1DA03 /* CoupangFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoupangFetcher.swift; sourceTree = "<group>"; };
 		506E0580D005C8B7C78A364D /* AppError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppError.swift; sourceTree = "<group>"; };
+		50CA83F8FFC22941FF607077 /* BrowserSessionFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserSessionFetcher.swift; sourceTree = "<group>"; };
 		56E89AF6CFAFDD3C2F4FB627 /* PriceHistoryChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceHistoryChartView.swift; sourceTree = "<group>"; };
 		5BE578A214FE4C8107284C1F /* RefreshScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshScheduler.swift; sourceTree = "<group>"; };
 		6E078824BE1773AE95C7F28E /* PopoverRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverRootView.swift; sourceTree = "<group>"; };
@@ -119,6 +121,7 @@
 		35312AD40CB31862ACE8A7B2 /* Collector */ = {
 			isa = PBXGroup;
 			children = (
+				50CA83F8FFC22941FF607077 /* BrowserSessionFetcher.swift */,
 				49A594E1447CB93936D1DA03 /* CoupangFetcher.swift */,
 				6EBE2E954F0994DE27619D0F /* HTMLParser.swift */,
 				9C3CFFC9D3E5F186D59C6088 /* NaverFetcher.swift */,
@@ -280,6 +283,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6733B18356FC0BE58C9CCE23 /* AppError.swift in Sources */,
+				9FF45875522EAA54ED4E83A8 /* BrowserSessionFetcher.swift in Sources */,
 				3B799F2F16FE566E2DCD250A /* CoupangFetcher.swift in Sources */,
 				111EA9F0DEA7CD23C17D7DC2 /* DebugLogger.swift in Sources */,
 				FC9A79F873AAD7FDF7900EDF /* DebugPanelView.swift in Sources */,

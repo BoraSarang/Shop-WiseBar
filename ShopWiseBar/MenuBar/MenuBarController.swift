@@ -32,7 +32,27 @@ final class MenuBarController: NSObject {
         configurePopover()
         installKeyMonitor()
 
+        if let win = item.button?.window {
+            DebugLogger.shared.push(
+                level: .INFO,
+                category: "MENU",
+                message: "StatusItem 위치",
+                meta: ["frame": NSStringFromRect(win.frame)]
+            )
+        }
+
         DebugLogger.shared.push(level: .ACTION, category: "MENU", message: "메뉴바 아이콘 활성화")
+
+        // 디버그 자동화: 앱 시작 시 팝오버 자동 오픈 (외부 클릭 좌표 불필요)
+        // 트리거: `defaults write com.borasarang.ShopWiseBar AutoOpenPopover -bool YES`
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "AutoOpenPopover") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                self?.openPopover()
+                DebugLogger.shared.push(level: .ACTION, category: "DEBUG", message: "자동화 모드: 팝오버 자동 오픈")
+            }
+        }
+        #endif
     }
 
     // MARK: - Popover
@@ -47,6 +67,14 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
+        if let win = sender.window {
+            DebugLogger.shared.push(
+                level: .INFO,
+                category: "MENU",
+                message: "StatusItem 클릭 위치",
+                meta: ["frame": NSStringFromRect(win.frame)]
+            )
+        }
         // AXPress 등 합성 이벤트는 currentEvent가 nil일 수 있어 방어 처리
         if NSApp.currentEvent?.type == .rightMouseUp {
             showContextMenu(sender)
