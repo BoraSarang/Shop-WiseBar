@@ -1,14 +1,14 @@
-# 세션 — 2026-08-02 (macOS) — P2 브라우저 세션 수집
+# 세션 — 2026-08-02 (macOS) — P2 브라우저 세션 수집 + 모니터링 완료
 
 ## 6줄 요약
 
-1. **무엇을**: P2 브라우저 세션 수집 — 네이버/쿠팡 모두 Chrome AppleScript 세션으로 전환 (HTTP 차단 우회)
-2. **플랫폼**: macos (BrowserSessionFetcher: 새 탭→로드→JS base64→탭 닫기, E-MAC-BROWSER-3001)
-3. **빌드 결과**: `./build_and_run.sh debug macos` 성공, 커밋 `7a73df1 feat(macos): P2 브라우저 세션 수집 — 네이버/쿠팡 실상품 검증`
-4. **PERF**: 전체 갱신 4,250ms (브라우저 탭 로드 4초 포함, 15분 주기 내 허용) — 이전 HTTP 366ms보다 느리지만 차단 극복이 우선
-5. **남은 TODO**: 쿠팡 옵션 상품 가격 변동(옵션 기본값), 웨일 실측, 브라우저 모니터링(제안 UI), 카탈로그 c: 실측
-6. **다음 에이전트 전달**: ①네이버 패턴: body 텍스트 `상품 가격` 다음 금액 (데스크톱/모바일 4페이지 실측) — m. 도메인 우선 ②쿠팡 패턴: `N%\n금액원` (2상품 실측) — 옵션 기본값 따라 변동 주의 ③디버그 훅: `defaults write com.borasarang.ShopWiseBar AutoAddURL -string "<url>"` (앱 시작 시 자동 등록, #if DEBUG) ④xcodegen은 /opt/homebrew/bin/xcodegen (PATH 미포함) + project.yml보다 새 파일은 pbxproj 재생성 필요 ⑤CGWindowList에 팝오버 미노출 (가상 디스플레이 환경) → 좌표 자동화 포기, 앱 내부 훅 사용 ⑥테스트: docs/tests/v0.2.1_macos.md, 스크린샷 v0_1_after_build.png
+1. **무엇을**: P2 완성 — 네이버/쿠팡 브라우저 세션 수집(HTTP 차단 우회), 쿠팡 옵션 고정, 브라우저 모니터링(추적 제안 배너), 몰별 병렬화
+2. **플랫폼**: macos (BrowserSessionFetcher: 새 탭→로드→JS base64→탭 닫기, 몰별 직렬 세마포어)
+3. **빌드 결과**: `./build_and_run.sh debug macos` 성공 — 커밋: 7a73df1(수집) b0da605(쿠팡 고정) 73cab39(모니터링) fcefbef(병렬화) 49609df(docs)
+4. **PERF**: 전체 갱신 4상품 10.6~10.7초 failed=0 (직렬 17.3초 대비 개선, 15분 주기 내 허용)
+5. **남은 TODO**: 카탈로그 c: 실측(사용자 URL 대기, m.search 데스크톱 캡차), 제안 배너 시각 확인(스크린샷 저장됨), 알림 권한(개발자 서명), 그래프 실데이터(가격 변동 대기)
+6. **다음 에이전트 전달**: ①네이버 패턴 `상품 가격` 다음 금액 / 쿠팡 패턴 `N%` 다음 금액 + 첫 .select-item 클릭 고정 ②네이버 loadDelay 5s·쿠팡 6s(탭 동시 생성 경합 대응) ③Whale JS 실행 미지원 → E-MAC-BROWSER-3002 ④디버그 훅: AutoAddURL/AutoOpenPopover(defaults, #if DEBUG) ⑤xcodegen: /opt/homebrew/bin/xcodegen generate (새 파일 필수) ⑥DispatchQueue.async continuation 캡처는 컴파일 에러 → Task.detached + 세마포어 패턴 ⑦CGWindowList 가상 디스플레이 문제로 좌표 자동화 금지, 앱 내부 훅만 사용 ⑧스크린샷: v0_3_p2_monitor_banner.png
 
 ## 커밋 상태
 
-- P0: `4488e5d` / P1: `a510798` / P2: `7a73df1` — 모두 커밋 완료
+- P0 `4488e5d` / P1 `a510798` / P2 수집 `7a73df1` / 쿠팡고정 `b0da605` / 모니터링 `73cab39` / 병렬화 `fcefbef` / docs `49609df` — 모두 커밋 완료
