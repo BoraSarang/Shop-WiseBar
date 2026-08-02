@@ -49,6 +49,7 @@ final class PriceFetchCoordinator {
                 urlString: parsed.url.absoluteString
             )
             store.recordPrice(info.price, for: product)
+            uploadToServer(product: product, info: info)
             DebugLogger.shared.push(
                 level: .ACTION,
                 category: "ADD",
@@ -64,6 +65,7 @@ final class PriceFetchCoordinator {
                 name: "\(parsed.mall.displayName) 상품 (가격 수집 대기)",
                 urlString: parsed.url.absoluteString
             )
+            uploadToServer(product: product, info: nil)
             DebugLogger.shared.push(
                 level: .WARN,
                 category: "ADD",
@@ -95,6 +97,7 @@ final class PriceFetchCoordinator {
                         switch await self.refreshInfo(mall: product.mall, productID: product.productID) {
                         case .success(let info):
                             let changed = self.store.recordPrice(info.price, for: product)
+                            self.uploadPriceToServer(product: product, price: info.price)
                             if changed {
                                 updated += 1
                                 await NotificationEngine.shared.notifyPriceChangeIfNeeded(for: product, newPrice: info.price)
@@ -153,6 +156,55 @@ final class PriceFetchCoordinator {
             return .failure(error)
         } catch {
             return .failure(AppError.fetchFailed(cause: error))
+        }
+    }
+
+    // MARK: - 서버 업로드 (P5-T53 하이브리드: 클라이언트 수집 → 중앙 DB)
+
+    /// 상품 등록 시: 서버 upsert + 첫 가격 업로드 (등록 UX 지연 방지 위해 fire-and-forget)
+    private func uploadToServer(product: Product, info: ProductInfo?) {
+        Task {
+            do {
+                _ = try await ServerClient.shared.upsertProduct(
+                    productID: product.productID,
+                    mall: product.mall.rawValue,
+                    url: product.urlString,
+                    name: info?.name ?? product.name,
+                    image: info?.imageURLString
+                )
+                if let price = info?.price ?? product.lastPrice {
+                    try await ServerClient.shared.uploadPrice(productID: product.productID, price: price)
+                }
+                DebugLogger.shared.push(
+                    level: .ACTION,
+                    category: "SERVER",
+                    message: "상품 서버 등록 완료",
+                    meta: ["productID": product.productID]
+                )
+            } catch {
+                DebugLogger.shared.push(
+                    level: .WARN,
+                    category: "SERVER",
+                    message: "상품 서버 등록 실패",
+                    meta: ["code": (error as? AppError)?.code ?? "unknown", "productID": product.productID]
+                )
+            }
+        }
+    }
+
+    /// 갱신 성공 시: 가격 서버 업로드 (source=client, 하이브리드 수집)
+    private func uploadPriceToServer(product: Product, price: Int) {
+        Task {
+            do {
+                try await ServerClient.shared.uploadPrice(productID: product.productID, price: price)
+            } catch {
+                DebugLogger.shared.push(
+                    level: .WARN,
+                    category: "SERVER",
+                    message: "가격 업로드 실패",
+                    meta: ["code": (error as? AppError)?.code ?? "unknown", "productID": product.productID]
+                )
+            }
         }
     }
 }
