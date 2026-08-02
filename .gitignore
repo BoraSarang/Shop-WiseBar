@@ -18,3 +18,11 @@ google-services.json
 *.xcscmblueprint
 *.xccheckout
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+
+# Server (Python)
+server/.venv/
+server/.env
+__pycache__/
+*.pyc
+server/*.db
+server/*.sqlite3

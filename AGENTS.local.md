@@ -27,7 +27,7 @@
 
 ## 규칙 요약
 
-- 모델 고정: `AI_MODELS.json` 준수 (유료 모델 사용 시 DebugLogger에 `cost` 로깅 필수)
+- 모델 고정: `docs/AI_MODELS.json` 준수 (유료 모델 사용 시 DebugLogger에 `cost` 로깅 필수)
 - 에러: `E-MAC-{CAT}-NNNN` 코드 필수, 사용자 메시지는 `error_message_ko.json`에만
 - 몰/수집기: `MallParser` 프로토콜 분리 원칙 (HTML 구조 변경 시 해당 몰 파서만 수정)
 - 쿠팡: 직접 HTTP 수집 금지 — 브라우저 세션 활용 (`execute javascript`) 원칙
@@ -38,5 +38,5 @@
 
 ## 참고 문서
 
-- 기능 정의: `PRD.md` / 기술 설계: `DESIGN.md` / 로드맵: `PLAN.md` / 작업 추적: `TODO.md`
+- 기능 정의: `docs/PRD.md` / 기술 설계: `docs/DESIGN.md` / 로드맵: `docs/PLAN.md` / 작업 추적: `docs/TODO.md`
 - 플랫폼 상세: `AGENTS.macos.md`
