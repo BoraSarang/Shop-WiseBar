@@ -46,9 +46,20 @@ const Extractor = {
 
     return {
       price,
-      title: this.ogMeta("og:title"),
+      title: this.normalizeTitle(mall, this.ogMeta("og:title")),
       image: this.ogMeta("og:image"),
     };
+  },
+
+  // 몰별 og:title 정리 (og:title은 몰이 마케팅용으로 채우는 값이라 잡음 제거)
+  // 쿠팡: "상품명 - 카테고리 | 쿠팡" → "상품명"
+  normalizeTitle(mall, title) {
+    let t = (title || "").trim();
+    if (!t) return t;
+    if (mall === "coupang") {
+      t = t.replace(/\s*-\s*[^|]+\s*\|\s*쿠팡\s*$/i, "").trim();
+    }
+    return t;
   },
 };
 
