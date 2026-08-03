@@ -137,12 +137,12 @@ const SWB_UI = (() => {
       font-size: 15px; font-weight: 800; color: #2d4ae0;
     }
     .swb-li-badge {
-      position: absolute; left: -4px; bottom: -4px;
-      width: 18px; height: 18px; border-radius: 50%;
+      position: absolute; right: 2px; bottom: 2px;
+      width: 16px; height: 16px; border-radius: 50%;
       background: #fff; display: flex; align-items: center; justify-content: center;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
-    .swb-li-badge img { width: 12px; height: 12px; border-radius: 3px; }
+    .swb-li-badge img { width: 11px; height: 11px; border-radius: 3px; }
     .swb-li-badge.b-fallback {
       font-size: 8px; font-weight: 800; color: #fff; font-style: normal;
     }
