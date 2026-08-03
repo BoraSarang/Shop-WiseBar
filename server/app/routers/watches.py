@@ -150,57 +150,33 @@ def delete_alert(device_id: str, alert_id: int, db: Session = Depends(get_db)) -
 @router.get("/devices/{device_id}/alerts", response_model=list[AlertOut])
 def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depends(get_db)) -> list[AlertOut]:
     """폴링 알림 — 같은 옵션(variant)끼리만 최신/이전 가격 비교해 하락 감지
-    쿠팡 itemId 등 옵션별 가격이 다른 경우, 옵션 간 가격 차이를 하락으로 오탐하지 않도록 variant 단위로 분리"""
+    쿠팡 itemId 등 옵션별 가격이 다른 경우, 옵션 간 가격 차이를 하락으로 오탐하지 않도록 variant 단위로 분리
+    since는 '신규 보고 캡처' 필터로만 사용 — 직전 가격은 since 이전이어도 비교 기준으로 삼아,
+    찜 이후 첫 하락(모든 캡처가 since 이후)도 감지되도록 한다"""
     _get_device_or_404(db, device_id)
+    if since is not None:
+        since = since.replace(tzinfo=None)
     watches = db.scalars(select(Watch).where(Watch.device_id == device_id)).all()
     alerts: list[AlertOut] = []
     for w in watches:
-        if since is not None:
-            points = list(
-                db.scalars(
-                    select(PricePoint)
-                    .where(PricePoint.product_id == w.product_id, PricePoint.captured_at >= since)
-                    .order_by(PricePoint.captured_at.desc())
-                    .limit(100)
-                ).all()
-            )
-            latest_by_variant: dict[str | None, PricePoint] = {}
-            for pt in points:
-                if pt.variant not in latest_by_variant:
-                    latest_by_variant[pt.variant] = pt
-            for variant, latest in latest_by_variant.items():
-                prev_cond = (
-                    PricePoint.variant.is_(None) if variant is None else PricePoint.variant == variant
-                )
-                previous = db.scalar(
-                    select(PricePoint)
-                    .where(
-                        PricePoint.product_id == w.product_id,
-                        PricePoint.captured_at < since,
-                        prev_cond,
-                    )
-                    .order_by(PricePoint.captured_at.desc())
-                    .limit(1)
-                )
-                if previous is not None and latest.price < previous.price:
-                    alerts.append(_alert_out(latest, previous))
-        else:
-            points = list(
-                db.scalars(
-                    select(PricePoint)
-                    .where(PricePoint.product_id == w.product_id)
-                    .order_by(PricePoint.captured_at.desc())
-                    .limit(500)
-                ).all()
-            )
-            by_variant: dict[str | None, list[PricePoint]] = {}
-            for pt in points:
-                by_variant.setdefault(pt.variant, []).append(pt)
-            for variant, group in by_variant.items():
-                latest = group[0]
-                previous = group[1] if len(group) > 1 else None
-                if previous is not None and latest.price < previous.price:
-                    alerts.append(_alert_out(latest, previous))
+        points = list(
+            db.scalars(
+                select(PricePoint)
+                .where(PricePoint.product_id == w.product_id)
+                .order_by(PricePoint.captured_at.desc())
+                .limit(500)
+            ).all()
+        )
+        by_variant: dict[str | None, list[PricePoint]] = {}
+        for pt in points:
+            by_variant.setdefault(pt.variant, []).append(pt)
+        for variant, group in by_variant.items():
+            latest = group[0]
+            if since is not None and latest.captured_at < since:
+                continue
+            previous = group[1] if len(group) > 1 else None
+            if previous is not None and latest.price < previous.price:
+                alerts.append(_alert_out(latest, previous))
     return alerts
 
 
