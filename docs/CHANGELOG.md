@@ -1,5 +1,15 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.7.0 (2026-08-03) — [server] [extension] 클라우드 전환 (Render + Neon)
+
+- **서버 이전**: 로컬 uvicorn(SQLite) → **Render 무료 웹서비스 + Neon 무료 Postgres 18**
+  - 확장을 설치한 모든 사용자가 접속 가능한 공개 서버 (`https://shop-wisebar.onrender.com`)
+  - PostgreSQL 전환: `database.py`에서 SQLite 전용 인자(`check_same_thread`) 조건부 처리, `psycopg[binary]`(psycopg3) 추가
+  - `DATABASE_URL` 환경변수로 전환 (로컬 개발은 SQLite 유지, Render만 Postgres)
+  - 검증: 로컬+원격에서 기기→상품→가격→찜→하락 알림 전체 시나리오 통과 (PostgreSQL 18.4)
+- **확장**: `common.js` 서버 주소 → Render URL, `manifest.json` host_permissions + 버전 0.7.0
+- 로컬 실측 DB(shopwisebar.db)는 개발용으로 유지 — 프로덕션 데이터는 Neon에서 새로 시작
+
 ## v0.6.2 (2026-08-03) — [extension] 연관 카드 정가 오탐 수정 + 플로팅 패널 위치 보정
 
 - **버그**: 연관 상품 카드에서 텍스트의 첫 번째 금액을 가격으로 추출 — 네이버/쿠팡 카드는 취소선 정가(159,990원)가 판매가(114,900원)보다 먼저 나와, 연관 수집 가격이 정가로 저장되고 실제 방문 캡처와 비교 시 "가격 하락" 오탐 알림 발생

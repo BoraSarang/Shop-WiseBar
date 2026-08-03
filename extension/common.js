@@ -2,7 +2,7 @@
 // productID 규약: PRD 5장 (맥 메뉴바 MallParser.swift와 1:1 대응)
 
 const SWB_CONFIG = {
-  server: "http://127.0.0.1:8000", // 클라우드 전환 시 여기만 수정 (옵션 페이지 추가 예정)
+  server: "https://shop-wisebar.onrender.com", // v0.7.0 — Render + Neon (클라우드)
   api: "/api/v1",
 };
 
