@@ -25,6 +25,48 @@ async function currentTabProduct() {
   return { tab, parsed: tab ? MallParser.parse(tab.url || "") : null };
 }
 
+// ── 할인 알림 (최상단) ───────────────────────────────────
+async function loadAlerts() {
+  const section = $("alerts");
+  section.classList.add("hidden");
+  const deviceId = await getDeviceId();
+  if (!deviceId) return;
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  let alerts = [];
+  try {
+    alerts = await api(`/devices/${deviceId}/alerts?since=${encodeURIComponent(since)}`);
+  } catch {
+    return;
+  }
+  if (!alerts.length) return;
+
+  let watches = [];
+  try {
+    watches = await api(`/devices/${deviceId}/watches`);
+  } catch {}
+  const nameMap = Object.fromEntries(watches.map((w) => [w.product_id, w.product_name || w.product_id]));
+  const urlMap = Object.fromEntries(watches.map((w) => [w.product_id, w.url]));
+
+  const listEl = $("alertList");
+  listEl.innerHTML = "";
+  for (const a of alerts) {
+    const dropped = a.alert_type === "price_dropped";
+    const from = a.previous_price != null ? `${Number(a.previous_price).toLocaleString()}원 → ` : "";
+    const li = document.createElement("li");
+    li.className = "alert-item";
+    li.innerHTML = `
+      <span class="alert-badge ${dropped ? "drop" : "target"}">${dropped ? "▼ 하락" : "목표가 도달"}</span>
+      <span class="alert-name"></span>
+      <span class="alert-price"></span>`;
+    li.querySelector(".alert-name").textContent = nameMap[a.product_id] || a.product_id;
+    li.querySelector(".alert-price").textContent = `${from}${Number(a.price).toLocaleString()}원`;
+    const url = urlMap[a.product_id];
+    if (url) li.addEventListener("click", () => chrome.tabs.create({ url }));
+    listEl.appendChild(li);
+  }
+  section.classList.remove("hidden");
+}
+
 // ── 현재 상품 섹션 ──────────────────────────────────────
 let current = null; // { parsed, product }
 let currentWatched = false;
@@ -207,6 +249,7 @@ async function showDetail(productId, cachedProduct) {
   detailProductId = productId;
   $("listSection").classList.add("hidden");
   $("current").classList.add("hidden");
+  $("alerts").classList.add("hidden");
   $("detail").classList.remove("hidden");
   $("detailInfo").textContent = "";
   try {
@@ -261,6 +304,7 @@ $("backBtn").addEventListener("click", () => {
   $("detail").classList.add("hidden");
   $("current").classList.remove("hidden");
   $("listSection").classList.remove("hidden");
+  loadAlerts();
 });
 
 // ── 공통 ────────────────────────────────────────────────
@@ -273,5 +317,6 @@ function setStatus(text) {
   try {
     await loadCurrent();
   } catch {}
+  await loadAlerts();
   await loadList();
 })();

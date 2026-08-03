@@ -185,5 +185,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(init);
+chrome.runtime.onInstalled.addListener(async (details) => {
+  await init();
+  // 설치 직후 1회 온보딩(사용법) 페이지 오픈 — 업데이트 시에는 열지 않음
+  if (details.reason === "install") {
+    chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") });
+  }
+});
 chrome.runtime.onStartup.addListener(init);
