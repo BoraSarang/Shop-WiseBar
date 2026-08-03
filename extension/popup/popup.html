@@ -12,24 +12,6 @@
     <span id="status" class="status"></span>
   </header>
 
-  <section id="alerts" class="alerts">
-    <h2>알림 내역</h2>
-    <ul id="alertList" class="alert-list"><li class="row-loading"><span class="spinner"></span>불러오는 중…</li></ul>
-  </section>
-
-  <section id="deals" class="deals">
-    <div class="deals-head">
-      <h2>오늘의 핫딜</h2>
-      <div class="deals-days">
-        <button data-days="1" class="deal-day-btn">1일</button>
-        <button data-days="7" class="deal-day-btn active">7일</button>
-        <button data-days="30" class="deal-day-btn">30일</button>
-      </div>
-    </div>
-    <ul id="dealList" class="deal-list"><li class="row-loading"><span class="spinner"></span>불러오는 중…</li></ul>
-    <p id="dealEmpty" class="empty hidden">아직 하락 기록이 없습니다.<br>쇼핑을 하면 자동으로 쌓여요!</p>
-  </section>
-
   <section id="current" class="current">
     <div class="current-head">
       <div class="current-info">
@@ -47,14 +29,30 @@
     </div>
   </section>
 
+  <section id="deals" class="deals">
+    <div class="deals-head">
+      <h2>오늘의 핫딜</h2>
+      <div class="deals-days">
+        <button data-days="1" class="deal-day-btn">1일</button>
+        <button data-days="7" class="deal-day-btn active">7일</button>
+        <button data-days="30" class="deal-day-btn">30일</button>
+      </div>
+    </div>
+    <ul id="dealList" class="deal-list"><li class="row-loading"><span class="spinner"></span>불러오는 중…</li></ul>
+    <p id="dealEmpty" class="empty hidden">아직 하락 기록이 없습니다.<br>쇼핑을 하면 자동으로 쌓여요!</p>
+  </section>
+
   <section id="listSection">
     <div class="list-head">
       <h2>찜 목록 <span id="watchCount" class="watch-count"></span></h2>
-      <div class="mall-filter">
-        <button data-mall="all" class="mall-filter-btn active">전체</button>
-        <button data-mall="naver" class="mall-filter-btn">네이버</button>
-        <button data-mall="coupang" class="mall-filter-btn">쿠팡</button>
-        <button data-mall="oliveyoung" class="mall-filter-btn">올리브영</button>
+      <div class="list-head-right">
+        <div class="mall-filter">
+          <button data-mall="all" class="mall-filter-btn active">전체</button>
+          <button data-mall="naver" class="mall-filter-btn">네이버</button>
+          <button data-mall="coupang" class="mall-filter-btn">쿠팡</button>
+          <button data-mall="oliveyoung" class="mall-filter-btn">올리브영</button>
+        </div>
+        <button id="listToggle" class="list-toggle" title="펼치기/접기">▾</button>
       </div>
     </div>
     <ul id="watchList" class="watch-list"><li class="row-loading"><span class="spinner"></span>불러오는 중…</li></ul>

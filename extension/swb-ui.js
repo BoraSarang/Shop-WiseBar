@@ -51,6 +51,7 @@ const SWB_UI = (() => {
       box-shadow: 0 4px 12px rgba(0,0,0,0.18);
       transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
     }
+    .swb-mibadge { position: absolute; top: 0; right: 0; min-width: 15px; height: 15px; border-radius: 8px; background: #e5484d; color: #fff; font-size: 9px; font-weight: 800; align-items: center; justify-content: center; padding: 0 3px; }
     .swb-mi:hover { transform: translateX(-4px); background: #2d4ae0; color: #fff; }
     .swb-mi.active { background: #e5484d; color: #fff; }
     .swb-mi.active:hover { background: #e5484d; }
@@ -138,6 +139,25 @@ const SWB_UI = (() => {
     .swb-mall-filter { display: flex; gap: 4px; }
     .swb-mf-btn { font-size: 10px; font-weight: 700; color: #666; background: #f1f3f5; border: none; border-radius: 9px; padding: 2px 7px; cursor: pointer; }
     .swb-mf-btn.active { background: #2d4ae0; color: #fff; }
+    .swb-deals-head { padding: 8px 14px 0; display: flex; justify-content: flex-end; }
+    .swb-deals-days { display: flex; gap: 4px; }
+    .swb-deal-btn { font-size: 10px; font-weight: 700; color: #666; background: #f1f3f5; border: none; border-radius: 9px; padding: 2px 7px; cursor: pointer; }
+    .swb-deal-btn.active { background: #2d4ae0; color: #fff; }
+    .swb-deals { padding: 6px 14px 12px; max-height: 380px; overflow-y: auto; }
+    .swb-deal-li { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; background: #f4f7ff; margin-bottom: 6px; cursor: pointer; }
+    .swb-deal-li:hover { background: #e8eeff; }
+    .swb-deal-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .swb-deal-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .swb-deal-price { font-size: 12px; font-weight: 700; }
+    .swb-deal-before { font-size: 10px; font-weight: 400; color: #999; text-decoration: line-through; margin-left: 4px; }
+    .swb-deal-pct { font-size: 11px; font-weight: 800; color: #fff; background: #e5484d; padding: 2px 6px; border-radius: 5px; flex-shrink: 0; }
+    .swb-alerts { padding: 6px 14px 12px; max-height: 380px; overflow-y: auto; }
+    .swb-alert-li { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; background: #fff8f6; margin-bottom: 6px; cursor: pointer; }
+    .swb-alert-li:hover { background: #fdeeea; }
+    .swb-alert-badge { font-size: 10px; font-weight: 800; color: #fff; background: #2d4ae0; padding: 2px 6px; border-radius: 5px; flex-shrink: 0; }
+    .swb-alert-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .swb-alert-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .swb-alert-meta { font-size: 11px; color: #e5484d; font-weight: 600; }
     .swb-li {
       display: flex; align-items: center; gap: 10px; width: 100%;
       padding: 10px 0; border: none; background: none; cursor: pointer;
@@ -203,6 +223,8 @@ const SWB_UI = (() => {
     watch: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`,
     settings: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
     info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
+    deal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h18l-2 8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2l-2-8z"></path><path d="M12 2a4 4 0 0 1 4 4v5h-8V6a4 4 0 0 1 4-4z"></path></svg>`,
+    bell: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`,
   };
 
   function ensureRoot() {
@@ -298,6 +320,19 @@ const SWB_UI = (() => {
           </div>
         </div>
         <div class="swb-list"></div>
+      </div>
+      <div class="swb-view swb-view-deals">
+        <div class="swb-deals-head">
+          <div class="swb-deals-days">
+            <button data-days="1" class="swb-deal-btn">1일</button>
+            <button data-days="7" class="swb-deal-btn active">7일</button>
+            <button data-days="30" class="swb-deal-btn">30일</button>
+          </div>
+        </div>
+        <div class="swb-deals"></div>
+      </div>
+      <div class="swb-view swb-view-alerts">
+        <div class="swb-alerts"></div>
       </div>`;
     panel.querySelector(".swb-close").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -326,6 +361,15 @@ const SWB_UI = (() => {
         renderWatchList();
       });
     });
+    panel.querySelectorAll(".swb-deal-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dealDaysView = Number(btn.dataset.days);
+        panel.querySelectorAll(".swb-deal-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        loadDealsView();
+      });
+    });
     shadow.appendChild(panel);
 
     buildMenu(menu);
@@ -334,7 +378,9 @@ const SWB_UI = (() => {
   function buildMenu(menu) {
     const items = [
       { key: "trend", label: "가격 추이", icon: ICON.trend },
+      { key: "deals", label: "오늘의 핫딜", icon: ICON.deal },
       { key: "list", label: "찜 목록", icon: ICON.watch },
+      { key: "alerts", label: "알림", icon: ICON.bell },
       { key: "set", label: "설정", icon: ICON.settings },
       { key: "help", label: "사용법", icon: ICON.info },
     ];
@@ -348,6 +394,12 @@ const SWB_UI = (() => {
         onMenuItem(it.key);
       });
       if (it.key === "list") menuWatchBtn = btn;
+      if (it.key === "alerts") {
+        btn.classList.add("has-badge");
+        alertBadgeEl = btn.appendChild(document.createElement("span"));
+        alertBadgeEl.className = "swb-mibadge";
+        alertBadgeEl.style.display = "none";
+      }
       menu.appendChild(btn);
     });
   }
@@ -416,7 +468,7 @@ const SWB_UI = (() => {
     const panel = shadow.querySelector(".swb-panel");
     panel.querySelectorAll(".swb-view").forEach((v) => v.classList.remove("active"));
     panel.querySelector(`.swb-view-${name}`).classList.add("active");
-    const titles = { trend: "가격 변동 추이", list: "찜 목록 관리", set: "설정" };
+    const titles = { trend: "가격 변동 추이", deals: "오늘의 핫딜", list: "찜 목록 관리", alerts: "알림 내역", set: "설정" };
     panel.querySelector(".swb-head-title").textContent = titles[name] || "";
     const back = panel.querySelector(".swb-head-back");
     back.style.display = name === "trend" ? "none" : "block";
@@ -440,6 +492,12 @@ const SWB_UI = (() => {
     if (key === "trend") {
       showView("trend");
       loadTrend();
+    } else if (key === "deals") {
+      showView("deals");
+      loadDealsView();
+    } else if (key === "alerts") {
+      showView("alerts");
+      loadAlertsView();
     } else {
       showView("list");
       loadWatchList();
@@ -705,6 +763,120 @@ const SWB_UI = (() => {
 
   let watchCache = []; // v0.7.4 — 찜 목록 캐시 (몰 필터 로컬 처리)
   let watchMallFilter = "all";
+  let alertBadgeEl = null; // v0.7.6 — 메뉴 알림 개수 배지
+  let dealDaysView = 7; // v0.7.6 — 플로팅 핫딜 기간
+  const mallMeta = {
+    naver: { label: "네이버", cls: "b-naver", icon: "https://www.google.com/s2/favicons?domain=www.naver.com&sz=32" },
+    coupang: { label: "쿠팡", cls: "b-coupang", icon: "https://www.google.com/s2/favicons?domain=www.coupang.com&sz=32" },
+    oliveyoung: { label: "올영", cls: "b-oliveyoung", icon: "https://www.google.com/s2/favicons?domain=www.oliveyoung.co.kr&sz=32" },
+  };
+
+  // v0.7.6 — 플로팅 오늘의 핫딜
+  async function loadDealsView() {
+    const box = shadow.querySelector(".swb-view-deals .swb-deals");
+    box.innerHTML = `<div class="swb-loading"><span class="swb-spinner"></span>불러오는 중…</div>`;
+    let deals;
+    try {
+      deals = await SWB_API(`/recommendations?limit=5&days=${dealDaysView}`);
+    } catch {
+      box.innerHTML = `<div class="swb-error">서버에 연결할 수 없습니다 (E-EXT-NET-1001)</div>`;
+      return;
+    }
+    if (!deals.length) {
+      box.innerHTML = `<div class="swb-empty">아직 하락 기록이 없습니다.<br>쇼핑을 하면 자동으로 쌓여요!</div>`;
+      return;
+    }
+    box.innerHTML = "";
+    for (const d of deals) {
+      const m = mallMeta[d.mall] || null;
+      const img = d.image ? ` style="background-image:url('${String(d.image).replace(/'/g, "\\'")}')"` : "";
+      const badge = m ? `<em class="swb-li-badge ${m.cls}"><img src="${m.icon}" alt="${m.label}"></em>` : "";
+      const row = document.createElement("div");
+      row.className = "swb-deal-li";
+      row.innerHTML = `
+        <span class="swb-li-thumb"${img}>${d.image ? "" : (m ? "" : "?")}${badge}</span>
+        <span class="swb-deal-body">
+          <span class="swb-deal-name"></span>
+          <span class="swb-deal-price"></span>
+        </span>
+        <span class="swb-deal-pct">▼ ${d.drop_percent}%</span>`;
+      const badgeImg = m ? row.querySelector(".swb-li-badge img") : null;
+      if (badgeImg) {
+        badgeImg.addEventListener("error", () => {
+          badgeImg.replaceWith(document.createTextNode(m.label));
+          badgeImg.parentElement.classList.add("b-fallback");
+        });
+      }
+      row.querySelector(".swb-deal-name").textContent = d.name || d.product_id;
+      row.querySelector(".swb-deal-price").textContent = `${Number(d.last_price).toLocaleString()}원`;
+      if (d.previous_price) {
+        const before = document.createElement("span");
+        before.className = "swb-deal-before";
+        before.textContent = `${Number(d.previous_price).toLocaleString()}원`;
+        row.querySelector(".swb-deal-price").appendChild(before);
+      }
+      row.addEventListener("click", () => {
+        if (d.url) chrome.runtime.sendMessage({ type: "OPEN_TAB", url: d.url });
+      });
+      box.appendChild(row);
+    }
+  }
+
+  // v0.7.6 — 플로팅 알림 내역 (팝업에서 이동)
+  async function loadAlertsView() {
+    const box = shadow.querySelector(".swb-view-alerts .swb-alerts");
+    const deviceId = await getDeviceId();
+    if (!deviceId) {
+      box.innerHTML = `<div class="swb-error">기기 등록이 필요합니다.<br>설정 → 기기 정보를 확인해 주세요.</div>`;
+      return;
+    }
+    box.innerHTML = `<div class="swb-loading"><span class="swb-spinner"></span>불러오는 중…</div>`;
+    let alerts;
+    try {
+      alerts = await SWB_API(`/devices/${deviceId}/alerts/history`);
+    } catch {
+      box.innerHTML = `<div class="swb-error">서버에 연결할 수 없습니다 (E-EXT-NET-1001)</div>`;
+      return;
+    }
+    if (alertBadgeEl) {
+      alertBadgeEl.textContent = String(alerts.length);
+      alertBadgeEl.style.display = alerts.length ? "flex" : "none";
+    }
+    if (!alerts.length) {
+      box.innerHTML = `<div class="swb-empty">알림 내역이 없습니다.<br>찜한 상품의 가격이 내려가면 여기에 표시됩니다.</div>`;
+      return;
+    }
+    box.innerHTML = "";
+    for (const a of alerts) {
+      const m = mallMeta[a.mall] || null;
+      const d = new Date(a.created_at);
+      const ts = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+      const img = a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : "";
+      const badge = m ? `<em class="swb-li-badge ${m.cls}"><img src="${m.icon}" alt="${m.label}"></em>` : "";
+      const row = document.createElement("div");
+      row.className = "swb-alert-li";
+      row.innerHTML = `
+        <span class="swb-li-thumb"${img}>${a.image ? "" : (m ? "" : "?")}${badge}</span>
+        <span class="swb-alert-badge">▼ 하락</span>
+        <span class="swb-alert-body">
+          <span class="swb-alert-name"></span>
+          <span class="swb-alert-meta"></span>
+        </span>`;
+      const badgeImg = m ? row.querySelector(".swb-li-badge img") : null;
+      if (badgeImg) {
+        badgeImg.addEventListener("error", () => {
+          badgeImg.replaceWith(document.createTextNode(m.label));
+          badgeImg.parentElement.classList.add("b-fallback");
+        });
+      }
+      row.querySelector(".swb-alert-name").textContent = a.product_name || a.product_id;
+      row.querySelector(".swb-alert-meta").textContent = `${Number(a.price).toLocaleString()}원 · ${ts}`;
+      row.addEventListener("click", () => {
+        if (a.url) chrome.runtime.sendMessage({ type: "OPEN_TAB", url: a.url });
+      });
+      box.appendChild(row);
+    }
+  }
 
   async function loadWatchList() {
     const listEl = shadow.querySelector(".swb-view-list .swb-list");
@@ -736,11 +908,6 @@ const SWB_UI = (() => {
       return;
     }
     listEl.innerHTML = "";
-    const mallMeta = {
-      naver: { label: "네이버", cls: "b-naver", icon: "https://www.google.com/s2/favicons?domain=www.naver.com&sz=32" },
-      coupang: { label: "쿠팡", cls: "b-coupang", icon: "https://www.google.com/s2/favicons?domain=www.coupang.com&sz=32" },
-      oliveyoung: { label: "올영", cls: "b-oliveyoung", icon: "https://www.google.com/s2/favicons?domain=www.oliveyoung.co.kr&sz=32" },
-    };
     for (const w of filtered) {
       const m = mallMeta[w.mall] || null;
       const img = w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : "";

@@ -24,65 +24,6 @@ function loadingRow(text = "불러오는 중…") {
   return `<li class="row-loading"><span class="spinner"></span>${text}</li>`;
 }
 
-// ── 알림 내역 (최상단) ───────────────────────────────────
-async function loadHistory() {
-  const listEl = $("alertList");
-  listEl.innerHTML = loadingRow();
-  const deviceId = await getDeviceId();
-  if (!deviceId) {
-    listEl.innerHTML = `<li class="alert-empty">알림 내역이 없습니다.<br>찜한 상품의 가격이 내려가면 여기에 표시됩니다.</li>`;
-    return;
-  }
-
-  let alerts = [];
-  try {
-    alerts = await api(`/devices/${deviceId}/alerts/history`);
-  } catch {
-    listEl.innerHTML = loadingRow("알림을 불러오지 못했습니다 (E-EXT-NET-1001)").replace("row-loading", "row-loading row-error");
-    return;
-  }
-
-  listEl.innerHTML = "";
-  if (!alerts.length) {
-    listEl.innerHTML =
-      '<li class="alert-empty">알림 내역이 없습니다.<br>찜한 상품의 가격이 내려가면 여기에 표시됩니다.</li>';
-  } else {
-    for (const a of alerts) {
-      const d = new Date(a.created_at);
-      const ts = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-      const li = document.createElement("li");
-      li.className = "alert-item";
-      const m = mallMeta[a.mall] || null;
-      li.innerHTML = `
-        <span class="alert-thumb"${a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : ""}>${a.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
-        <span class="alert-badge drop">▼ 하락</span>
-        <span class="alert-body">
-          <span class="alert-name"></span>
-          <span class="alert-meta"></span>
-        </span>
-        <button class="alert-del" title="삭제">✕</button>`;
-      const badgeImg = m ? li.querySelector(".watch-badge img") : null;
-      if (badgeImg) {
-        badgeImg.addEventListener("error", () => {
-          badgeImg.replaceWith(document.createTextNode(m.label));
-          badgeImg.parentElement.classList.add("b-fallback");
-        });
-      }
-      li.querySelector(".alert-name").textContent = a.product_name || a.product_id;
-      li.querySelector(".alert-meta").textContent = `${Number(a.price).toLocaleString()}원 · ${ts}`;
-      li.querySelector(".alert-del").addEventListener("click", async (e) => {
-        e.stopPropagation();
-        try {
-          await api(`/devices/${deviceId}/alerts/${a.id}`, { method: "DELETE" });
-        } catch {}
-        loadHistory();
-      });
-      if (a.url) li.addEventListener("click", () => chrome.tabs.create({ url: a.url }));
-      listEl.appendChild(li);
-    }
-  }
-}
-
 // ── 오늘의 핫딜 ──────────────────────────────────────────
 // T-58 확장 (v0.7.2): /recommendations 기간별 하락폭 큰 상품
 let dealDays = 7;
@@ -399,6 +340,12 @@ document.querySelectorAll(".mall-filter-btn").forEach((btn) => {
   });
 });
 
+// 찜 목록 접이식 (v0.7.6)
+$("listToggle").addEventListener("click", () => {
+  const collapsed = $("listSection").classList.toggle("collapsed");
+  $("listToggle").textContent = collapsed ? "▸" : "▾";
+});
+
 // ── 컨펌 다이얼로그 (플로팅 찜 목록과 동일 동작) ──────────
 let confirmCallback = null;
 
@@ -434,7 +381,6 @@ function setStatus(text) {
     await loadCurrent();
   } catch {}
   await loadDeals();
-  await loadHistory();
   await loadList();
   clearTimeout(slowTimer);
   $("status").textContent = "";
