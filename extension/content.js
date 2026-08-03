@@ -258,26 +258,50 @@ watchScrollForRelated();
 
 // ── 목록/검색 페이지 찜 상품 배지 (v0.8.5) ───────────────
 // 검색/목록 화면에서 내 찜 상품 카드에 "★ 찜 N원" 배지 오버레이
+// v0.8.6: viewport 고정(fixed) 오버레이 — 이미지가 컨테이너 위로 삐져나오거나
+// overflow:hidden인 카드 구조에서도 잘리지 않고 스크롤에도 따라붙음
 let watchedSet = new Set();
 let watchedMap = new Map();
+let badgeOverlays = []; // {card, el}
 
 function findCard(a) {
   return a.closest("li, [class*='item'], [class*='product'], [class*='card'], article") || a.parentElement;
 }
 
+function positionBadges() {
+  for (const { card, el } of badgeOverlays) {
+    const r = card.getBoundingClientRect();
+    if (!r.width && !r.height) {
+      el.style.display = "none";
+      continue;
+    }
+    el.style.display = "block";
+    el.style.left = `${r.right - 10}px`;
+    el.style.top = `${r.top + 8}px`;
+    el.style.transform = "translateX(-100%)";
+  }
+}
+
 function addBadgeToCard(card, watch) {
   if (!card || card.__swbBadged) return;
   card.__swbBadged = true;
-  if (getComputedStyle(card).position === "static") card.style.position = "relative";
-  const badge = document.createElement("div");
-  badge.textContent = watch && watch.last_price
+  const el = document.createElement("div");
+  el.textContent = watch && watch.last_price
     ? `★ 찜 ${Number(watch.last_price).toLocaleString()}원`
     : "★ 찜";
-  badge.style.cssText =
-    "position:absolute;top:4px;right:4px;z-index:10;background:#FF6B00;color:#fff;font-size:11px;" +
-    "font-weight:700;padding:2px 7px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.3);" +
-    "pointer-events:none;font-family:-apple-system,BlinkMacSystemFont,sans-serif;";
-  card.insertBefore(badge, card.firstChild);
+  el.style.cssText =
+    "position:fixed;z-index:2147483646;pointer-events:none;background:#FF6B00;color:#fff;" +
+    "font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;" +
+    "box-shadow:0 1px 3px rgba(0,0,0,.35);white-space:nowrap;" +
+    "font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;";
+  document.body.appendChild(el);
+  badgeOverlays.push({ card, el });
+  positionBadges();
+  if (!window.__swbBadgeListenersBound) {
+    window.__swbBadgeListenersBound = true;
+    window.addEventListener("scroll", positionBadges, { passive: true });
+    window.addEventListener("resize", positionBadges, { passive: true });
+  }
 }
 
 async function ensureWatchBadges() {
