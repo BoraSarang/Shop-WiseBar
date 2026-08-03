@@ -52,13 +52,20 @@ async function loadHistory() {
       li.className = "alert-item";
       const m = mallMeta[a.mall] || null;
       li.innerHTML = `
-        <span class="alert-thumb"${a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : ""}>${a.image ? "" : (m ? m.label.slice(0, 1) : "?")}${m ? `<em class="watch-badge ${m.cls}">${m.label}</em>` : ""}</span>
+        <span class="alert-thumb"${a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : ""}>${a.image ? "" : (m ? m.label.slice(0, 1) : "?")}${mallBadgeHtml(m)}</span>
         <span class="alert-badge drop">▼ 하락</span>
         <span class="alert-body">
           <span class="alert-name"></span>
           <span class="alert-meta"></span>
         </span>
         <button class="alert-del" title="삭제">✕</button>`;
+      const badgeImg = m ? li.querySelector(".watch-badge img") : null;
+      if (badgeImg) {
+        badgeImg.addEventListener("error", () => {
+          badgeImg.replaceWith(document.createTextNode(m.label));
+          badgeImg.parentElement.classList.add("b-fallback");
+        });
+      }
       li.querySelector(".alert-name").textContent = a.product_name || a.product_id;
       li.querySelector(".alert-meta").textContent = `${Number(a.price).toLocaleString()}원 · ${ts}`;
       li.querySelector(".alert-del").addEventListener("click", async (e) => {
@@ -164,10 +171,14 @@ $("watchBtn").addEventListener("click", async () => {
 
 // ── 찜 목록 ─────────────────────────────────────────────
 const mallMeta = {
-  naver: { label: "네이버", cls: "b-naver" },
-  coupang: { label: "쿠팡", cls: "b-coupang" },
-  oliveyoung: { label: "올영", cls: "b-oliveyoung" },
+  naver: { label: "네이버", cls: "b-naver", icon: "https://www.google.com/s2/favicons?domain=www.naver.com&sz=32" },
+  coupang: { label: "쿠팡", cls: "b-coupang", icon: "https://www.google.com/s2/favicons?domain=www.coupang.com&sz=32" },
+  oliveyoung: { label: "올영", cls: "b-oliveyoung", icon: "https://www.google.com/s2/favicons?domain=www.oliveyoung.co.kr&sz=32" },
 };
+
+function mallBadgeHtml(m) {
+  return m ? `<em class="watch-badge ${m.cls}"><img src="${m.icon}" alt="${m.label}"></em>` : "";
+}
 
 async function loadList() {
   const deviceId = await getDeviceId();
@@ -195,12 +206,19 @@ async function loadList() {
     const li = document.createElement("li");
     li.className = "watch-item";
     li.innerHTML = `
-      <span class="watch-thumb"${w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : ""}>${w.image ? "" : (m ? m.label.slice(0, 1) : "?")}${m ? `<em class="watch-badge ${m.cls}">${m.label}</em>` : ""}</span>
+      <span class="watch-thumb"${w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : ""}>${w.image ? "" : (m ? m.label.slice(0, 1) : "?")}${mallBadgeHtml(m)}</span>
       <span class="watch-body">
         <span class="watch-name"></span>
         <span class="watch-price"></span>
       </span>
       <button class="watch-unwatch" title="찜 삭제">✕</button>`;
+    const badgeImg = m ? li.querySelector(".watch-badge img") : null;
+    if (badgeImg) {
+      badgeImg.addEventListener("error", () => {
+        badgeImg.replaceWith(document.createTextNode(m.label));
+        badgeImg.parentElement.classList.add("b-fallback");
+      });
+    }
     li.querySelector(".watch-name").textContent = w.product_name || w.product_id;
     li.querySelector(".watch-price").textContent =
       w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";

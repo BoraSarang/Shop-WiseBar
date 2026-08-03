@@ -119,14 +119,21 @@ header h1 { font-size: 15px; font-weight: 700; }
 }
 
 .watch-badge {
-  font-style: normal;
-  font-size: 9px; font-weight: 800; color: #fff;
-  padding: 1px 5px; border-radius: 5px;
+  position: absolute; left: -4px; bottom: -4px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-.b-naver { background: #03c75a; }
-.b-coupang { background: #0074e9; }
-.b-oliveyoung { background: #56a99c; }
+.watch-badge img { width: 12px; height: 12px; border-radius: 3px; }
+
+.watch-badge.b-fallback {
+  font-size: 8px; font-weight: 800; color: #fff; font-style: normal;
+}
+
+.watch-badge.b-fallback.b-naver { background: #03c75a; }
+.watch-badge.b-fallback.b-coupang { background: #0074e9; }
+.watch-badge.b-fallback.b-oliveyoung { background: #56a99c; }
 
 .watch-body { flex: 1; min-width: 0; }
 

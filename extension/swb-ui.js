@@ -138,12 +138,17 @@ const SWB_UI = (() => {
     }
     .swb-li-badge {
       position: absolute; left: -4px; bottom: -4px;
-      font-size: 9px; font-weight: 700; color: #fff;
-      padding: 1px 5px; border-radius: 6px; white-space: nowrap;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
-    .b-naver { background: #03c75a; }
-    .b-coupang { background: #0074e9; }
-    .b-oliveyoung { background: #56a99c; }
+    .swb-li-badge img { width: 12px; height: 12px; border-radius: 3px; }
+    .swb-li-badge.b-fallback {
+      font-size: 8px; font-weight: 800; color: #fff; font-style: normal;
+    }
+    .swb-li-badge.b-fallback.b-naver { background: #03c75a; }
+    .swb-li-badge.b-fallback.b-coupang { background: #0074e9; }
+    .swb-li-badge.b-fallback.b-oliveyoung { background: #56a99c; }
     .swb-li-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .swb-li-name { font-size: 12px; color: #333; line-height: 1.35; max-height: 2.6em; overflow: hidden; }
     .swb-li-price { font-size: 12px; font-weight: 700; color: #2d4ae0; }
@@ -608,22 +613,32 @@ const SWB_UI = (() => {
     }
     listEl.innerHTML = "";
     const mallMeta = {
-      naver: { label: "네이버", cls: "b-naver" },
-      coupang: { label: "쿠팡", cls: "b-coupang" },
-      oliveyoung: { label: "올영", cls: "b-oliveyoung" },
+      naver: { label: "네이버", cls: "b-naver", icon: "https://www.google.com/s2/favicons?domain=www.naver.com&sz=32" },
+      coupang: { label: "쿠팡", cls: "b-coupang", icon: "https://www.google.com/s2/favicons?domain=www.coupang.com&sz=32" },
+      oliveyoung: { label: "올영", cls: "b-oliveyoung", icon: "https://www.google.com/s2/favicons?domain=www.oliveyoung.co.kr&sz=32" },
     };
     for (const w of watches) {
       const m = mallMeta[w.mall] || null;
       const img = w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : "";
+      const badge = m
+        ? `<em class="swb-li-badge ${m.cls}"><img src="${m.icon}" alt="${m.label}"></em>`
+        : "";
       const row = document.createElement("div");
       row.className = "swb-li";
       row.innerHTML = `
-        <span class="swb-li-thumb"${img}>${w.image ? "" : (m ? m.label.slice(0, 1) : "?")}${m ? `<em class="swb-li-badge ${m.cls}">${m.label}</em>` : ""}</span>
+        <span class="swb-li-thumb"${img}>${w.image ? "" : (m ? m.label.slice(0, 1) : "?")}${badge}</span>
         <span class="swb-li-body">
           <span class="swb-li-name"></span>
           <span class="swb-li-price"></span>
         </span>
         <button class="swb-li-del" title="삭제">✕</button>`;
+      const badgeImg = m ? row.querySelector(".swb-li-badge img") : null;
+      if (badgeImg) {
+        badgeImg.addEventListener("error", () => {
+          badgeImg.replaceWith(document.createTextNode(m.label));
+          badgeImg.parentElement.classList.add("b-fallback");
+        });
+      }
       row.querySelector(".swb-li-name").textContent = w.product_name || w.product_id;
       row.querySelector(".swb-li-price").textContent =
         w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";
