@@ -40,7 +40,20 @@ async function ensureDeviceRegistered() {
 async function captureProduct(tab) {
   if (!tab || !tab.url || !tab.id) return;
   const parsed = MallParser.parse(tab.url);
-  if (!parsed) return;
+  if (!parsed) {
+    // Phase 2 (v0.8.0): 검색/목록 페이지(상품 없음) — 카탈로그 카드 수집만
+    const mall = MallParser.detectMall(tab.url);
+    if (mall && mall.kind === "listing") {
+      let key = `list:${tab.url}`;
+      try {
+        key = `list:${new URL(tab.url).pathname}`;
+      } catch {
+        // 파싱 실패 시 전체 URL 키 사용
+      }
+      await captureRelated(tab.id, key);
+    }
+    return;
+  }
 
   let response;
   try {

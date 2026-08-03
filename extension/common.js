@@ -38,8 +38,49 @@ async function SWB_API(path, options = {}) {
 }
 
 const MallParser = {
-  // URL → { mall, productID, url } | null
+  // URL → { mall, productID, url } | null (상품 상세 페이지 전용)
   parse(urlString) {
+    const d = this.detectMall(urlString);
+    if (!d || d.kind !== "product") return null;
+    const url = new URL(urlString);
+    const host = url.hostname.toLowerCase();
+    const path = url.pathname;
+    const mall = d.mall;
+
+    // 쿠팡
+    if (mall === "coupang") {
+      const m = path.match(/\/vp\/products\/(\d+)/);
+      return m ? { mall, productID: m[1], url: urlString } : null;
+    }
+    // 네이버 브랜드 / 스마트스토어 (접두사 규약 유지: brand:/store:)
+    if (host.includes("brand.naver.com")) {
+      const m = path.match(/^\/([a-zA-Z0-9_-]+)\/products\/(\d+)/);
+      return m ? { mall, productID: `brand:${m[1]}:${m[2]}`, url: urlString } : null;
+    }
+    if (host.includes("smartstore.naver.com")) {
+      const m = path.match(/^\/([a-zA-Z0-9_-]+)\/products\/(\d+)/);
+      return m ? { mall, productID: `store:${m[1]}:${m[2]}`, url: urlString } : null;
+    }
+    // 네이버 쇼핑 카탈로그
+    if (host.includes("search.shopping.naver.com")) {
+      const m = path.match(/\/catalog\/(\d+)/);
+      return m ? { mall, productID: `c:${m[1]}`, url: urlString } : null;
+    }
+    // 올리브영
+    if (mall === "oliveyoung") {
+      const goodsNo = url.searchParams.get("goodsNo");
+      return goodsNo ? { mall, productID: goodsNo, url: urlString } : null;
+    }
+    // 올리브영 단축 URL (oy.run)
+    if (host.includes("oy.run")) {
+      return { mall, productID: `oyrun:${urlString}`, url: urlString };
+    }
+    return null;
+  },
+
+  // URL → { mall, kind: "product"|"listing" } | null — 상품 페이지가 아니어도 몰 판별
+  // Phase 2 (v0.8.0): 검색/목록 페이지에서도 상품 카드를 수집하기 위해 추가
+  detectMall(urlString) {
     let url;
     try {
       url = new URL(urlString);
@@ -49,34 +90,20 @@ const MallParser = {
     const host = url.hostname.toLowerCase();
     const path = url.pathname;
 
-    // 쿠팡
     if (host.includes("coupang.com")) {
-      const m = path.match(/\/vp\/products\/(\d+)/);
-      return m ? { mall: "coupang", productID: m[1], url: urlString } : null;
+      return { mall: "coupang", kind: /\/vp\/products\/\d+/.test(path) ? "product" : "listing" };
     }
-    // 네이버 브랜드
-    if (host.includes("brand.naver.com")) {
-      const m = path.match(/^\/([a-zA-Z0-9_-]+)\/products\/(\d+)/);
-      return m ? { mall: "naver", productID: `brand:${m[1]}:${m[2]}`, url: urlString } : null;
-    }
-    // 네이버 스마트스토어
-    if (host.includes("smartstore.naver.com")) {
-      const m = path.match(/^\/([a-zA-Z0-9_-]+)\/products\/(\d+)/);
-      return m ? { mall: "naver", productID: `store:${m[1]}:${m[2]}`, url: urlString } : null;
-    }
-    // 네이버 쇼핑 카탈로그
     if (host.includes("search.shopping.naver.com")) {
-      const m = path.match(/\/catalog\/(\d+)/);
-      return m ? { mall: "naver", productID: `c:${m[1]}`, url: urlString } : null;
+      return { mall: "naver", kind: /\/catalog\/\d+/.test(path) ? "product" : "listing" };
     }
-    // 올리브영
+    if (host.includes("brand.naver.com") || host.includes("smartstore.naver.com")) {
+      return { mall: "naver", kind: /\/[^/]+\/products\/\d+/.test(path) ? "product" : "listing" };
+    }
     if (host.includes("oliveyoung.co.kr")) {
-      const goodsNo = url.searchParams.get("goodsNo");
-      return goodsNo ? { mall: "oliveyoung", productID: goodsNo, url: urlString } : null;
+      return { mall: "oliveyoung", kind: url.searchParams.get("goodsNo") ? "product" : "listing" };
     }
-    // 올리브영 단축 URL (oy.run)
     if (host.includes("oy.run")) {
-      return { mall: "oliveyoung", productID: `oyrun:${urlString}`, url: urlString };
+      return { mall: "oliveyoung", kind: "product" };
     }
     return null;
   },

@@ -90,10 +90,12 @@ const Extractor = {
   // 특정 섹션명("함께 비교하면 좋을 상품" 등)에 의존하지 않는 범용 방식
   // → 몰별 섹션명/구조가 바뀌어도 동작, MallParser 규약으로 productID/몰 판별
   // 반환: [{ productID, mall, url, name, image, price|null }] (가격 없으면 카탈로그 등록만)
+  // v0.8.0: currentProductID null 허용 — 검색/목록 페이지(현재 상품 없음)에서 전체 카드 수집
   extractRelated(mall, currentProductID) {
     if (mall === "oliveyoung") return this.extractRelatedOliveyoung(currentProductID);
     const items = [];
-    const seen = new Set([currentProductID]);
+    const seen = new Set();
+    if (currentProductID) seen.add(currentProductID);
     const anchors = document.querySelectorAll("a[href]");
 
     for (const a of anchors) {
@@ -200,8 +202,16 @@ const Extractor = {
 // ── 사용자 스크롤 → 새로 로드된 연관 상품 수집 (v0.5) ────
 // 자동 스크롤 금지 (사용자 상품 보기 방해) — 사용자가 스크롤할 때
 // lazy 로딩으로 새로 나타난 상품 카드만 background로 전송
+// v0.8.0 (Phase 2): 검색/목록 페이지(product가 아닌 listing)에서도 카드 수집
 let relatedSentIds = new Set(); // 이 페이지에서 이미 전송한 productID (중복 방지)
 let relatedScrollTimer = null;
+
+function collectCurrentRelated() {
+  const mall = MallParser.detectMall(window.location.href);
+  if (!mall) return null;
+  const parsed = MallParser.parse(window.location.href);
+  return Extractor.extractRelated(mall.mall, parsed ? parsed.productID : null);
+}
 
 function watchScrollForRelated() {
   window.addEventListener(
@@ -209,9 +219,8 @@ function watchScrollForRelated() {
     () => {
       clearTimeout(relatedScrollTimer);
       relatedScrollTimer = setTimeout(() => {
-        const parsed = MallParser.parse(window.location.href);
-        if (!parsed) return;
-        const items = Extractor.extractRelated(parsed.mall, parsed.productID);
+        const items = collectCurrentRelated();
+        if (!items || !items.length) return;
         const fresh = items.filter((it) => !relatedSentIds.has(it.productID));
         if (!fresh.length) return;
         fresh.forEach((it) => relatedSentIds.add(it.productID));
@@ -227,12 +236,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (!msg) return;
   if (msg.type === "EXTRACT_RELATED") {
     // 초기 캡처(페이지 로드 직후) — 스크롤 없이 현재 보이는 카드만 1회
-    const parsed = MallParser.parse(window.location.href);
-    if (!parsed) {
+    // v0.8.0: 상품/목록 페이지 모두 지원 (currentProductID 없으면 전체 카드)
+    const items = collectCurrentRelated();
+    if (!items) {
       sendResponse({ ok: false, code: "E-EXT-URL-2001" });
       return;
     }
-    const items = Extractor.extractRelated(parsed.mall, parsed.productID);
     items.forEach((it) => relatedSentIds.add(it.productID));
     sendResponse({ ok: true, items });
     return;
