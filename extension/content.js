@@ -139,9 +139,13 @@ const Extractor = {
       }
       if (image && image.startsWith("//")) image = `https:${image}`;
 
-      // 이름: 카드 내 이름 요소 우선 → img alt → 링크 텍스트 → og:title 보존용 자리
+      // 이름: 상품 링크(a) 내부의 이름 요소 우선 (v0.8.2 — 네이버 쇼핑 검색 카드에서
+      // 스토어명 요소가 먼저 매치되던 문제: 스토어명은 보통 상품 링크 밖에 있음)
+      // → img alt → 링크 텍스트 → og:title 보존용 자리
       let name = null;
-      const nameEl = card ? card.querySelector("[class*='name'], [class*='title'], [class*='tit']") : null;
+      const nameEl =
+        (card && card.querySelector("a[href] [class*='name'], a[href] [class*='title'], a[href] [class*='tit']")) ||
+        (card ? card.querySelector("[class*='name'], [class*='title'], [class*='tit']") : null);
       if (nameEl) name = nameEl.textContent.trim();
       if (!name && img) name = img.getAttribute("alt");
       if (!name && a.textContent) name = a.textContent.trim();
