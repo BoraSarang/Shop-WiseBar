@@ -282,8 +282,13 @@ function positionBadges() {
     el.style.transform = "translateX(-100%)";
     if (!window.__swbBadgeLogged) {
       window.__swbBadgeLogged = true;
+      const br = el.getBoundingClientRect();
       console.log(
-        "[똑바] badge rect:", JSON.stringify({ cardTop: r.top, cardRight: r.right, cardW: r.width, cardH: r.height })
+        "[똑바] badge rect:", JSON.stringify({
+          cardTop: r.top, cardRight: r.right, cardW: r.width, cardH: r.height,
+          badgeTop: br.top, badgeLeft: br.left, badgeW: br.width, badgeH: br.height,
+          fixed: getComputedStyle(el).position,
+        })
       );
     }
   }
