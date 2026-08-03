@@ -1,5 +1,12 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.8.17 (2026-08-04) — [extension+server] 쿠팡 수량 변경 시 상품명 실시간 반영
+
+- **상품명 실시간 추출**: og:title은 페이지 로드 시 고정(수량 변경 미반영, "1개" 유지) — CDP 실측으로 쿠팡 실시간 상품명 요소 `H1.product-title` 확정 (수량 클릭 시 "오리온 황치즈칩 쿠키, 256g, 1개/2개/3개" 실시간 변경) — EXTRACT title을 `.product-title` 우선으로 교체
+- **팝업/플로팅 추이 자동 해결**: 두 화면 모두 EXTRACT title 사용 (popup.js liveTitle, swb-ui.js splitTitle)
+- **찜 목록 이름 갱신**: 서버가 이름을 최초 1회만 저장하던 정책 → 매 캡처 최신 이름 반영 — 찜 목록/등록에 수량 반영 이름 표시
+- 성능 영향 없음
+
 ## v0.8.16 (2026-08-04) — [server] 오염 포인트 삭제 시 last_price 재계산
 
 - **DELETE 후 last_price 잔존 버그 수정**: 오염 가격 포인트(24,200원 등)를 삭제해도 `product.last_price`가 삭제된 값으로 남아 팝업(서버 last_price 표시)이 삭제값을 계속 보여주던 문제 — 삭제된 값이 last_price면 **최근 남은 포인트로 자동 복구**

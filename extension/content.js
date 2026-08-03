@@ -73,9 +73,15 @@ const Extractor = {
       if (!price) price = this.firstPriceFromText(bodyText);
     }
 
+    const ogTitle = this.ogMeta("og:title");
+    // v0.8.17: 쿠팡은 og:title이 페이지 로드 시 고정되어 수량 변경을 미반영("1개" 유지)
+    //          — 실시간 상품명 요소 .product-title 우선 (CDP 실측: 수량 클릭 시
+    //          "오리온 황치즈칩 쿠키, 256g, 2개" 등으로 실시간 변경됨)
+    const liveTitle = mall === "coupang" ? (document.querySelector(".product-title")?.innerText || "").trim() : "";
+
     return {
       price,
-      title: this.normalizeTitle(mall, this.ogMeta("og:title")),
+      title: this.normalizeTitle(mall, liveTitle || ogTitle),
       image: this.ogMeta("og:image"),
       variant: this.extractVariant(mall, url),
     };

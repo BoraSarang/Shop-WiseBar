@@ -91,9 +91,11 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
         )
         db.add(product)
     else:
-        # 이름은 최초 1회만 저장 — 쿠팡은 옵션(itemId)별 og:title이 달라
-        # 같은 상품인데 이름이 옵션에 따라 바뀌는 것을 방지
-        if not product.name and payload.name:
+        # v0.8.17: 이름은 실시간 요소(.product-title) 기반으로 항상 최신 유지 —
+        #          쿠팡 수량 옵션 변경 시 상품명이 "1개/2개/3개"로 바뀌는데
+        #          최초 1회만 저장하면 팝업/추이/찜 목록에 옛 이름("1개")이 남는 문제
+        #          (og:title은 페이지 로드 시 고정 — 확장이 실시간 상품명을 전송)
+        if payload.name:
             product.name = payload.name
         if image:
             product.image = image
