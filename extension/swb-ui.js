@@ -132,7 +132,12 @@ const SWB_UI = (() => {
     .swb-deal.warn { background: #8a8f98; }
     .swb-deal.hidden { display: none; }
     .swb-foot { padding: 8px 14px 12px; font-size: 11px; color: #aaa; }
-    .swb-list { padding: 6px 14px 12px; max-height: 380px; overflow-y: auto; }
+    .swb-list { padding: 6px 14px 12px; max-height: 340px; overflow-y: auto; }
+    .swb-list-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px 0; }
+    .swb-list-count { font-size: 12px; font-weight: 700; color: #444; }
+    .swb-mall-filter { display: flex; gap: 4px; }
+    .swb-mf-btn { font-size: 10px; font-weight: 700; color: #666; background: #f1f3f5; border: none; border-radius: 9px; padding: 2px 7px; cursor: pointer; }
+    .swb-mf-btn.active { background: #2d4ae0; color: #fff; }
     .swb-li {
       display: flex; align-items: center; gap: 10px; width: 100%;
       padding: 10px 0; border: none; background: none; cursor: pointer;
@@ -283,6 +288,15 @@ const SWB_UI = (() => {
         <div class="swb-foot">똑바 · 최저가를 놓치지 마세요</div>
       </div>
       <div class="swb-view swb-view-list">
+        <div class="swb-list-head">
+          <span class="swb-list-count">찜 목록</span>
+          <div class="swb-mall-filter">
+            <button data-mall="all" class="swb-mf-btn active">전체</button>
+            <button data-mall="naver" class="swb-mf-btn">네이버</button>
+            <button data-mall="coupang" class="swb-mf-btn">쿠팡</button>
+            <button data-mall="oliveyoung" class="swb-mf-btn">올리브영</button>
+          </div>
+        </div>
         <div class="swb-list"></div>
       </div>`;
     panel.querySelector(".swb-close").addEventListener("click", (e) => {
@@ -301,6 +315,15 @@ const SWB_UI = (() => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         setRange(Number(btn.dataset.days));
+      });
+    });
+    panel.querySelectorAll(".swb-mf-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        watchMallFilter = btn.dataset.mall;
+        panel.querySelectorAll(".swb-mf-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderWatchList();
       });
     });
     shadow.appendChild(panel);
@@ -680,6 +703,9 @@ const SWB_UI = (() => {
     return stored.deviceId || null;
   }
 
+  let watchCache = []; // v0.7.4 — 찜 목록 캐시 (몰 필터 로컬 처리)
+  let watchMallFilter = "all";
+
   async function loadWatchList() {
     const listEl = shadow.querySelector(".swb-view-list .swb-list");
     const deviceId = await getDeviceId();
@@ -687,16 +713,26 @@ const SWB_UI = (() => {
       listEl.innerHTML = `<div class="swb-error">기기 등록이 필요합니다.<br>설정 → 기기 정보를 확인해 주세요.</div>`;
       return;
     }
-    listEl.innerHTML = `<div class="swb-loading">불러오는 중…</div>`;
-    let watches = [];
+    listEl.innerHTML = `<div class="swb-loading"><span class="swb-spinner"></span>불러오는 중…</div>`;
     try {
-      watches = await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches`);
+      watchCache = await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches`);
     } catch {
       listEl.innerHTML = `<div class="swb-error">서버에 연결할 수 없습니다 (E-EXT-NET-1001)</div>`;
       return;
     }
-    if (!watches.length) {
-      listEl.innerHTML = `<div class="swb-empty">찜한 상품이 없습니다.<br>상품 페이지에서 찜을 등록해 보세요.</div>`;
+    renderWatchList();
+  }
+
+  function renderWatchList() {
+    const listEl = shadow.querySelector(".swb-view-list .swb-list");
+    const countEl = shadow.querySelector(".swb-list-count");
+    countEl.textContent = watchCache.length ? `찜 목록 (${watchCache.length})` : "찜 목록";
+    const filtered =
+      watchMallFilter === "all" ? watchCache : watchCache.filter((w) => w.mall === watchMallFilter);
+    if (!filtered.length) {
+      listEl.innerHTML = watchCache.length
+        ? `<div class="swb-empty">이 몰에서 찜한 상품이 없습니다.</div>`
+        : `<div class="swb-empty">찜한 상품이 없습니다.<br>상품 페이지에서 찜을 등록해 보세요.</div>`;
       return;
     }
     listEl.innerHTML = "";
@@ -705,7 +741,7 @@ const SWB_UI = (() => {
       coupang: { label: "쿠팡", cls: "b-coupang", icon: "https://www.google.com/s2/favicons?domain=www.coupang.com&sz=32" },
       oliveyoung: { label: "올영", cls: "b-oliveyoung", icon: "https://www.google.com/s2/favicons?domain=www.oliveyoung.co.kr&sz=32" },
     };
-    for (const w of watches) {
+    for (const w of filtered) {
       const m = mallMeta[w.mall] || null;
       const img = w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : "";
       const badge = m
