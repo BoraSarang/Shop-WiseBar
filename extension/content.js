@@ -33,57 +33,29 @@ const Extractor = {
       const m1 = clean.match(/상품 가격[\s\S]{0,30}?([0-9,]+)원/);
       price = m1 ? parseInt(m1[1].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(clean);
     } else if (mall === "coupang") {
-      // 쿠팡: ① data-price 속성 우선 (쿠팡이 실제 판매가에 부여하는 표준 속성 —
-      //        정가/쿠폰가/사전구매 할인가가 여럿 노출되어 첫 % 매치가 진동하던 문제 해결)
+      // 쿠팡: ① .price-container(판매가 영역) 우선 — v0.8.15 CDP 실측으로 확정
+      //        (10,980/20,530/27,530원 모두 .price-container 1개 존재, 항상 정확)
+      //        기존 body 첫 금액 폴백은 lazy 로드 추천 카드(글로벌특가 등)의
+      //        14,900/13,800/11,900/12,510 등이 body에 끼어들어 오탐 유발 → 제거
+      //        ② .total-price[data-price] 잔존값 유지 (품절이면 불신 — 스킵)
       //        v0.8.7: total-price(판매가 요소)로 한정 — 정가(예: 21,600원)도 data-price를
       //        가지는 요소가 있어 일반 [data-price] 폴백이 정가를 잡던 문제 해결
-      //        v0.8.8: 품절 상품은 판매가 요소가 사라져 body 잔존 가격(14,900 등)이
-      //        폴백으로 잡히는 문제 — 품절이면 판매가 요소만 허용하고 폴백 금지
-      //        v0.8.9: 품절 상품의 total-price[data-price]도 잔존값(14,900)을 가질 수
-      //        있음이 확인됨 — 품절이면 무조건 스킵 (price=null → captureProduct 스킵)
+      //        v0.8.8/v0.8.9: 품절 상품은 판매가 요소가 사라지고 잔존값(14,900) 불신 — 스킵
       const isSoldOut = /(일시\s?)?품절|재입고\s?알림/.test(bodyText);
-      const attrEl = document.querySelector("span.total-price[data-price], strong.total-price[data-price], .total-price[data-price]");
-      if (attrEl) {
-        const ap = parseInt((attrEl.getAttribute("data-price") || "").replace(/[^0-9]/g, ""), 10);
-        // v0.8.9: 품절 상품의 total-price[data-price]는 잔존값(14,900)일 수 있어 불신 — 스킵
-        if (ap && ap >= 1000 && !isSoldOut) price = ap;
+      const pcEl = document.querySelector(".price-container");
+      if (pcEl) {
+        const m = pcEl.innerText.match(/[0-9][0-9,]*\s*원/);
+        if (m) price = parseInt(m[0].replace(/[^0-9]/g, ""), 10);
       }
-      if (!price) {
-        // v0.8.12: 품절이어도 판매가가 표시되는 페이지(오리온 95871591795, 27,530원)는
-        //          total-price 잔존값이 없으면 body 첫 금액으로 정상 캡처
-        const m = bodyText.match(/([0-9]{1,2})%\s*\n\s*([0-9][0-9,]*)\s*원/);
-        price = m ? parseInt(m[2].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(bodyText);
+      if (!price && !isSoldOut) {
+        const attrEl = document.querySelector("span.total-price[data-price], strong.total-price[data-price], .total-price[data-price]");
+        if (attrEl) {
+          const ap = parseInt((attrEl.getAttribute("data-price") || "").replace(/[^0-9]/g, ""), 10);
+          if (ap && ap >= 1000) price = ap;
+        }
       }
-      // TEMP DEBUG (v0.8.11 확인 후 제거): 가격 요소 후보 전수 출력
-      console.log("[똑바] PRICE DEBUG", {
-        isSoldOut,
-        attrPrice: (document.querySelector(".total-price[data-price]") || {}).getAttribute?.("data-price") || null,
-        totalPrices: [...document.querySelectorAll(".total-price, [data-price]")].map((el) => {
-          const cls = String(el.className).slice(0, 30);
-          const txt = String(el.innerText || "").trim().slice(0, 15);
-          const dp = el.getAttribute("data-price");
-          const rect = el.getBoundingClientRect();
-          return `${el.tagName}.${cls} txt="${txt}" dp="${dp}" rect=${Math.round(rect.width)}x${Math.round(rect.height)}`;
-        }),
-        firstText: bodyText.match(/\d{1,3}(?:,\d{3})*\s*원/)?.[0] || null,
-        priceNodes: (() => {
-          const out = [];
-          const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-          while (tw.nextNode() && out.length < 20) {
-            const t = (tw.currentNode.textContent || "").trim();
-            if (/\d{1,3}(?:,\d{3})*\s*원$/.test(t)) {
-              let el = tw.currentNode.parentElement;
-              const chain = [];
-              for (let i = 0; i < 5 && el; i++) {
-                chain.push(`${el.tagName}.${String(el.className).slice(0, 25)}`);
-                el = el.parentElement;
-              }
-              out.push(`${t.slice(0, 22)} <- ${chain.join(" > ")}`);
-            }
-          }
-          return out;
-        })(),
-      });
+      // v0.8.15: body 첫 금액 폴백 제거 — 추천 카드/혜택 배너 오탐 차단
+      //          price=null이면 captureProduct가 스킵 (가격 없는 페이지는 수집 안 함)
     } else if (mall === "oliveyoung") {
       // ① data-qa 할인가 ② tx_num ③ body 폴백
       const qa = document.querySelector('[data-qa-name="text-product-discount-price"]');
