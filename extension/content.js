@@ -19,7 +19,7 @@ const Extractor = {
     return price;
   },
   // 몰별 우선 패턴 (실측 로직)
-  extract(mall) {
+  extract(mall, url) {
     const bodyText = document.body ? document.body.innerText : "";
     let price = null;
 
@@ -66,6 +66,23 @@ const Extractor = {
           return `${el.tagName}.${cls} txt="${txt}" dp="${dp}" rect=${Math.round(rect.width)}x${Math.round(rect.height)}`;
         }),
         firstText: bodyText.match(/\d{1,3}(?:,\d{3})*\s*원/)?.[0] || null,
+        priceNodes: (() => {
+          const out = [];
+          const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          while (tw.nextNode() && out.length < 20) {
+            const t = (tw.currentNode.textContent || "").trim();
+            if (/\d{1,3}(?:,\d{3})*\s*원$/.test(t)) {
+              let el = tw.currentNode.parentElement;
+              const chain = [];
+              for (let i = 0; i < 5 && el; i++) {
+                chain.push(`${el.tagName}.${String(el.className).slice(0, 25)}`);
+                el = el.parentElement;
+              }
+              out.push(`${t.slice(0, 22)} <- ${chain.join(" > ")}`);
+            }
+          }
+          return out;
+        })(),
       });
     } else if (mall === "oliveyoung") {
       // ① data-qa 할인가 ② tx_num ③ body 폴백
@@ -88,17 +105,18 @@ const Extractor = {
       price,
       title: this.normalizeTitle(mall, this.ogMeta("og:title")),
       image: this.ogMeta("og:image"),
-      variant: this.extractVariant(mall),
+      variant: this.extractVariant(mall, url),
     };
   },
 
   // 쿠팡 옵션/딜(itemId, vendorItemId) 추출 — 옵션/딜별 가격 분리용
   // v0.8.10: vendorItemId 추가 — 같은 productId라도 vendorItemId(딜)마다 가격이 달라
   //          itemId만 추출하면 옵션별 가격이 한 상품에 섞이는 문제 (오리온 9,880/14,900/27,530 사례)
-  extractVariant(mall) {
+  // v0.8.14: 캡처 시점 URL(url) 인자 사용 — 쿠팡 SPA가 로드 후 쿼리를 제거해도 variant 유지
+  extractVariant(mall, url) {
     if (mall !== "coupang") return null;
     try {
-      const qs = new URLSearchParams(window.location.search);
+      const qs = new URLSearchParams((url || window.location.href).split("?")[1] || "");
       return qs.get("itemId") || qs.get("vendorItemId") || null;
     } catch {
       return null;
@@ -412,6 +430,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return;
   }
   if (msg.type !== "EXTRACT") return;
-  const data = Extractor.extract(parsed.mall);
+  // v0.8.14: 캡처 시점 URL 전달 — 쿠팡이 SPA 로드 후 vendorItemId를 URL에서 제거해서
+  //          window.location에는 없는 옵션 정보를 background가 보유한 tab.url로 추출
+  const data = Extractor.extract(parsed.mall, msg.url || window.location.href);
   sendResponse({ ok: true, parsed, data });
 });

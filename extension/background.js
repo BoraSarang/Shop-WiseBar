@@ -57,7 +57,7 @@ async function captureProduct(tab) {
 
   let response;
   try {
-    response = await chrome.tabs.sendMessage(tab.id, { type: "EXTRACT" });
+    response = await chrome.tabs.sendMessage(tab.id, { type: "EXTRACT", url: tab.url });
   } catch {
     return; // content script 미로드 (리다이렉트/중간 페이지)
   }
