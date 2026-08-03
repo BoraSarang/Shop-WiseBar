@@ -90,6 +90,9 @@ async function loadCurrent() {
   const { tab, parsed } = await currentTabProduct();
   $("currentActions").classList.add("hidden");
   $("currentPrice").textContent = "";
+  const currentMall = mallMeta[parsed ? parsed.mall : ""] || null;
+  $("currentMall").textContent = currentMall ? currentMall.label : "";
+  $("currentMall").classList.toggle("hidden", !currentMall);
   if (!parsed) {
     $("currentName").textContent = "지원 상품 페이지를 열어주세요";
     return;

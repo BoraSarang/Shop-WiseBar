@@ -64,16 +64,19 @@ header h1 { font-size: 15px; font-weight: 700; }
 
 .current { padding: 12px 14px; border-bottom: 1px solid #eee; }
 
-.current-head { display: flex; flex-direction: column; gap: 8px; }
-
-.current-info { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.current-head { display: flex; flex-direction: column; gap: 4px; }
 
 .current-name {
   font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.current-price { font-size: 13px; font-weight: 800; color: #2d4ae0; flex-shrink: 0; }
+.current-sub {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 18px;
+}
+
+.current-price { font-size: 13px; font-weight: 800; color: #2d4ae0; }
 
 .current-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
 
