@@ -9,6 +9,10 @@ class DeviceOut(BaseModel):
     device_id: str
 
 
+class DeviceRegisterIn(BaseModel):
+    device_id: str | None = None  # 클라이언트가 생성한 UUID (있으면 그대로 등록 — 중복 발급 방지)
+
+
 class ProductUpsertIn(BaseModel):
     product_id: str = Field(..., max_length=255)
     mall: str = Field(..., max_length=32)

@@ -37,8 +37,11 @@ async function getDeviceId() {
 async function ensureDeviceRegistered() {
   const deviceId = await getDeviceId();
   try {
-    const device = await api("/devices", { method: "POST" });
-    if (device && device.id) await chrome.storage.local.set({ deviceId: device.id });
+    const device = await api("/devices", {
+      method: "POST",
+      body: JSON.stringify({ device_id: deviceId }),
+    });
+    if (device && device.device_id) await chrome.storage.local.set({ deviceId: device.device_id });
   } catch (e) {
     console.warn("[똑바] 기기 등록 실패", e);
   }
@@ -171,4 +174,3 @@ async function init() {
 
 chrome.runtime.onInstalled.addListener(init);
 chrome.runtime.onStartup.addListener(init);
-init();
