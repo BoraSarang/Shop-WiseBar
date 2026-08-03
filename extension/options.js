@@ -7,9 +7,10 @@ const $ = (id) => document.getElementById(id);
 
 async function loadServerStatus() {
   try {
-    const res = await fetch(`${CONFIG.server}${CONFIG.api}/products?limit=1`);
+    const res = await fetch(`${CONFIG.server}/health`);
     if (res.ok) {
-      $("serverStatus").textContent = "연결됨";
+      const j = await res.json();
+      $("serverStatus").textContent = j.status === "ok" ? "연결됨" : `이상 (${j.status})`;
       $("serverStatus").className = "ok";
     } else {
       $("serverStatus").textContent = `오류 (HTTP ${res.status})`;
@@ -30,6 +31,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     await navigator.clipboard.writeText(stored.deviceId);
     $("copyBtn").textContent = "복사됨";
     setTimeout(() => ($("copyBtn").textContent = "복사"), 1500);
+  });
+  $("helpBtn").addEventListener("click", () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") });
   });
   loadServerStatus();
 });
