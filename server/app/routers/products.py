@@ -14,11 +14,15 @@ from app.schemas import PricePointOut, PriceUploadIn, ProductOut, ProductUpsertI
 router = APIRouter(tags=["products"])
 
 
-def _product_stats(db: Session, product_id: str) -> tuple[int | None, int | None, int, int]:
-    """가격 통계 (전 기록 기준) + 추적 기기 수 — 인기/최저가 배지 지표"""
-    min_price = db.scalar(select(func.min(PricePoint.price)).where(PricePoint.product_id == product_id))
-    avg_price = db.scalar(select(func.avg(PricePoint.price)).where(PricePoint.product_id == product_id))
-    price_count = db.scalar(select(func.count(PricePoint.id)).where(PricePoint.product_id == product_id))
+def _product_stats(db: Session, product_id: str, variant: str | None = None) -> tuple[int | None, int | None, int, int]:
+    """가격 통계 + 추적 기기 수 — v0.8.19: variant(쿠팡 수량 묶음/딜) 지정 시 그 variant만
+    (지정 없으면 전체 = 기존 동작, 네이버/올리브는 variant가 없어 그대로 유효)"""
+    cond = [PricePoint.product_id == product_id]
+    if variant is not None:
+        cond.append(PricePoint.variant == variant)
+    min_price = db.scalar(select(func.min(PricePoint.price)).where(*cond))
+    avg_price = db.scalar(select(func.avg(PricePoint.price)).where(*cond))
+    price_count = db.scalar(select(func.count(PricePoint.id)).where(*cond))
     watch_count = db.scalar(select(func.count(Watch.id)).where(Watch.product_id == product_id))
     return (
         int(min_price) if min_price is not None else None,
@@ -28,7 +32,23 @@ def _product_stats(db: Session, product_id: str) -> tuple[int | None, int | None
     )
 
 
-def _product_out(product: Product, db: Session, device_id: str | None = None) -> ProductOut:
+def _variant_last_price(db: Session, product_id: str, variant: str | None) -> int | None:
+    """variant별 최신 가격 — v0.8.19: 팝업/추이 배지가 현재 탭의 수량 옵션 가격 기준으로
+    표시되도록 (오리온 1개=9,880/2개=20,530/3개=27,530 혼합 방지)"""
+    if variant is None:
+        return None
+    newest = db.scalar(
+        select(PricePoint.price)
+        .where(PricePoint.product_id == product_id, PricePoint.variant == variant)
+        .order_by(PricePoint.captured_at.desc())
+        .limit(1)
+    )
+    return newest
+
+
+def _product_out(
+    product: Product, db: Session, device_id: str | None = None, variant: str | None = None
+) -> ProductOut:
     is_watched = False
     if device_id:
         watch = db.scalar(
@@ -36,14 +56,15 @@ def _product_out(product: Product, db: Session, device_id: str | None = None) ->
         )
         if watch:
             is_watched = True
-    min_price, avg_price, price_count, watch_count = _product_stats(db, product.id)
+    min_price, avg_price, price_count, watch_count = _product_stats(db, product.id, variant)
+    last_price = _variant_last_price(db, product.id, variant) or product.last_price
     return ProductOut(
         product_id=product.id,
         mall=product.mall,
         url=product.url,
         name=product.name,
         image=product.image,
-        last_price=product.last_price,
+        last_price=last_price,
         last_checked_at=product.last_checked_at,
         is_watched=is_watched,
         min_price=min_price,
@@ -65,12 +86,15 @@ def list_products(limit: int = 30, db: Session = Depends(get_db)) -> list[Produc
 
 
 @router.get("/products/{product_id}", response_model=ProductOut)
-def get_product(product_id: str, device_id: str | None = None, db: Session = Depends(get_db)) -> ProductOut:
-    """브라우저 캐치 → 서버 조회 (관심 여부 포함). 없으면 404 — 클라이언트가 등록 요청"""
+def get_product(
+    product_id: str, device_id: str | None = None, variant: str | None = None, db: Session = Depends(get_db)
+) -> ProductOut:
+    """브라우저 캐치 → 서버 조회 (관심 여부 포함). 없으면 404 — 클라이언트가 등록 요청
+    v0.8.19: variant(쿠팡 수량 옵션) 지정 시 해당 variant의 가격/통계로 응답"""
     product = db.get(Product, product_id)
     if product is None:
         raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1001", "message": "상품을 찾을 수 없습니다"})
-    return _product_out(product, db, device_id)
+    return _product_out(product, db, device_id, variant)
 
 
 @router.post("/products", response_model=ProductOut, status_code=201)
@@ -176,11 +200,17 @@ def upload_price(product_id: str, payload: PriceUploadIn, db: Session = Depends(
 
 
 @router.get("/products/{product_id}/prices", response_model=list[PricePointOut])
-def get_prices(product_id: str, limit: int = 200, db: Session = Depends(get_db)) -> list[PricePointOut]:
-    """가격 이력 (그래프용, 최신순 limit개)"""
+def get_prices(
+    product_id: str, limit: int = 200, variant: str | None = None, db: Session = Depends(get_db)
+) -> list[PricePointOut]:
+    """가격 이력 (그래프용, 최신순 limit개) — v0.8.19: variant 지정 시 해당 variant만
+    (추이 그래프가 현재 탭의 수량 옵션 가격만 그리도록)"""
+    cond = [PricePoint.product_id == product_id]
+    if variant is not None:
+        cond.append(PricePoint.variant == variant)
     points = db.scalars(
         select(PricePoint)
-        .where(PricePoint.product_id == product_id)
+        .where(*cond)
         .order_by(PricePoint.captured_at.desc())
         .limit(limit)
     ).all()

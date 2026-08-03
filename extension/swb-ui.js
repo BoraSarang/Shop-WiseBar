@@ -572,6 +572,11 @@ const SWB_UI = (() => {
     titleEl.textContent = title || parsed.productID;
     brandEl.textContent = brand;
 
+    // v0.8.19: 쿠팡 수량 옵션(variant)별 조회 — 추이 그래프/통계가 현재 탭의
+    //          수량(1개/2개/3개) 가격만 그리도록 (variant 혼합으로 인한 요동 방지)
+    const liveVariant = live.variant || null;
+    const variantQS = liveVariant ? `&variant=${encodeURIComponent(liveVariant)}` : "";
+
     // 2) 서버 이력 조회 → 캐시 (실패해도 현재 가격으로 그래프는 표시)
     // 로딩 인디케이터 — 서버 조회 동안 차트 자리 표시
     const chartWrap = panel.querySelector(".swb-chart-wrap");
@@ -582,8 +587,8 @@ const SWB_UI = (() => {
     try {
       const deviceId = await getDeviceId();
       const [product, points] = await Promise.all([
-        SWB_API(`/products/${pid}${deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : ""}`).catch(() => null),
-        SWB_API(`/products/${pid}/prices?limit=200`).catch(() => []),
+        SWB_API(`/products/${pid}${deviceId ? `?device_id=${encodeURIComponent(deviceId)}${variantQS}` : ""}`).catch(() => null),
+        SWB_API(`/products/${pid}/prices?limit=200${variantQS}`).catch(() => []),
       ]);
       pointsCache = points || [];
       if (product) {

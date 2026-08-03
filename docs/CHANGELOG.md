@@ -1,5 +1,13 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.8.19 (2026-08-04) — [extension+server] variant(수량 옵션)별 가격 전면 분리
+
+- **핫딜 누락 수정**: 같은 가격이 초 단위로 중복 저장(동시 캡처 race)되면 직전 포인트가 같은 가격이 되어 하락률 0%로 계산 — 오리온 실질 52% 하락(20,530→9,880)이 핫딜에서 사라진 문제. 연속 동일 가격 그룹을 압축 후 비교
+- **핫딜 variant 분리**: variant(쿠팡 수량 묶음/딜)별 PARTITION — variant A의 하락을 variant B 가격과 섞어 계산하지 않음
+- **서버 variant 조회**: `GET /products/{id}?variant=`, `GET /products/{id}/prices?variant=` — variant 지정 시 해당 옵션의 last_price/최저가/평균가/이력만 응답 (지정 없으면 기존 전체 동작, 네이버/올리브 영향 없음)
+- **팝업/추이 variant 반영**: 팝업 EXTRACT에 url 전달 + 현재 탭 variant로 서버 조회 — 수량 변경 시 배지/통계/그래프가 해당 수량 기준으로 표시
+- 성능 영향: 없음 (기존 인덱스로 variant 필터 커버)
+
 ## v0.8.18 (2026-08-04) — [extension+server] 이름 갱신 출처 구분 (카드 이름 오염 방지)
 
 - **회귀 방지**: v0.8.17의 "이름 항상 갱신"이 검색/연관 카드 캡처(짧은 카드 이름)가 상세 페이지 이름을 덮어쓰는 문제 유발 가능 — `ProductUpsertIn.source` 추가

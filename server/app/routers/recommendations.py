@@ -29,12 +29,29 @@ def get_recommendations(limit: int = 10, days: int = 7, db: Session = Depends(ge
     rows = db.execute(
         text(
             """
-            WITH ranked AS (
+            WITH deduped AS (
+              -- v0.8.19: 연속 동일 가격 그룹 압축 — 같은 가격이 1초만 다르면 중복 저장되는데
+              -- (동시 캡처 race, 초 단위 UNIQUE), 직전 포인트가 같은 가격이면 하락률 0%로
+              -- 계산되어 실질 하락(20,530→9,880 52%)이 핫딜에서 누락되는 문제
+              SELECT product_id, variant, price, captured_at
+              FROM (
+                SELECT product_id, variant, price, captured_at,
+                       LAG(price) OVER (PARTITION BY product_id, COALESCE(variant, '')
+                                        ORDER BY captured_at DESC) AS lp
+                FROM price_points
+                WHERE captured_at >= :cutoff
+              ) t
+              WHERE t.lp IS DISTINCT FROM t.price
+            ),
+            ranked AS (
+              -- v0.8.19: variant(쿠팡 수량 묶음/딜)별 분리 — variant A의 하락을
+              -- variant B 가격과 비교해 오탐/누락이 나지 않도록 PARTITION을 variant 포함
               SELECT product_id, price,
-                     ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY captured_at DESC) AS rn,
-                     LEAD(price) OVER (PARTITION BY product_id ORDER BY captured_at DESC) AS prev_price
-              FROM price_points
-              WHERE captured_at >= :cutoff
+                     ROW_NUMBER() OVER (PARTITION BY product_id, COALESCE(variant, '')
+                                        ORDER BY captured_at DESC) AS rn,
+                     LEAD(price) OVER (PARTITION BY product_id, COALESCE(variant, '')
+                                       ORDER BY captured_at DESC) AS prev_price
+              FROM deduped
             )
             SELECT p.id, p.mall, p.url, p.name, p.image, p.last_checked_at,
                    r.price AS latest_price, r.prev_price

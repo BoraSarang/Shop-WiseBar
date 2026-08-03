@@ -103,16 +103,24 @@ async function loadCurrent() {
   currentWatched = false;
   $("currentStats").innerHTML = `<span class="spinner"></span>`;
 
-  // 현재 탭에서 직접 추출 (og:title 등)
+  // 현재 탭에서 직접 추출 (og:title 등) — v0.8.19: url 전달로 variant(vendorItemId) 확보,
+  // 수량 옵션별 가격/통계를 서버에 variant 조회
   let liveTitle = null;
+  let liveVariant = null;
   try {
-    const msg = await chrome.tabs.sendMessage(tab.id, { type: "EXTRACT" });
-    if (msg && msg.ok && msg.data && msg.data.title) liveTitle = msg.data.title;
+    const msg = await chrome.tabs.sendMessage(tab.id, { type: "EXTRACT", url: tab.url });
+    if (msg && msg.ok && msg.data) {
+      if (msg.data.title) liveTitle = msg.data.title;
+      if (msg.data.variant) liveVariant = msg.data.variant;
+    }
   } catch {}
 
   const deviceId = await getDeviceId();
   try {
-    const product = await api(`/products/${encodeURIComponent(parsed.productID)}?device_id=${deviceId}`);
+    const query = `/products/${encodeURIComponent(parsed.productID)}?device_id=${deviceId}`;
+    const product = await api(
+      liveVariant ? `${query}&variant=${encodeURIComponent(liveVariant)}` : query
+    );
     if (product) {
       currentWatched = product.is_watched;
       if (product.last_price != null) {
