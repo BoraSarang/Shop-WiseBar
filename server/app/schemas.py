@@ -50,8 +50,10 @@ class WatchIn(BaseModel):
 
 class WatchOut(BaseModel):
     product_id: str
+    mall: str | None = None
     product_name: str | None = None
     url: str | None = None
+    image: str | None = None
     last_price: int | None = None
     target_price: int | None
     created_at: datetime

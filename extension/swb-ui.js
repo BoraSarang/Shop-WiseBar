@@ -128,10 +128,42 @@ const SWB_UI = (() => {
       border-bottom: 1px solid #f0f0f0; text-align: left;
     }
     .swb-li:last-child { border-bottom: none; }
-    .swb-li-name { flex: 1; min-width: 0; font-size: 12px; color: #333; line-height: 1.35; max-height: 2.6em; overflow: hidden; }
-    .swb-li-price { font-size: 12px; font-weight: 700; color: #2d4ae0; white-space: nowrap; }
+    .swb-li-thumb {
+      position: relative; width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+      background: #f2f4ff center/cover no-repeat;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 800; color: #2d4ae0;
+    }
+    .swb-li-badge {
+      position: absolute; left: -4px; bottom: -4px;
+      font-size: 9px; font-weight: 700; color: #fff;
+      padding: 1px 5px; border-radius: 6px; white-space: nowrap;
+    }
+    .b-naver { background: #03c75a; }
+    .b-coupang { background: #0074e9; }
+    .b-oliveyoung { background: #56a99c; }
+    .swb-li-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .swb-li-name { font-size: 12px; color: #333; line-height: 1.35; max-height: 2.6em; overflow: hidden; }
+    .swb-li-price { font-size: 12px; font-weight: 700; color: #2d4ae0; }
     .swb-li-del { background: none; border: none; color: #ccc; font-size: 14px; cursor: pointer; padding: 4px; }
     .swb-li-del:hover { color: #e5484d; }
+    .swb-confirm {
+      position: fixed; inset: 0; z-index: 2147483647;
+      background: rgba(0, 0, 0, 0.35);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .swb-confirm-box {
+      width: 260px; background: #fff; border-radius: 12px;
+      padding: 18px 16px 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    }
+    .swb-confirm-msg { font-size: 13px; color: #333; line-height: 1.5; margin-bottom: 14px; word-break: break-all; }
+    .swb-confirm-actions { display: flex; gap: 8px; }
+    .swb-confirm-actions button {
+      flex: 1; padding: 7px 0; border: none; border-radius: 8px;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .swb-confirm-no { background: #f2f4ff; color: #2d4ae0; }
+    .swb-confirm-yes { background: #e5484d; color: #fff; }
     .swb-loading { padding: 24px 14px; text-align: center; color: #aaa; }
     .swb-error { padding: 24px 14px; text-align: center; color: #e5484d; line-height: 1.6; }
     .swb-empty { padding: 24px 14px; text-align: center; color: #aaa; }
@@ -269,15 +301,19 @@ const SWB_UI = (() => {
   }
 
   function toggleMenu() {
-    menuOpen = !menuOpen;
+    const panel = shadow.querySelector(".swb-panel");
+    const panelOpen = panel && !panel.classList.contains("hidden");
+    if (menuOpen || panelOpen) {
+      closeAll(); // 열려 있는 하위 팝업(메뉴/패널)은 전부 닫기
+      return;
+    }
+    menuOpen = true;
     const fab = shadow.querySelector(".swb-fab");
     const menu = shadow.querySelector(".swb-menu");
-    fab.classList.toggle("open", menuOpen);
-    menu.classList.toggle("open", menuOpen);
-    if (menuOpen) {
-      hideTooltip();
-      refreshWatchState();
-    } else closePanel();
+    fab.classList.add("open");
+    menu.classList.add("open");
+    hideTooltip();
+    refreshWatchState();
   }
 
   function showTooltip() {
@@ -561,27 +597,66 @@ const SWB_UI = (() => {
       return;
     }
     listEl.innerHTML = "";
+    const mallMeta = {
+      naver: { label: "네이버", cls: "b-naver" },
+      coupang: { label: "쿠팡", cls: "b-coupang" },
+      oliveyoung: { label: "올영", cls: "b-oliveyoung" },
+    };
     for (const w of watches) {
+      const m = mallMeta[w.mall] || null;
+      const img = w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : "";
       const row = document.createElement("div");
       row.className = "swb-li";
       row.innerHTML = `
-        <span class="swb-li-name"></span>
-        <span class="swb-li-price"></span>
+        <span class="swb-li-thumb"${img}>${w.image ? "" : (m ? m.label.slice(0, 1) : "?")}${m ? `<em class="swb-li-badge ${m.cls}">${m.label}</em>` : ""}</span>
+        <span class="swb-li-body">
+          <span class="swb-li-name"></span>
+          <span class="swb-li-price"></span>
+        </span>
         <button class="swb-li-del" title="삭제">✕</button>`;
-      const nameEl = row.querySelector(".swb-li-name");
-      const priceEl = row.querySelector(".swb-li-price");
-      nameEl.textContent = w.product_name || w.product_id;
-      priceEl.textContent = w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";
-      row.querySelector(".swb-li-del").addEventListener("click", async (e) => {
+      row.querySelector(".swb-li-name").textContent = w.product_name || w.product_id;
+      row.querySelector(".swb-li-price").textContent =
+        w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";
+      row.querySelector(".swb-li-del").addEventListener("click", (e) => {
         e.stopPropagation();
-        await deleteWatch(deviceId, w.product_id);
-        loadWatchList();
+        const label = (w.product_name || w.product_id).slice(0, 20);
+        confirmDialog(`'${label}…' 찜을 삭제할까요?`, async () => {
+          await deleteWatch(deviceId, w.product_id);
+          loadWatchList();
+        });
       });
       row.addEventListener("click", () => {
         if (w.url) chrome.runtime.sendMessage({ type: "OPEN_TAB", url: w.url });
       });
       listEl.appendChild(row);
     }
+  }
+
+  // shadow DOM 내 컨펌 다이얼로그 (window.confirm 금지 — MV3)
+  function confirmDialog(message, onConfirm) {
+    let ov = shadow.querySelector(".swb-confirm");
+    if (ov) ov.remove();
+    ov = document.createElement("div");
+    ov.className = "swb-confirm";
+    ov.innerHTML = `
+      <div class="swb-confirm-box">
+        <div class="swb-confirm-msg"></div>
+        <div class="swb-confirm-actions">
+          <button class="swb-confirm-no">취소</button>
+          <button class="swb-confirm-yes">삭제</button>
+        </div>
+      </div>`;
+    ov.querySelector(".swb-confirm-msg").textContent = message;
+    const close = () => ov.remove();
+    ov.querySelector(".swb-confirm-no").addEventListener("click", close);
+    ov.querySelector(".swb-confirm-yes").addEventListener("click", () => {
+      close();
+      onConfirm();
+    });
+    ov.addEventListener("click", (e) => {
+      if (e.target === ov) close();
+    });
+    shadow.appendChild(ov);
   }
 
   async function deleteWatch(deviceId, productId) {

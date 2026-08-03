@@ -63,8 +63,10 @@ def list_watches(device_id: str, db: Session = Depends(get_db)) -> list[WatchOut
         out.append(
             WatchOut(
                 product_id=w.product_id,
+                mall=p.mall if p else None,
                 product_name=p.name if p else None,
                 url=p.url if p else None,
+                image=p.image if p else None,
                 last_price=p.last_price if p else None,
                 target_price=w.target_price,
                 created_at=w.created_at,
