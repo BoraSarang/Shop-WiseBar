@@ -7,6 +7,7 @@ const SWB_UI = (() => {
   let shadow = null;
   let currentParsed = null;
   let menuOpen = false;
+  let currentWatched = false;
 
   const CSS = `
     :host { all: initial; }
@@ -81,6 +82,16 @@ const SWB_UI = (() => {
     .swb-delta { font-size: 12px; font-weight: 700; }
     .swb-delta.down { color: #2d4ae0; }
     .swb-delta.up { color: #e5484d; }
+    .swb-watch {
+      margin-left: auto; align-self: center;
+      background: none; border: none; cursor: pointer;
+      color: #ccc; padding: 4px;
+      transition: color 0.15s ease, transform 0.15s ease;
+    }
+    .swb-watch:hover { transform: scale(1.12); color: #e5484d; }
+    .swb-watch.active { color: #e5484d; }
+    .swb-watch.active svg { fill: currentColor; }
+    .swb-watch svg { width: 20px; height: 20px; }
     .swb-chart-wrap { position: relative; }
     canvas.swb-chart { width: 100%; height: 140px; display: block; }
     .swb-stats { display: flex; gap: 12px; margin-top: 8px; font-size: 11px; color: #888; }
@@ -175,6 +186,7 @@ const SWB_UI = (() => {
           <div class="swb-price-row">
             <span class="swb-now">—</span>
             <span class="swb-delta"></span>
+            <button class="swb-watch" title="찜하기">${ICON.watch}</button>
           </div>
           <div class="swb-chart-wrap"><canvas class="swb-chart" width="292" height="140"></canvas></div>
           <div class="swb-stats">
@@ -198,6 +210,10 @@ const SWB_UI = (() => {
     panel.querySelector(".swb-head-back").addEventListener("click", (e) => {
       e.stopPropagation();
       showView("trend");
+    });
+    panel.querySelector(".swb-watch").addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleWatch();
     });
     shadow.appendChild(panel);
 
@@ -291,6 +307,37 @@ const SWB_UI = (() => {
     }
   }
 
+  async function toggleWatch() {
+    const deviceId = await getDeviceId();
+    const btn = shadow.querySelector(".swb-watch");
+    if (!deviceId || !currentParsed) {
+      btn.title = "기기 등록이 필요합니다 (설정 참조)";
+      setTimeout(() => (btn.title = "찜하기"), 2000);
+      return;
+    }
+    const pid = encodeURIComponent(currentParsed.productID);
+    const base = `${SWB_CONFIG.server}${SWB_CONFIG.api}`;
+    try {
+      if (currentWatched) {
+        await fetch(`${base}/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, { method: "DELETE" });
+        currentWatched = false;
+        btn.title = "찜하기";
+      } else {
+        await fetch(`${base}/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target_price: null }),
+        });
+        currentWatched = true;
+        btn.title = "찜 해제";
+      }
+      btn.classList.toggle("active", currentWatched);
+    } catch {
+      btn.title = "서버 연결 실패 (E-EXT-NET-1001)";
+      setTimeout(() => (btn.title = currentWatched ? "찜 해제" : "찜하기"), 2000);
+    }
+  }
+
   async function loadTrend() {
     const parsed = currentParsed;
     const panel = shadow.querySelector(".swb-panel");
@@ -316,14 +363,24 @@ const SWB_UI = (() => {
     let product = null;
     let points = [];
     let serverError = false;
+    currentWatched = false;
+    const watchBtn = panel.querySelector(".swb-watch");
+    watchBtn.classList.remove("active");
+    watchBtn.title = "찜하기";
     try {
       const base = `${SWB_CONFIG.server}${SWB_CONFIG.api}`;
+      const deviceId = await getDeviceId();
       [product, points] = await Promise.all([
-        fetch(`${base}/products/${pid}`).then((r) => (r.ok ? r.json() : null)),
+        fetch(`${base}/products/${pid}${deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : ""}`).then((r) => (r.ok ? r.json() : null)),
         fetch(`${base}/products/${pid}/prices?limit=50`).then((r) => (r.ok ? r.json() : [])),
       ]);
     } catch {
       serverError = true;
+    }
+    if (product && product.is_watched) {
+      currentWatched = true;
+      watchBtn.classList.add("active");
+      watchBtn.title = "찜 해제";
     }
 
     // 3) 현재 페이지 가격을 마지막 포인트로 병합 (중복이면 유지)
