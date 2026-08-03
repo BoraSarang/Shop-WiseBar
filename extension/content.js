@@ -53,6 +53,19 @@ const Extractor = {
           price = m ? parseInt(m[2].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(bodyText);
         }
       }
+      // TEMP DEBUG (v0.8.11 확인 후 제거): 가격 요소 후보 전수 출력
+      console.log("[똑바] PRICE DEBUG", {
+        isSoldOut,
+        attrPrice: (document.querySelector(".total-price[data-price]") || {}).getAttribute?.("data-price") || null,
+        totalPrices: [...document.querySelectorAll(".total-price, [data-price]")].map((el) => {
+          const cls = String(el.className).slice(0, 30);
+          const txt = String(el.innerText || "").trim().slice(0, 15);
+          const dp = el.getAttribute("data-price");
+          const rect = el.getBoundingClientRect();
+          return `${el.tagName}.${cls} txt="${txt}" dp="${dp}" rect=${Math.round(rect.width)}x${Math.round(rect.height)}`;
+        }),
+        firstText: bodyText.match(/\d{1,3}(?:,\d{3})*\s*원/)?.[0] || null,
+      });
     } else if (mall === "oliveyoung") {
       // ① data-qa 할인가 ② tx_num ③ body 폴백
       const qa = document.querySelector('[data-qa-name="text-product-discount-price"]');
