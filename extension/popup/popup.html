@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>똑바</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>똑바</h1>
+    <span id="status" class="status"></span>
+  </header>
+
+  <section id="current" class="current">
+    <div class="current-head">
+      <span id="currentName" class="current-name">상품 페이지를 열면 자동으로 추적합니다</span>
+    </div>
+    <div id="currentActions" class="current-actions hidden">
+      <button id="watchBtn" class="btn btn-primary">찜하기</button>
+      <input id="targetInput" type="number" min="0" placeholder="목표가 (원)" class="target-input">
+      <button id="graphBtn" class="btn btn-ghost">추이</button>
+    </div>
+  </section>
+
+  <section id="detail" class="detail hidden">
+    <div class="detail-head">
+      <button id="backBtn" class="btn btn-ghost">← 목록</button>
+      <span class="detail-title">가격 추이</span>
+    </div>
+    <canvas id="chart" width="300" height="140"></canvas>
+    <div id="detailInfo" class="detail-info"></div>
+  </section>
+
+  <section id="listSection">
+    <h2>내 상품</h2>
+    <ul id="watchList" class="watch-list"></ul>
+    <p id="emptyMsg" class="empty">찜한 상품이 없습니다.<br>상품 페이지에서 똑바 아이콘을 누르고 찜해 보세요.</p>
+  </section>
+
+  <script src="../common.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

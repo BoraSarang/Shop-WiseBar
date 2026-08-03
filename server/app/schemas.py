@@ -19,7 +19,7 @@ class ProductUpsertIn(BaseModel):
 
 class PriceUploadIn(BaseModel):
     price: int = Field(..., gt=0)
-    source: str = Field("client", max_length=16)  # client | crawler
+    source: str = Field("client", max_length=16)  # client | crawler | extension
 
 
 class ProductOut(BaseModel):

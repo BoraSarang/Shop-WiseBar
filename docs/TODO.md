@@ -1,51 +1,39 @@
-# TODO — Shop WiseBar (똑바)
+# 똑바(Shop WiseBar) 작업 추적
 
-업데이트: 2026-08-03
+> 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
-## 진행 중 (P1)
+## T-60 — 익스텐션 뼈대 (진행)
+- [x] manifest.json MV3 (권한: storage/alarms/notifications/tabs, host_permissions)
+- [x] 기기ID 발급/등록 (background, crypto.randomUUID)
+- [x] MallParser JS 포팅 (common.js — content/background 공용)
+- [x] content.js 가격 추출 (네이버 상품 가격 패턴/쿠팡 % 패턴/올리브영 data-qa·tx_num)
+- [x] 탭 이벤트 → 업로드 (쿨다운 10분, source=extension)
+- [ ] 실기기 검증 (Chrome 개발자 모드 로드 + 상품 페이지 방문 → 서버 DB 확인) — 사용자 확인 필요
+- [x] 아이콘 생성 (make_icons.py — 남색 원 + 하락 화살표)
 
-- [x] 상품 모델 + SwiftData 저장소 (T-10) — Product/PricePoint, ProductStore, SettingsStore
-- [x] 몰 레지스트리 + URL 파서 (T-11) — Mall, MallParser (브랜드/스마트스토어/카탈로그/oliveyoung/oy.run)
-- [x] PriceFetcher (T-12) — 올리브영 HTTP 완전 동작, 네이버는 IP 차단으로 P2 이동
-- [x] 백그라운드 갱신 스케줄러 (T-13) — 15분 주기, 몰 간 병렬, 타임아웃 8/12초
-- [x] 알림 엔진 (T-14) — UNUserNotificationCenter (권한 거부 상태는 서명 문제로 보류)
-- [x] 통계 + 그래프 (T-15) — PriceStats + Swift Charts (실데이터 검증 대기: 포인트 2개 필요)
-- [x] 메뉴바 팝오버 UI (T-16) — 상품 카드/URL 등록/갱신/목표가/삭제/브라우저 열기
-- [x] 우클릭 메뉴 실기능 (T-17) — 찜 관리/상품 추가/지금 갱신 활성화
-- [x] **P1 실테스트 완료** (docs/tests/v0.2.0_macos.md, 올리브영 실상품 39900원)
-- [ ] 그래프 라인 실데이터 검증 (가격 변동 발생 시 자동 기록 — 대기)
-- [ ] 알림 권한 문제 해결 (ad-hoc 서명 → 개발자 서명 시 재확인)
+## T-61 — 팝업 UI (진행)
+- [x] 현재 상품 찜/찜 해제/목표가 (팝업 + 서버 watches)
+- [x] 찜 목록 (썸네일/가격/목표가/해제)
+- [x] 가격 추이 그래프 (캔버스 라인차트)
+- [ ] 실기기 확인 — 사용자 확인 필요
 
-## 다음 (P2)
+## T-62 — 알림 (완료 — 코드 완성, 실기기 확인 필요)
+- [x] chrome.alarms 폴링 (5분)
+- [x] chrome.notifications (price_dropped/target_reached)
+- [x] 알림 클릭 → 상품 페이지 오픈 (storage.session 매핑)
+- [x] since 커서 중복 방지
 
-- [x] 네이버 수집: 브라우저 세션 전환 완료 (2026-08-02 실측·검증) — m. 페이지 "상품 가격" 패턴 (스마트스토어 3,529,000원 / 랄프로렌 239,000원)
-- [x] 쿠팡 수집: 브라우저 세션 완료 (Akamai 우회) — "N%" 패턴 + 첫 옵션 고정 (게이밍PC 1,029,000원 / 숟가락 6,140원)
-- [x] 웨일(Whale) 실측 (T-22): AppleScript 탭/URL 접근 가능하나 JS 실행 미지원(설정 키 미지원) → E-MAC-BROWSER-3002 + Chrome 권장 안내
-- [x] 브라우저 모니터링 (T-20/21): 활성 탭 3초 폴링 → 상품 페이지 감지 → 팝오버 추적 제안 배너 (실동작 검증)
-- [ ] 카탈로그(c:) 브라우저 세션 검증: m.search.shopping.naver.com 데스크톱에서 빈 페이지(캡차 추정) — 사용자 c: URL 대기
-- [ ] 브라우저 감지 제안 배너 시각 확인 (v0_3_p2_monitor_banner.png 저장됨 — 사용자 확인 대기)
+## T-63 — 서버 (완료)
+- [x] source=extension 허용 (스키마 주석 갱신 — String(16) 자유값)
+- [x] 올리브영 Playwright 크롤러 (UA 필수 실측 반영, 39,900원 수집 성공)
+- [x] 크롤러 워커 정리 (worker.py → oliveyoung.run_once)
+- [x] E2E 검증: device → upsert → price(extension) → watch → alerts(하락/목표가/증분)
 
-## 진행 중 (P5 — 중앙 서버)
+## T-64 — 마무리 (진행)
+- [ ] Edge/Whale manifest 호환 확인 (MV3 — 로드만 확인 필요)
+- [ ] 옵션 페이지 (서버 URL 설정) — 보류 가능
+- [ ] 테스트 기록: docs/tests/v0.3_crawler_poc.md 작성 완료
+- [ ] 커밋
 
-- [x] 서버 스켈레톤 + API 7종 (T-50~52) — 스모크 테스트 통과
-- [x] 클라이언트 연동 (T-53): 기기ID 발급, 캐치→서버 조회→관심 상품 자동 팝오버, 가격 업로드(하이브리드) — 실동작 검증 (POST /devices 200)
-- [x] 알림 폴링 (T-54): 60초 주기 /alerts → 로컬 알림, 클릭 시 상품 팝오버 — 서버 price_dropped 반환 검증 완료
-- [ ] 서버 크롤러 (T-55): **올리브영 403 차단 실측 (curl/httpx 403, 실제 브라우저 200 — TLS 스택 차단)** → Playwright 헤드리스 검토로 보류
-- [ ] 배포 준비 (T-56): Docker/호스팅
-- [x] **실기기 검증 완료 (2026-08-03)**: 브라우저에서 관심 상품 페이지 열기 → 메뉴바 자동 팝오버 + 카드 강조 정상 동작
-- [x] **팝오버 2모드 재설계 (T-57, 2026-08-03)**: 캐치 모드(상품 정보+가격 추이[7일/1개월/전체]+최저/최고/평균+최저가 판정+절약액+추적 시작) / 홈 모드(마지막에 본 상품) / 찜 목록 모드 — 실기기 검증 PASS (비관심+관심 상품, 자동 팝오버)
-- [ ] 알림 수신 확인 (알림 권한 승인 후)
-- [x] **서버 추천 리스트 (T-58, 2026-08-03)**: GET /recommendations — 최근 7일 하락 상품 하락폭순 + 홈 모드 추천 섹션 — 실기기 검증 PASS
-- [ ] 구매 추천가/가짜 할인 판정 (데이터 축적 후 확장)
-
-## 보류
-
-- [ ] 쿠팡 파트너스 API 심사 (P4-T42)
-- [ ] 익스텐션 검토 (P4-T41)
-- [ ] 클립보드 감지 (P3)
-
-## 버그 큐
-
-- bd CLI 사용: `bd list --label macos` / `bd create ... --label macos`
-- 현재 등록 버그 없음
-- 참고: 네이버 IP 차단(429)은 2026-08-02 실측 — 브라우저 접속은 정상, 쿠키 없는 요청만 차단
+## 완료 이력
+- 2026-08-03: 맥 메뉴바(v0.2.x) 전부 폐기 — git 히스토리로만 보존

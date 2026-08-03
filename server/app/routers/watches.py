@@ -56,29 +56,41 @@ def list_watches(device_id: str, db: Session = Depends(get_db)) -> list[WatchOut
 
 @router.get("/devices/{device_id}/alerts", response_model=list[AlertOut])
 def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depends(get_db)) -> list[AlertOut]:
-    """폴링 알림 — since 이후 가격이 (a)목표가 이하 도달 (b)이전 가격 대비 하락한 관심 상품 목록"""
+    """폴링 알림 — since 이후 가격이 (a)목표가 이하 도달 (b)이전 가격 대비 하락한 관심 상품 목록
+    since 경계: since 이전 마지막 포인트를 previous로 사용 (T-59 — 재실행 시 1건만 변동이어도 감지)"""
     _get_device_or_404(db, device_id)
     watches = db.scalars(select(Watch).where(Watch.device_id == device_id)).all()
     alerts: list[AlertOut] = []
     for w in watches:
-        query = (
-            select(PricePoint)
-            .where(PricePoint.product_id == w.product_id)
-            .order_by(PricePoint.captured_at.desc())
-            .limit(2)
-        )
+        latest: PricePoint | None = None
+        previous: PricePoint | None = None
         if since is not None:
-            query = (
+            latest = db.scalar(
                 select(PricePoint)
                 .where(PricePoint.product_id == w.product_id, PricePoint.captured_at >= since)
                 .order_by(PricePoint.captured_at.desc())
-                .limit(2)
+                .limit(1)
             )
-        points = list(db.scalars(query).all())
-        if not points:
+            if latest is not None:
+                previous = db.scalar(
+                    select(PricePoint)
+                    .where(PricePoint.product_id == w.product_id, PricePoint.captured_at < since)
+                    .order_by(PricePoint.captured_at.desc())
+                    .limit(1)
+                )
+        else:
+            points = list(
+                db.scalars(
+                    select(PricePoint)
+                    .where(PricePoint.product_id == w.product_id)
+                    .order_by(PricePoint.captured_at.desc())
+                    .limit(2)
+                ).all()
+            )
+            latest = points[0] if points else None
+            previous = points[1] if len(points) > 1 else None
+        if latest is None:
             continue
-        latest = points[0]
-        previous = points[1] if len(points) > 1 else None
         if w.target_price is not None and latest.price <= w.target_price:
             alerts.append(
                 AlertOut(

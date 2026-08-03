@@ -1,82 +1,140 @@
-# DESIGN — Shop WiseBar (똑바)
+# 똑바(Shop WiseBar) 기술 설계 — v0.3.0
 
-- **버전**: v0.1.0 · **플랫폼**: macOS · **작성일**: 2026-08-02
+> 2026-08-03 재구성: 맥 메뉴바 앱 폐기, 중앙 서버 + 브라우저 익스텐션(Chrome MV3)
 
-## 1. 개요
-
-SwiftUI + AppKit 하이브리드, `NSStatusItem` 기반 메뉴바 앱. 최소 macOS 14.
-개발 단계는 비샌드박스 + ad-hoc 서명, 배포 시 Developer ID/샌드박스 재검토.
-
-## 2. 아키텍처
+## 1. 전체 아키텍처
 
 ```
-MenuBarController (NSStatusItem)          ← 좌클릭 팝오버 / 우클릭 NSMenu
-├── BrowserMonitor    (P2, AppleScript 폴링)  ← 우선순위 1: 탭 URL 감지 → 몰 판별 → 추적 제안
-├── ClipboardMonitor  (P3, NSPasteboard 폴링) ← 우선순위 2: 공유 URL 감지
-├── MallRegistry + MallParser (프로토콜 기반, 몰별 구현)
-│   ├── CoupangParser  (쿠팡: vp/products/{id}, link.coupang.com 리디렉션)
-│   ├── NaverParser    (스마트스토어 /products/{id}, 쇼핑 /catalog/{id})
-│   └── OliveYoungParser
-├── PriceFetcher + PriceScheduler  ← 백그라운드 갱신 (간격 설정)
-│   ├── HTTP 경로: URLSession + HTML 파싱 (네이버/올리브영)
-│   └── 브라우저 경로: Chrome execute javascript (쿠팡, Akamai 우회)
-├── PriceHistoryStore (SwiftData)     ← 상품/가격 이력/설정
-├── NotificationEngine (UNUserNotificationCenter) ← 최저가/목표가 알림
-├── PriceStats + Swift Charts         ← 최저/최고/평균/변동률
-└── SettingsView                      ← 브라우저 선택/갱신 주기/알림 조건
+┌───────────────────────────┐
+│ 브라우저 익스텐션 (MV3)    │
+│  background (서비스 워커) │── 수집(탭 이벤트) ──┐
+│  content script (DOM 추출)│                      ▼
+│  popup (찜/추이/알림)      │── 폴링(alerts) ──▶ 중앙 서버 (FastAPI + SQLite)
+└───────────────────────────┘  ┌────────────────┐
+                                │ 올리브영 크롤러  │── 1순위 수집 (Playwright, 주기)
+                                │ (worker)        │
+                                └────────────────┘
 ```
 
-## 3. 플랫폼 결정 사항
+## 2. 중앙 서버 (server/, FastAPI + SQLite — 재사용)
 
-| 항목 | 결정 | 사유 |
-|------|------|------|
-| 메뉴바 | `NSStatusItem` (MenuBarExtra 미사용) | 좌클릭=팝오버 / 우클릭=메뉴 구분 필요 (MenuBarExtra는 불가) |
-| 저장소 | SwiftData (macOS 14+) | 상품/가격 이력/설정 통합 |
-| 그래프 | Swift Charts | 1순위 네이티브 차트 |
-| 알림 | UNUserNotificationCenter | 로컬 알림 |
-| 브라우저 연동 | NSAppleScript 폴링 (2~5초) | 확장 프로그램 불필요, TCC 자동화 권한 |
-| 쿠팡 수집 | Chrome `execute javascript` (페이지 내 가격 추출) | Akamai Bot Manager 우회, 로그인 세션 반영 |
-| 기타 몰 수집 | URLSession + 몰별 HTML 파서 | 쿠팡 제외 몰은 직접 수집 가능 |
-| 디버그 | DebugLogger 8레벨 + DebugPanel (Cmd+D) | AGENTS.md 19장 준수, release 제거 |
+### 2.1 DB 스키마 (server/app/models.py)
 
-## 4. 모듈 구성 (로드맵)
+| 테이블 | 컬럼 | 비고 |
+|--------|------|------|
+| `devices` | id (UUID PK), created_at | 익명 기기(익스텐션) |
+| `products` | id (PK), mall, url, name, image, last_price, last_checked_at | productID 규약은 PRD 5장 |
+| `price_points` | product_id, price, source, captured_at | source: `crawler` \| `extension` \| `client`(레거시) |
+| `watches` | device_id, product_id, target_price, created_at | 기기별 찜 + 목표가 |
 
-| 모듈 | 파일(예정) | 페이즈 |
-|------|-----------|--------|
-| 앱 진입점 | `ShopWiseBar/App/ShopWiseBarApp.swift` | P0 |
-| 메뉴바 | `ShopWiseBar/MenuBar/MenuBarController.swift` | P0 |
-| 디버그 | `ShopWiseBar/Debug/DebugLogger.swift`, `DebugPanelWindow.swift`, `DebugPanelView.swift` | P0 |
-| 저장소 | `ShopWiseBar/Store/*` (Product, PricePoint, Settings) | P1 |
-| 몰 연동 | `ShopWiseBar/Mall/*` (MallRegistry, MallParser 프로토콜) | P1 |
-| 수집 | `ShopWiseBar/Collector/*` (PriceFetcher, PriceScheduler) | P1 |
-| 브라우저 | `ShopWiseBar/Browser/*` (BrowserMonitor, BrowserSession) | P2 |
-| 클립보드 | `ShopWiseBar/Clipboard/ClipboardMonitor.swift` | P3 |
+### 2.2 API (server/app/routers/, prefix `/api/v1`)
 
-## 5. 에러 체계
+| 엔드포인트 | 역할 | 사용 주체 |
+|-----------|------|-----------|
+| `POST /devices` | 익스텐션 기기ID 발급 | 익스텐션 최초 실행 |
+| `POST /products` | 상품 upsert (name/image/url) | 익스텐션 수집 |
+| `POST /products/{id}/prices` | 가격 이력 추가 (source=extension) | 익스텐션 수집 |
+| `GET /products/{id}` / `/products/{id}/prices` | 상품/가격 이력 조회 | 팝업 |
+| `PUT/DELETE /devices/{id}/watches/{pid}` | 찜 추가/해제 (+목표가) | 팝업 |
+| `GET /devices/{id}/watches` | 내 찜 목록 | 팝업 |
+| `GET /devices/{id}/alerts?since=` | 가격 변동/목표가 도달 알림 | 익스텐션 폴링 |
+| `GET /recommendations` | 공통 추천 (추후) | 팝업 |
 
-- 형식: `E-MAC-{CATEGORY}-NNNN` (CATEGORY: NET, VALID, BROWSER, DB, GLIST, BRIDGE, PERF, UI)
-- 모든 throw/실패는 `AppError(code, debugMessage, cause)` 래핑
-- 사용자 노출 메시지는 `error_message_ko.json`에만 정의, DebugLogger에는 `error_code` 포함
+### 2.3 알림 계산 (서버 로직, 기존 유지)
+
+- 가격이 직전 `price_points` 대비 하락하면 `alerts`에 `PRICE_DROP` 기록
+- `watches.target_price`가 설정된 상품이 목표가 이하로 내려가면 `TARGET_REACHED` 기록
+- 익스텐션은 `since` 파라미터로 증분 폴링 → 알림 중복 방지
+
+### 2.4 올리브영 크롤러 (server/crawlers/, Playwright 전환)
+
+- 기존: HTTP GET + requests → TLS 핑거프린팅 403 (실측)
+- 신규: `sync_playwright` + `channel="chrome"` (시스템 Chrome) headless
+  - 상품 상세 페이지 `goodsNo` 기준 진입 → `body`에서 가격 추출 + `og:title`/`og:image`
+  - 실측 PoC: 39,900원 + og 메타 수집 성공
+- 워커: `worker.py` 주기 실행 (기본 1일 1회, 상품 수에 따라 조정)
+
+## 3. 브라우저 익스텐션 (extension/, Chrome MV3)
+
+### 3.1 구성
+
+```
+extension/
+├── manifest.json          # MV3, permissions: tabs storage alarms notifications
+├── background.js          # 서비스 워커: 탭 감지 → 수집 → 폴링 → 알림
+├── content.js             # DOM 가격/제목/이미지 추출 (전역 몰 판별)
+├── popup/
+│   ├── popup.html/.css/.js # 찜 목록 + 추이 + 최근 알림
+└── options/
+    └── options.html/.js   # 서버 URL, 알림 주기, 몰 활성화 (추후)
+```
+
+### 3.2 manifest 권한
+
+```json
+{
+  "manifest_version": 3,
+  "permissions": ["storage", "alarms", "notifications", "tabs"],
+  "host_permissions": [
+    "*://smartstore.naver.com/*", "*://brand.naver.com/*",
+    "*://search.shopping.naver.com/*", "*://www.coupang.com/*",
+    "*://www.oliveyoung.co.kr/*", "http://127.0.0.1:8000/*"
+  ]
+}
+```
+
+### 3.3 수집 파이프라인 (background.js)
+
+```
+chrome.tabs.onUpdated (status=complete) ──▶ URL → MallParser(mall+productID)
+  ──▶ content script 주입(tabs.sendMessage) ──▶ DOM 추출(가격/제목/이미지)
+  ──▶ 서버: POST /products (upsert) + POST /products/{id}/prices (source=extension)
+  ──▶ chrome.storage에 마지막 수집 타임스탬프 (중복 억제: 동일 상품 10분 내 재수집 금지)
+```
+
+### 3.4 가격 추출 셀렉터 (content.js — 실측 기반)
+
+| 몰 | 가격 | 제목 | 이미지 |
+|----|------|------|--------|
+| 네이버 스마트스토어/브랜드 | `body` 내 텍스트 정규식 `[0-9,]+원` (가장 큰 값) | `meta[property=og:title]` | `meta[property=og:image]` |
+| 네이버 쇼핑 카탈로그 | `body` 내 `[0-9,]+원` | og:title | og:image |
+| 쿠팡 | `body` 내 `%` 인접 숫자 (쿠팡 가격은 % 오프 금액) | og:title | og:image |
+| 올리브영 | `body` 내 `[0-9,]+원` | og:title | og:image |
+
+- 1차: 구조적 셀렉터(상품명 클래스) → 2차: body 텍스트 정규식 폴백
+- 쿠팡은 % 패턴(실측: 가격이 `%`와 함께 렌더링) 우선, 실패 시 og/정규식 폴백
+
+### 3.5 알림 파이프라인
+
+```
+chrome.alarms (기본 5분) ──▶ GET /devices/{id}/alerts?since={last}
+  ──▶ 신규 알림 → chrome.notifications.create (PRICE_DROP / TARGET_REACHED)
+  ──▶ 알림 클릭 → 상품 페이지 탭 열기 (링크 포함)
+```
+
+### 3.6 기기ID
+
+- 최초 실행 시 `crypto.randomUUID()` 생성 → `chrome.storage.local`
+- 서버에 `POST /devices`로 등록 (이미 있으면 그대로 재사용)
+- 팝업/백그라운드 모두 같은 기기ID 사용
+
+## 4. 플랫폼 분기
+
+- 확장자는 Chrome MV3 단일 코드 (Edge/Whale manifest 호환)
+- `// BRIDGE:` 불필요 (브라우저 네이티브 API 직접 사용)
+- 서버는 Python FastAPI 단일
+
+## 5. 에러코드 체계
+
+- `E-SRV-{CAT}-{NNNN}`: 서버 (NET/DB/VALID/CRWL)
+- `E-EXT-{CAT}-{NNNN}`: 익스텐션 (NET/URL/VALID/ALERT)
+- 매핑: 루트 `error_message_ko.json` (익스텐션이 사용자 노출 시 참조)
 
 ## 6. 성능 예산
 
-| 지표 | 예산 |
+| 지표 | 목표 |
 |------|------|
-| Cold Start | ≤ 1.5s |
-| 메모리 (debug) | ≤ 300MB |
-| 프레임 | 60fps (16ms) |
-| 브라우저 폴링 | 2~5초 (설정), 권한 실패 시 WARN |
-| 가격 갱신 | 몰당 1회/15분 기본 (설정 가능), 중복 요청 금지 |
-
-## 7. 보안
-
-- 시크릿 하드코딩 금지 → `.env.example` + Keychain, `env-expiry-check.sh` 검증
-- `gitleaks detect --no-git` pre-hook (build_and_run.sh 내장)
-- DebugPanel은 `#if DEBUG`로 release에서 컴파일 타임 완전 제거
-- 사용자 쿠키/세션은 앱 내부에서만 사용, 외부 전송 금지
-
-## 8. 테스트 계획 (요약)
-
-- `docs/tests/v{버전}_macos.md` 기록: 빌드 → DebugPanel 로그 → PERF → 스크린샷
-- 네트워크 장애: 비행기 모드/오프라인에서 캐시 폴백 검증 (P1)
-- 브라우저 권한 거부 시 우아한 폴백 (P2)
+| 콘텐츠 스크립트 추출 | ≤ 100ms |
+| 탭 이벤트 핸들러 | ≤ 50ms (DOM 접근은 content script에 위임) |
+| 알림 폴링 | 5분 주기, 서버 부하 1 device 기준 무시 가능 |
+| 서버 크롤러 | 1일 1회 (올리브영) |
