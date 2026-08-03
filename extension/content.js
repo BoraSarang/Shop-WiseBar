@@ -95,7 +95,9 @@ const SWB_UI = (() => {
       display: flex; align-items: flex-start; gap: 8px;
       padding: 12px 14px; background: #2d4ae0; color: #fff;
     }
-    .swb-title { flex: 1; font-weight: 600; font-size: 13px; line-height: 1.4; max-height: 2.8em; overflow: hidden; }
+    .swb-title-area { flex: 1; min-width: 0; }
+    .swb-title { font-weight: 600; font-size: 13px; line-height: 1.4; max-height: 2.8em; overflow: hidden; }
+    .swb-brand { font-size: 11px; opacity: 0.8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .swb-close { background: none; border: none; color: #fff; font-size: 16px; cursor: pointer; line-height: 1; padding: 2px; }
     .swb-body { padding: 12px 14px 8px; }
     .swb-price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
@@ -153,7 +155,10 @@ const SWB_UI = (() => {
     panel.className = "swb-panel hidden";
     panel.innerHTML = `
       <div class="swb-head">
-        <div class="swb-title">…</div>
+        <div class="swb-title-area">
+          <div class="swb-title">…</div>
+          <div class="swb-brand"></div>
+        </div>
         <button class="swb-close" title="닫기">✕</button>
       </div>
       <div class="swb-body">
@@ -168,7 +173,7 @@ const SWB_UI = (() => {
           <span>기록 <b class="st-count">—</b>건</span>
         </div>
       </div>
-      <div class="swb-foot">똑바 · 서버에서 가져온 가격 이력</div>`;
+      <div class="swb-foot">똑바 · 가격은 상품 페이지를 볼 때마다 자동 기록됩니다</div>`;
     panel.querySelector(".swb-close").addEventListener("click", (e) => {
       e.stopPropagation();
       panel.classList.add("hidden");
@@ -176,21 +181,37 @@ const SWB_UI = (() => {
     shadow.appendChild(panel);
   }
 
+  // "상품명 : 회사명" 또는 "상품명 | 플랫폼" → 분리 (og:title 실측 패턴)
+  function splitTitle(raw) {
+    const t = (raw || "").trim();
+    const idx = Math.max(t.lastIndexOf(" : "), t.lastIndexOf(" | "));
+    if (idx > 0) return { title: t.slice(0, idx).trim(), brand: t.slice(idx + 3).trim() };
+    return { title: t, brand: "" };
+  }
+
   async function loadTrend(parsed, panel) {
     const pid = encodeURIComponent(parsed.productID);
     const titleEl = panel.querySelector(".swb-title");
+    const brandEl = panel.querySelector(".swb-brand");
     const nowEl = panel.querySelector(".swb-now");
     const deltaEl = panel.querySelector(".swb-delta");
     const canvas = panel.querySelector("canvas.swb-chart");
     const stMin = panel.querySelector(".st-min");
     const stMax = panel.querySelector(".st-max");
     const stCount = panel.querySelector(".st-count");
+    const bodyEl = panel.querySelector(".swb-body");
 
-    titleEl.textContent = "로딩 중…";
-    nowEl.textContent = "—";
-    deltaEl.textContent = "";
+    // 1) 상품명은 페이지에서 즉시 추출 (서버 대기 없음)
+    const live = Extractor.extract(parsed.mall);
+    const livePrice = Number(live.price) || null;
+    const { title, brand } = splitTitle(live.title);
+    titleEl.textContent = title || parsed.productID;
+    brandEl.textContent = brand;
 
-    let product, points;
+    // 2) 서버 이력 조회 (실패해도 현재 가격으로 그래프는 표시)
+    let product = null;
+    let points = [];
+    let serverError = false;
     try {
       const base = `${SWB_CONFIG.server}${SWB_CONFIG.api}`;
       [product, points] = await Promise.all([
@@ -198,39 +219,54 @@ const SWB_UI = (() => {
         fetch(`${base}/products/${pid}/prices?limit=50`).then((r) => (r.ok ? r.json() : [])),
       ]);
     } catch {
-      titleEl.textContent = parsed.productID;
-      panel.querySelector(".swb-body").innerHTML =
-        '<div class="swb-error">서버에 연결할 수 없습니다.<br>네트워크를 확인해 주세요. (E-EXT-NET-1001)</div>';
-      return;
+      serverError = true;
     }
 
-    titleEl.textContent = (product && product.name) || parsed.productID;
-    if (!points || points.length === 0) {
-      panel.querySelector(".swb-body").innerHTML =
-        '<div class="swb-loading">아직 가격 이력이 없습니다.<br>이 상품 페이지를 방문하면 자동으로 기록됩니다.</div>';
-      return;
+    // 3) 현재 페이지 가격을 마지막 포인트로 병합 (중복이면 유지)
+    const nowPrice = livePrice || (product && product.last_price) || null;
+    if (nowPrice) {
+      const lastPoint = points.length ? Number(points[points.length - 1].price) : null;
+      if (lastPoint !== nowPrice) {
+        points = [...points, { price: nowPrice, captured_at: new Date().toISOString() }];
+      }
     }
 
+    // 4) 그래프는 무조건 표시 (이력 0건이면 현재 가격 1포인트)
     const prices = points.map((pt) => Number(pt.price));
-    const now = prices[prices.length - 1];
-    const first = prices[0];
     const min = Math.min(...prices);
     const max = Math.max(...prices);
-    nowEl.textContent = `${now.toLocaleString()}원`;
-    if (now < first) {
-      deltaEl.textContent = `▼ ${(first - now).toLocaleString()}원`;
-      deltaEl.className = "swb-delta down";
-    } else if (now > first) {
-      deltaEl.textContent = `▲ ${(now - first).toLocaleString()}원`;
-      deltaEl.className = "swb-delta up";
+    const range = max - min || 1;
+    const pad = 8;
+
+    drawChart(canvas, prices);
+
+    const first = prices[0];
+    nowEl.textContent = `${nowPrice.toLocaleString()}원`;
+    if (points.length > 1) {
+      if (nowPrice < first) {
+        deltaEl.textContent = `▼ ${(first - nowPrice).toLocaleString()}원`;
+        deltaEl.className = "swb-delta down";
+      } else if (nowPrice > first) {
+        deltaEl.textContent = `▲ ${(nowPrice - first).toLocaleString()}원`;
+        deltaEl.className = "swb-delta up";
+      } else {
+        deltaEl.textContent = "변동 없음";
+        deltaEl.className = "swb-delta";
+      }
     } else {
-      deltaEl.textContent = "변동 없음";
+      deltaEl.textContent = "첫 기록";
       deltaEl.className = "swb-delta";
     }
     stMin.textContent = `${min.toLocaleString()}원`;
     stMax.textContent = `${max.toLocaleString()}원`;
     stCount.textContent = String(points.length);
-    drawChart(canvas, prices);
+
+    if (serverError) {
+      const err = document.createElement("div");
+      err.className = "swb-error";
+      err.textContent = "서버 이력을 불러오지 못했습니다 (E-EXT-NET-1001)";
+      bodyEl.appendChild(err);
+    }
   }
 
   function drawChart(canvas, prices) {
@@ -238,22 +274,29 @@ const SWB_UI = (() => {
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    if (prices.length < 1) return;
+    if (!prices.length) return;
 
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     const range = max - min || 1;
     const pad = 8;
 
-    ctx.strokeStyle = "#2d4ae0";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    prices.forEach((price, i) => {
-      const x = pad + (i / Math.max(prices.length - 1, 1)) * (w - pad * 2);
-      const y = h - pad - ((price - min) / range) * (h - pad * 2);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.stroke();
+    if (prices.length === 1) {
+      ctx.beginPath();
+      ctx.arc(w / 2, h - pad, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#2d4ae0";
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = "#2d4ae0";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      prices.forEach((price, i) => {
+        const x = pad + (i / (prices.length - 1)) * (w - pad * 2);
+        const y = h - pad - ((price - min) / range) * (h - pad * 2);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
 
     const last = prices[prices.length - 1];
     ctx.fillStyle = "#888";
