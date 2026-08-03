@@ -72,7 +72,7 @@ header h1 { font-size: 15px; font-weight: 700; }
 }
 
 .current-sub {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: flex-end;
   min-height: 18px;
 }
 
@@ -147,17 +147,6 @@ header h1 { font-size: 15px; font-weight: 700; }
 .watch-name {
   font-size: 12px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-.watch-sub {
-  display: flex; align-items: center; justify-content: space-between; gap: 6px;
-}
-
-.watch-mall {
-  font-style: normal;
-  font-size: 10px; font-weight: 700; color: #555;
-  background: #f1f3f5; border-radius: 4px;
-  padding: 1px 6px; flex-shrink: 0;
 }
 
 .watch-price { font-size: 13px; font-weight: 700; margin-top: 2px; }

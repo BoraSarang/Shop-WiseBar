@@ -151,13 +151,6 @@ const SWB_UI = (() => {
     .swb-li-badge.b-fallback.b-oliveyoung { background: #56a99c; }
     .swb-li-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .swb-li-name { font-size: 12px; color: #333; line-height: 1.35; max-height: 2.6em; overflow: hidden; }
-    .swb-li-sub { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-    .swb-li-mall {
-      font-style: normal;
-      font-size: 10px; font-weight: 700; color: #555;
-      background: #f1f3f5; border-radius: 4px;
-      padding: 1px 6px; flex-shrink: 0;
-    }
     .swb-li-price { font-size: 12px; font-weight: 700; color: #2d4ae0; }
     .swb-li-del { background: none; border: none; color: #ccc; font-size: 14px; cursor: pointer; padding: 4px; }
     .swb-li-del:hover { color: #e5484d; }
@@ -636,7 +629,7 @@ const SWB_UI = (() => {
         <span class="swb-li-thumb"${img}>${w.image ? "" : (m ? "" : "?")}${badge}</span>
         <span class="swb-li-body">
           <span class="swb-li-name"></span>
-          <span class="swb-li-sub">${m ? `<em class="swb-li-mall">${m.label}</em>` : ""}<span class="swb-li-price"></span></span>
+          <span class="swb-li-price"></span>
         </span>
         <button class="swb-li-del" title="삭제">✕</button>`;
       const badgeImg = m ? row.querySelector(".swb-li-badge img") : null;
