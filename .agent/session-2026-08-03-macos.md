@@ -16,9 +16,14 @@ T-57 메뉴바 팝오버 2모드 재설계: 캐치 모드(CapturedProductView �
 - 관심 상품 등록(PUT /watches 200) 후 자동 팝오버 + 캐치 뷰(찜됨) — PASS
 - 스크린샷: docs/screenshots/macos/v0_3_t57_capture.png (캐치), v0_3_t57_home.png (홈)
 
+## 추가 진행 (T-58 추천 리스트 — 같은 날)
+- 서버: GET /api/v1/recommendations (server/app/routers/recommendations.py 신규, RecommendationOut) — 최근 7일 하락 상품 하락폭순, 소량 데이터 가정 N+1
+- 클라이언트: ServerClient.getRecommendations + 홈 모드 추천 섹션 (3개, 탭 시 브라우저). refreshHome()으로 팝오버 열림/캐치 이탈 시 재조회
+- 검증: 서버 스모크 PASS (▼10,000/▼5,000), 홈 표시 PASS — 커밋 b86914c
+
 ## 남은 TODO
 - T-56 배포 준비 (Docker/호스팅) — 다음 우선순위
-- T-58 서버 추천 리스트 (베스트/최신 할인) — 데이터 축적 후
+- 구매 추천가/가짜 할인 판정 (데이터 축적 후 확장)
 - 알림 수신 확인 (알림 권한 승인 후)
 
 ## 다음 에이전트 전달
