@@ -39,20 +39,19 @@ const Extractor = {
       //        가지는 요소가 있어 일반 [data-price] 폴백이 정가를 잡던 문제 해결
       //        v0.8.8: 품절 상품은 판매가 요소가 사라져 body 잔존 가격(14,900 등)이
       //        폴백으로 잡히는 문제 — 품절이면 판매가 요소만 허용하고 폴백 금지
-      //        ② "%" 다음 줄 금액 (옵션 반영) ③ 폴백 body 첫 금액
+      //        v0.8.9: 품절 상품의 total-price[data-price]도 잔존값(14,900)을 가질 수
+      //        있음이 확인됨 — 품절이면 무조건 스킵 (price=null → captureProduct 스킵)
       const isSoldOut = /(일시\s?)?품절|재입고\s?알림/.test(bodyText);
-      const attrEl = document.querySelector(
-        isSoldOut
-          ? ".total-price[data-price]"
-          : "span.total-price[data-price], strong.total-price[data-price], .total-price[data-price]"
-      );
-      if (attrEl) {
-        const ap = parseInt((attrEl.getAttribute("data-price") || "").replace(/[^0-9]/g, ""), 10);
-        if (ap && ap >= 1000) price = ap;
-      }
-      if (!price && !isSoldOut) {
-        const m = bodyText.match(/([0-9]{1,2})%\s*\n\s*([0-9][0-9,]*)\s*원/);
-        price = m ? parseInt(m[2].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(bodyText);
+      if (!isSoldOut) {
+        const attrEl = document.querySelector("span.total-price[data-price], strong.total-price[data-price], .total-price[data-price]");
+        if (attrEl) {
+          const ap = parseInt((attrEl.getAttribute("data-price") || "").replace(/[^0-9]/g, ""), 10);
+          if (ap && ap >= 1000) price = ap;
+        }
+        if (!price) {
+          const m = bodyText.match(/([0-9]{1,2})%\s*\n\s*([0-9][0-9,]*)\s*원/);
+          price = m ? parseInt(m[2].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(bodyText);
+        }
       }
     } else if (mall === "oliveyoung") {
       // ① data-qa 할인가 ② tx_num ③ body 폴백
