@@ -139,17 +139,24 @@ const Extractor = {
       }
       if (image && image.startsWith("//")) image = `https:${image}`;
 
-      // 이름: 상품 링크(a) 내부의 이름 요소 우선 (v0.8.2 — 네이버 쇼핑 검색 카드에서
-      // 스토어명 요소가 먼저 매치되던 문제: 스토어명은 보통 상품 링크 밖에 있음)
-      // → img alt → 링크 텍스트 → og:title 보존용 자리
+      // 이름: v0.8.3 — name/title/tit 클래스 후보 중 가장 긴 텍스트 선택.
+      // (네이버 쇼핑 검색 카드는 스토어명 요소가 상품명보다 먼저/안쪽에 있어
+      // 첫 매치만으로는 상점명이 잡힘 — 상품명이 항상 가장 길다)
       let name = null;
-      const nameEl =
-        (card && card.querySelector("a[href] [class*='name'], a[href] [class*='title'], a[href] [class*='tit']")) ||
-        (card ? card.querySelector("[class*='name'], [class*='title'], [class*='tit']") : null);
-      if (nameEl) name = nameEl.textContent.trim();
+      if (card) {
+        let best = null;
+        const scope = card.querySelector("a[href]") || card;
+        const cands = scope.querySelectorAll("[class*='name'], [class*='title'], [class*='tit']");
+        for (const el of cands) {
+          const t = (el.textContent || "").trim();
+          if (t.length < 3) continue;
+          if (!best || t.length > best.length) best = t;
+        }
+        if (best) name = best;
+      }
       if (!name && img) name = img.getAttribute("alt");
       if (!name && a.textContent) name = a.textContent.trim();
-      if (name) name = this.normalizeTitle(parsed.mall, name.slice(0, 200));
+      if (name) name = this.normalizeTitle(parsed.mall, name.replace(/^@[^\s]+\s+/, "").slice(0, 200));
 
       // 가격: 카드 텍스트에서 "N,NNN원" 패턴 (가격이 없는 섹션은 null — 방문 시 캡처)
       // v0.5.1: 천단위 표준 패턴만 허용 (쿠팡 원가+할인가 붙어쓰기 오매치 방지)
