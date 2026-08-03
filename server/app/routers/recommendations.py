@@ -30,18 +30,19 @@ def get_recommendations(limit: int = 10, days: int = 7, db: Session = Depends(ge
         text(
             """
             WITH deduped AS (
-              -- v0.8.19: 연속 동일 가격 그룹 압축 — 같은 가격이 1초만 다르면 중복 저장되는데
-              -- (동시 캡처 race, 초 단위 UNIQUE), 직전 포인트가 같은 가격이면 하락률 0%로
-              -- 계산되어 실질 하락(20,530→9,880 52%)이 핫딜에서 누락되는 문제
+              -- v0.8.19: (상품, variant, 가격) 그룹별 최신 1건만 유지 — 같은 가격이
+              -- 초 단위로 중복 저장(동시 캡처 race)돼도 "현재 가격 상태"를 정확히 남김
+              -- (LAG 필터는 연속 같은 가격 그룹에서 가장 오래된 행이 남는 버그가 있어
+              --  20,530×3 → 23:14:21만 남아 실질 하락(9,880 vs 20,530 52%)이 사라짐)
               SELECT product_id, variant, price, captured_at
               FROM (
                 SELECT product_id, variant, price, captured_at,
-                       LAG(price) OVER (PARTITION BY product_id, COALESCE(variant, '')
-                                        ORDER BY captured_at DESC) AS lp
+                       ROW_NUMBER() OVER (PARTITION BY product_id, COALESCE(variant, ''), price
+                                          ORDER BY captured_at DESC) AS rn2
                 FROM price_points
                 WHERE captured_at >= :cutoff
               ) t
-              WHERE t.lp IS DISTINCT FROM t.price
+              WHERE rn2 = 1
             ),
             ranked AS (
               -- v0.8.19: variant(쿠팡 수량 묶음/딜)별 분리 — variant A의 하락을
