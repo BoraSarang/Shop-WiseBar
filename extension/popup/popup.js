@@ -76,6 +76,68 @@ async function loadHistory() {
   section.classList.remove("hidden");
 }
 
+// ── 오늘의 핫딜 ──────────────────────────────────────────
+// T-58 확장 (v0.7.2): /recommendations 기간별 하락폭 큰 상품
+let dealDays = 7;
+
+async function loadDeals() {
+  const section = $("deals");
+  section.classList.add("hidden");
+  const listEl = $("dealList");
+  listEl.innerHTML = "";
+  $("dealEmpty").classList.add("hidden");
+
+  let deals;
+  try {
+    deals = await api(`/recommendations?limit=5&days=${dealDays}`);
+  } catch {
+    return; // 서버 오류 시 섹션 숨김 유지
+  }
+  if (!deals.length) {
+    $("dealEmpty").classList.remove("hidden");
+    section.classList.remove("hidden");
+    return;
+  }
+  for (const d of deals) {
+    const m = mallMeta[d.mall] || null;
+    const li = document.createElement("li");
+    li.className = "deal-item";
+    li.innerHTML = `
+      <span class="watch-thumb"${d.image ? ` style="background-image:url('${String(d.image).replace(/'/g, "\\'")}')"` : ""}>${d.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
+      <span class="deal-body">
+        <span class="watch-name"></span>
+        <span class="deal-price"></span>
+      </span>
+      <span class="deal-pct">▼ ${d.drop_percent}%</span>`;
+    const badgeImg = m ? li.querySelector(".watch-badge img") : null;
+    if (badgeImg) {
+      badgeImg.addEventListener("error", () => {
+        badgeImg.replaceWith(document.createTextNode(m.label));
+        badgeImg.parentElement.classList.add("b-fallback");
+      });
+    }
+    li.querySelector(".watch-name").textContent = d.name || d.product_id;
+    li.querySelector(".deal-price").textContent =
+      `${Number(d.last_price).toLocaleString()}원` +
+      (d.previous_price ? ` <span class="deal-before">${Number(d.previous_price).toLocaleString()}원</span>` : "");
+    li.addEventListener("click", () => {
+      if (d.url) chrome.tabs.create({ url: d.url });
+    });
+    listEl.appendChild(li);
+  }
+  section.classList.remove("hidden");
+}
+
+document.querySelectorAll(".deal-day-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    dealDays = Number(btn.dataset.days);
+    document.querySelectorAll(".deal-day-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    $("status").textContent = "불러오는 중…";
+    loadDeals().finally(() => ($("status").textContent = ""));
+  });
+});
+
 // ── 현재 상품 섹션 ──────────────────────────────────────
 let current = null; // { parsed, product }
 let currentWatched = false;
@@ -334,6 +396,7 @@ function setStatus(text) {
   try {
     await loadCurrent();
   } catch {}
+  await loadDeals();
   await loadHistory();
   await loadList();
   $("status").textContent = "";

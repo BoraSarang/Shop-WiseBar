@@ -94,6 +94,7 @@ class AlertHistoryOut(BaseModel):
 
 
 class RecommendationOut(ProductOut):
-    """추천 상품 — ProductOut + 기간 내 하락폭 (T-58)"""
+    """추천 상품 — ProductOut + 기간 내 하락폭 (T-58, v0.7.2 할인율% 추가)"""
     drop_amount: int
     previous_price: int
+    drop_percent: float = 0.0  # 할인율 % (previous 대비)

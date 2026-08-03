@@ -36,7 +36,7 @@ def get_recommendations(limit: int = 10, days: int = 7, db: Session = Depends(ge
         if latest.price < previous.price:
             results.append((previous.price - latest.price, latest.price, previous.price, product))
 
-    results.sort(key=lambda item: item[0], reverse=True)
+    results.sort(key=lambda item: item[0] / item[2], reverse=True)  # v0.7.2 — 할인율% 큰 순
     return [
         RecommendationOut(
             product_id=product.id,
@@ -48,6 +48,7 @@ def get_recommendations(limit: int = 10, days: int = 7, db: Session = Depends(ge
             last_checked_at=product.last_checked_at,
             drop_amount=drop,
             previous_price=previous_price,
+            drop_percent=round(drop / previous_price * 100, 1) if previous_price else 0.0,
         )
         for drop, latest_price, previous_price, product in results[:limit]
     ]

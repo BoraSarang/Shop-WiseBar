@@ -68,6 +68,46 @@ header h1 { font-size: 15px; font-weight: 700; }
 
 .alert-empty { list-style: none; font-size: 11px; color: #aaa; text-align: center; padding: 14px 8px; line-height: 1.6; }
 
+/* ── 오늘의 핫딜 (v0.7.2) ─────────────────────────── */
+.deals { padding: 10px 14px 12px; background: #f4f7ff; border-bottom: 1px solid #e0e7ff; }
+
+.deals-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+
+.deals h2 { font-size: 12px; color: #2d4ae0; }
+
+.deals-days { display: flex; gap: 4px; }
+
+.deal-day-btn {
+  font-size: 10px; font-weight: 700; color: #5a6be0;
+  background: #fff; border: 1px solid #d5ddfb; border-radius: 10px;
+  padding: 2px 8px; cursor: pointer;
+}
+
+.deal-day-btn.active { background: #2d4ae0; color: #fff; border-color: #2d4ae0; }
+
+.deal-list { list-style: none; }
+
+.deal-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 8px; border-radius: 8px; background: #fff; cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 6px;
+}
+
+.deal-item:hover { background: #f7f8fa; }
+
+.deal-item .watch-thumb { width: 32px; height: 32px; }
+
+.deal-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+
+.deal-price { font-size: 12px; font-weight: 700; }
+
+.deal-before { font-size: 10px; font-weight: 400; color: #999; text-decoration: line-through; }
+
+.deal-pct {
+  font-size: 11px; font-weight: 800; color: #fff; background: #e5484d;
+  padding: 2px 6px; border-radius: 5px; flex-shrink: 0;
+}
+
 .current { padding: 12px 14px; border-bottom: 1px solid #eee; }
 
 .current-head { display: flex; flex-direction: column; gap: 8px; }
