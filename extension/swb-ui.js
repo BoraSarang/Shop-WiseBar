@@ -150,8 +150,8 @@ const SWB_UI = (() => {
     .swb-li-badge.b-fallback.b-coupang { background: #0074e9; }
     .swb-li-badge.b-fallback.b-oliveyoung { background: #56a99c; }
     .swb-li-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    .swb-li-name-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
-    .swb-li-name { font-size: 12px; color: #333; line-height: 1.35; max-height: 2.6em; overflow: hidden; flex: 1; }
+    .swb-li-name { font-size: 12px; color: #333; line-height: 1.35; max-height: 2.6em; overflow: hidden; }
+    .swb-li-sub { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
     .swb-li-mall {
       font-style: normal;
       font-size: 10px; font-weight: 700; color: #555;
@@ -635,8 +635,8 @@ const SWB_UI = (() => {
       row.innerHTML = `
         <span class="swb-li-thumb"${img}>${w.image ? "" : (m ? "" : "?")}${badge}</span>
         <span class="swb-li-body">
-          <span class="swb-li-name-row"><span class="swb-li-name"></span>${m ? `<em class="swb-li-mall">${m.label}</em>` : ""}</span>
-          <span class="swb-li-price"></span>
+          <span class="swb-li-name"></span>
+          <span class="swb-li-sub">${m ? `<em class="swb-li-mall">${m.label}</em>` : ""}<span class="swb-li-price"></span></span>
         </span>
         <button class="swb-li-del" title="삭제">✕</button>`;
       const badgeImg = m ? row.querySelector(".swb-li-badge img") : null;

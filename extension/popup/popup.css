@@ -142,15 +142,15 @@ header h1 { font-size: 15px; font-weight: 700; }
 .watch-badge.b-fallback.b-coupang { background: #0074e9; }
 .watch-badge.b-fallback.b-oliveyoung { background: #56a99c; }
 
-.watch-body { flex: 1; min-width: 0; }
-
-.watch-name-row, .alert-name-row {
-  display: flex; align-items: center; gap: 6px; min-width: 0;
-}
+.watch-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 
 .watch-name {
   font-size: 12px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.watch-sub {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
 }
 
 .watch-mall {
