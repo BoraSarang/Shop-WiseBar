@@ -65,36 +65,80 @@ final class BrowserMonitor {
             PopoverState.shared.clearSuggestion()
             return
         }
-        // P5-T53: 서버 조회 — 관심 상품이면 메뉴바 자동 팝오버, 아니면 추적 제안
+        // T-57: 서버/로컬 조회 → 캐치 상품 구성 (모든 상품 페이지에서 캐치 모드)
+        let captured = await buildCapturedProduct(parsed: parsed, source: source)
+        PopoverState.shared.capturedProduct = captured
+        PopoverState.shared.setLastViewed(productID: parsed.productID)
+        PopoverState.shared.suggestedURL = text
+
+        if captured.isWatched {
+            // P5-T53: 관심 상품이면 메뉴바 자동 팝오버
+            DebugLogger.shared.push(
+                level: .INFO,
+                category: "MONITOR",
+                message: "관심 상품 감지 — 팝오버 자동 표시",
+                meta: ["source": source, "productID": parsed.productID, "price": captured.currentPrice ?? 0]
+            )
+            PopoverState.shared.autoShowProductID = parsed.productID
+            MenuBarController.shared.autoShowPopover()
+        } else {
+            DebugLogger.shared.push(
+                level: .INFO,
+                category: "MONITOR",
+                message: "상품 페이지 감지 — 캐치 모드",
+                meta: ["source": source, "url": text, "watched": false]
+            )
+        }
+    }
+
+    // MARK: - 캐치 상품 구성 (T-57)
+
+    /// 서버 → 로컬 순으로 상품 정보/가격 이력 폴백 (서버 오류 시에도 캐치 동작 유지)
+    private func buildCapturedProduct(parsed: ParsedProduct, source: String) async -> CapturedProduct {
+        let local = ProductStore.shared.products.first {
+            $0.mall == parsed.mall && $0.productID == parsed.productID
+        }
+
+        var serverProduct: ServerProduct?
         do {
-            if let serverProduct = try await ServerClient.shared.getProduct(productID: parsed.productID) {
-                if serverProduct.is_watched {
-                    DebugLogger.shared.push(
-                        level: .INFO,
-                        category: "MONITOR",
-                        message: "관심 상품 감지 — 팝오버 자동 표시",
-                        meta: ["source": source, "productID": parsed.productID, "price": serverProduct.last_price ?? 0]
-                    )
-                    PopoverState.shared.autoShowProductID = parsed.productID
-                    MenuBarController.shared.autoShowPopover()
-                    return
-                }
-            }
+            serverProduct = try await ServerClient.shared.getProduct(productID: parsed.productID)
         } catch {
-            // 서버 오류 시 기존 추적 제안 유지 (캐치 기능은 로컬에서 계속 동작)
             DebugLogger.shared.push(
                 level: .WARN,
                 category: "SERVER",
-                message: "상품 서버 조회 실패 — 로컬 제안으로 폴백",
-                meta: ["code": (error as? AppError)?.code ?? "unknown"]
+                message: "상품 서버 조회 실패 — 로컬 정보로 캐치",
+                meta: ["code": (error as? AppError)?.code ?? "unknown", "productID": parsed.productID]
             )
         }
-        PopoverState.shared.suggestedURL = text
-        DebugLogger.shared.push(
-            level: .INFO,
-            category: "MONITOR",
-            message: "상품 페이지 감지",
-            meta: ["source": source, "url": text]
+
+        var points: [PricePoint] = []
+        if serverProduct != nil {
+            do {
+                let serverPoints = try await ServerClient.shared.getPriceHistory(productID: parsed.productID)
+                points = serverPoints
+            } catch {
+                DebugLogger.shared.push(
+                    level: .WARN,
+                    category: "SERVER",
+                    message: "가격 이력 조회 실패 — 로컬 이력 폴백",
+                    meta: ["code": (error as? AppError)?.code ?? "unknown", "productID": parsed.productID]
+                )
+            }
+        }
+        if points.isEmpty, let local {
+            points = local.sortedPricePoints
+        }
+
+        return CapturedProduct(
+            id: parsed.productID,
+            mall: parsed.mall,
+            name: serverProduct?.name ?? local?.name ?? "상품 정보 수집 대기",
+            imageURLString: serverProduct?.image ?? local?.imageURLString ?? "",
+            urlString: parsed.url.absoluteString,
+            currentPrice: serverProduct?.last_price ?? local?.currentPrice,
+            isWatched: serverProduct?.is_watched ?? (local != nil),
+            targetPrice: serverProduct?.target_price ?? local?.targetPrice,
+            pricePoints: points
         )
     }
 

@@ -1,4 +1,6 @@
-// PopoverRootView.swift — 메뉴바 팝오버 루트 (P1: 상품 카드 + URL 추가 + 갱신)
+// PopoverRootView.swift — 메뉴바 팝오버 루트 (T-57: 캐치/홈/찜 목록 2모드)
+// 모드 1: 캐치 중 → CapturedProductView (상품 정보 + 가격 추이)
+// 모드 2: 기본 → 마지막에 본 상품 + 찜 목록 진입 / 찜 목록 → 기존 전체 관리
 // PLATFORM: macos
 import SwiftUI
 
@@ -10,6 +12,8 @@ struct PopoverRootView: View {
     @State private var urlText = ""
     @State private var isAdding = false
     @State private var addMessage: String?
+    @State private var lastViewed: CapturedProduct?
+    @State private var isLoadingLastViewed = false
     @FocusState private var urlFieldFocused: Bool
 
     private let pasteboard = NSPasteboard.general
@@ -17,14 +21,16 @@ struct PopoverRootView: View {
     var body: some View {
         VStack(spacing: 10) {
             header
-            if let suggested = popoverState.suggestedURL {
-                suggestionBanner(url: suggested)
-            }
-            if store.products.isEmpty {
-                emptyState
-            } else {
-                addSection
-                productList
+            switch popoverState.viewMode {
+            case .home:
+                if let captured = popoverState.capturedProduct {
+                    CapturedProductView(product: captured)
+                    Spacer(minLength: 0)
+                } else {
+                    homeContent
+                }
+            case .watchlist:
+                watchlistContent
             }
         }
         .padding(12)
@@ -34,6 +40,7 @@ struct PopoverRootView: View {
             if pasteboard.string(forType: .string)?.isSupportedProductURL == true {
                 urlText = pasteboard.string(forType: .string) ?? ""
             }
+            Task { await refreshLastViewed() }
             // 디버그 자동화: AutoAddURL에 등록할 URL을 넣으면 자동 등록
             // 트리거: `defaults write com.borasarang.ShopWiseBar AutoAddURL -string "<url>"`
             #if DEBUG
@@ -44,6 +51,9 @@ struct PopoverRootView: View {
                 }
             }
             #endif
+        }
+        .onChange(of: popoverState.lastOpenedAt) { _ in
+            Task { await refreshLastViewed() }
         }
         .onChange(of: popoverState.focusAddField) { focused in
             if focused {
@@ -79,6 +89,166 @@ struct PopoverRootView: View {
             .buttonStyle(.borderless)
             .help("지금 갱신")
         }
+    }
+
+    // MARK: - 홈 모드 (캐치 없음 — 마지막에 본 상품)
+
+    @ViewBuilder
+    private var homeContent: some View {
+        VStack(spacing: 10) {
+            lastViewedSection
+            Spacer()
+            Button {
+                popoverState.showWatchlist()
+            } label: {
+                Label("찜한 상품 보기", systemImage: "chevron.right")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(store.products.isEmpty && lastViewed == nil)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var lastViewedSection: some View {
+        if isLoadingLastViewed {
+            ProgressView()
+                .controlSize(.small)
+                .padding(.top, 40)
+        } else if let lastViewed {
+            lastViewedCard(lastViewed)
+        } else {
+            VStack(spacing: 10) {
+                Image(systemName: "eyes")
+                    .font(.system(size: 36, weight: .light))
+                    .foregroundStyle(.secondary)
+                Text("마지막에 본 상품")
+                    .font(.headline)
+                Text("브라우저에서 쇼핑 상품 페이지를 열면\n여기에 가격 추이와 함께 표시됩니다")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func lastViewedCard(_ product: CapturedProduct) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                capturedProductImage(product, size: 40)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("마지막에 본 상품")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(product.name)
+                        .font(.caption.weight(.medium))
+                        .lineLimit(1)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        if let price = product.currentPrice {
+                            Text(price.formatted(.number))
+                                .font(.subheadline.bold())
+                                .monospacedDigit()
+                            Text("원")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("가격 정보 없음")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+                Button {
+                    openCapturedInBrowser(product)
+                } label: {
+                    Image(systemName: "arrow.up.right.square")
+                }
+                .buttonStyle(.borderless)
+                .help("브라우저에서 열기")
+            }
+            if product.pricePoints.count >= 2 {
+                PriceHistoryChartView(points: product.pricePoints)
+                    .frame(height: 60)
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture { openCapturedInBrowser(product) }
+    }
+
+    private func capturedProductImage(_ product: CapturedProduct, size: CGFloat) -> some View {
+        Group {
+            if let url = URL(string: product.imageURLString), !product.imageURLString.isEmpty {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFit()
+                    default:
+                        placeholderImage(product, size: size)
+                    }
+                }
+            } else {
+                placeholderImage(product, size: size)
+            }
+        }
+        .frame(width: size, height: size)
+        .background(Color(nsColor: .quaternaryLabelColor).opacity(0.15))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func placeholderImage(_ product: CapturedProduct, size: CGFloat) -> some View {
+        Image(systemName: product.mall.iconName)
+            .font(.system(size: size * 0.38))
+            .foregroundStyle(.secondary)
+            .frame(width: size, height: size)
+    }
+
+    private func openCapturedInBrowser(_ product: CapturedProduct) {
+        guard let url = product.productURL else { return }
+        NSWorkspace.shared.open(url)
+        DebugLogger.shared.push(
+            level: .ACTION,
+            category: "OPEN",
+            message: "브라우저에서 상품 열기",
+            meta: ["productID": product.id, "url": url.absoluteString]
+        )
+    }
+
+    // MARK: - 찜 목록 모드 (기존 관리 화면)
+
+    @ViewBuilder
+    private var watchlistContent: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Button {
+                    popoverState.showHome()
+                } label: {
+                    Label("뒤로", systemImage: "chevron.left")
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                Spacer()
+            }
+            if store.products.isEmpty {
+                emptyState
+            } else {
+                addSection
+                productList
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - 상품 추가
@@ -154,70 +324,36 @@ struct PopoverRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - 브라우저 감지 제안 (T-21)
+    // MARK: - 마지막 본 상품 조회 (T-57)
 
-    @ViewBuilder
-    private func suggestionBanner(url: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(Color.accentColor)
-                Text("브라우저에서 상품 페이지를 보고 있어요")
-                    .font(.caption).bold()
-                Spacer()
-            }
-            if let parsed = MallParser.parse(url) {
-                Text("\(parsed.mall.displayName) 상품을 추적할까요?")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 8) {
-                    Button {
-                        Task { await addSuggested(url: url) }
-                    } label: {
-                        if popoverState.isAddingSuggested {
-                            ProgressView().controlSize(.mini)
-                        } else {
-                            Text("추적 시작")
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .disabled(popoverState.isAddingSuggested)
-                    Button("닫기") { popoverState.clearSuggestion() }
-                        .buttonStyle(.borderless)
-                        .controlSize(.small)
-                }
-            } else {
-                Text("지원하는 상품 페이지가 아닙니다")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+    private func refreshLastViewed() async {
+        guard popoverState.capturedProduct == nil else { return } // 캐치 중이면 캐치 뷰가 우선
+        guard let productID = popoverState.lastViewedProductID else {
+            lastViewed = nil
+            isLoadingLastViewed = false
+            return
         }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private func addSuggested(url: String) async {
-        popoverState.isAddingSuggested = true
-        defer { popoverState.isAddingSuggested = false }
-        let result = await PriceFetchCoordinator.shared.addFromURL(url)
-        switch result {
-        case .success(let product):
-            popoverState.clearSuggestion()
-            DebugLogger.shared.push(
-                level: .ACTION,
-                category: "ADD",
-                message: "추적 제안 → 등록 완료",
-                meta: ["productID": product.productID]
-            )
-        case .failure(let error):
-            DebugLogger.shared.push(
-                level: .WARN,
-                category: "ADD",
-                message: "추적 제안 등록 실패",
-                meta: ["code": error.code]
-            )
+        isLoadingLastViewed = true
+        defer { isLoadingLastViewed = false }
+        do {
+            if let server = try await ServerClient.shared.getProduct(productID: productID) {
+                let points = (try? await ServerClient.shared.getPriceHistory(productID: productID)) ?? []
+                lastViewed = CapturedProduct(
+                    id: productID,
+                    mall: Mall(rawValue: server.mall) ?? .naver,
+                    name: server.name ?? "상품 정보 없음",
+                    imageURLString: server.image ?? "",
+                    urlString: server.url,
+                    currentPrice: server.last_price,
+                    isWatched: server.is_watched,
+                    targetPrice: server.target_price,
+                    pricePoints: points
+                )
+            } else {
+                lastViewed = nil
+            }
+        } catch {
+            lastViewed = nil
         }
     }
 

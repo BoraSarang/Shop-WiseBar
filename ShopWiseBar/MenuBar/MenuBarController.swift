@@ -89,12 +89,7 @@ final class MenuBarController: NSObject {
             popover.performClose(nil)
         } else {
             DebugLogger.shared.push(level: .ACTION, category: "MENU", message: "팝오버 열림")
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            // LSUIElement 앱은 키보드 포커스가 다른 앱에 남아 있으므로 강제 활성화
-            NSApp.activate(ignoringOtherApps: true)
-            DispatchQueue.main.async {
-                popover.contentViewController?.view.window?.makeKey()
-            }
+            showPopover(from: button)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 DebugLogger.shared.push(
                     level: .INFO,
@@ -103,6 +98,20 @@ final class MenuBarController: NSObject {
                     meta: ["isShown": popover.isShown, "buttonWindowVisible": button.window?.isVisible ?? false]
                 )
             }
+        }
+    }
+
+    /// 팝오버 표시 공통 — 열림 상태를 PopoverState에 통지 (T-57: 홈 재조회 트리거)
+    private func showPopover(from button: NSStatusBarButton) {
+        guard let popover else { return }
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        // LSUIElement 앱은 키보드 포커스가 다른 앱에 남아 있으므로 강제 활성화
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            popover.contentViewController?.view.window?.makeKey()
+        }
+        Task { @MainActor in
+            PopoverState.shared.notifyPopoverOpened()
         }
     }
 
@@ -137,22 +146,14 @@ final class MenuBarController: NSObject {
     @objc private func openPopover() {
         guard let popover, let button = statusItem?.button else { return }
         if popover.isShown { return }
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        NSApp.activate(ignoringOtherApps: true)
-        DispatchQueue.main.async {
-            popover.contentViewController?.view.window?.makeKey()
-        }
+        showPopover(from: button)
         DebugLogger.shared.push(level: .ACTION, category: "MENU", message: "팝오버 열림 (메뉴)")
     }
 
     /// 관심 상품 감지 시 자동 오픈 (P5-T53) — BrowserMonitor에서 호출
     func autoShowPopover() {
         guard let popover, let button = statusItem?.button, !popover.isShown else { return }
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        NSApp.activate(ignoringOtherApps: true)
-        DispatchQueue.main.async {
-            popover.contentViewController?.view.window?.makeKey()
-        }
+        showPopover(from: button)
         DebugLogger.shared.push(level: .ACTION, category: "MENU", message: "팝오버 자동 열림 (관심 상품 감지)")
     }
 

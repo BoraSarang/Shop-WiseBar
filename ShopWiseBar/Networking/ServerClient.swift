@@ -36,6 +36,12 @@ struct ServerAlert: Codable {
     let captured_at: String
 }
 
+struct ServerPricePoint: Codable {
+    let price: Int
+    let source: String
+    let captured_at: String
+}
+
 final class ServerClient {
     static let shared = ServerClient()
 
@@ -127,6 +133,22 @@ final class ServerClient {
     func uploadPrice(productID: String, price: Int, source: String = "client") async throws {
         let path = "/api/v1/products/\(productID.percentEncodedForPath)/prices"
         _ = try await send(path: path, method: "POST", body: ["price": price, "source": source])
+    }
+
+    /// 가격 이력 조회 (그래프용, 오름차순). 서버 데이터 없으면 빈 배열 — 로컬 이력 폴백은 호출 측에서
+    func getPriceHistory(productID: String, limit: Int = 1000) async throws -> [PricePoint] {
+        let path = "/api/v1/products/\(productID.percentEncodedForPath)/prices?limit=\(limit)"
+        let data = try await send(path: path, method: "GET")
+        do {
+            let points = try decoder.decode([ServerPricePoint].self, from: data)
+            let formatter = ISO8601DateFormatter()
+            return points.compactMap { point in
+                guard let date = formatter.date(from: point.captured_at) else { return nil }
+                return PricePoint(price: point.price, date: date)
+            }
+        } catch {
+            throw AppError(code: "E-MAC-NET-2002", debugMessage: "가격 이력 응답 해석 실패", cause: error)
+        }
     }
 
     // MARK: - 관심 상품
