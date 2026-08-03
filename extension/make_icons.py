@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""익스텐션 아이콘 PNG 생성 (표준 라이브러리만 사용) — 남색 원 + 하락 화살표"""
-import math
+"""익스텐션 아이콘 PNG 생성 (표준 라이브러리만 사용) — 흰 원 + 남색 링 + 남색 하락 화살표
+툴바에서 또렷하게 보이도록 배경을 밝게 반전 (v2)"""
 import struct
 import zlib
 import os
@@ -36,16 +36,24 @@ def render(size):
     cx = cy = size / 2
     radius = size * 0.46
     r2 = radius * radius
+    ring_w = max(1, int(size * 0.055))
 
     def setpx(x, y, color):
         if 0 <= x < size and 0 <= y < size:
             pixels[y * size + x] = list(color)
 
-    # 원
+    # 원 (흰 배경 + 남색 링)
     for y in range(size):
         for x in range(size):
             dx, dy = x - cx, y - cy
-            if dx * dx + dy * dy <= r2:
+            d2 = dx * dx + dy * dy
+            if d2 <= r2:
+                pixels[y * size + x] = list(WHITE)
+    for y in range(size):
+        for x in range(size):
+            dx, dy = x - cx, y - cy
+            d2 = dx * dx + dy * dy
+            if r2 - ring_w * size < d2 <= r2:
                 pixels[y * size + x] = list(BLUE)
 
     # 하락 라인 (좌상 → 우하, 두께)
@@ -61,26 +69,25 @@ def render(size):
 
     # 화살촉 (우하단 삼각형)
     def draw_arrow(x0, y0, x1, y1, thickness, color):
-        # 화살촉 두 갈래
         ax, ay = x1 - (x1 - x0) * 0.14, y1 - (y1 - y0) * 0.14
         for i in range(int(thickness) * 3):
             t = i / (thickness * 3)
-            # 갈래 1 (위)
             bx = ax - (x1 - x0) * 0.12 * t + (y1 - y0) * 0.10
             by = ay - (y1 - y0) * 0.12 * t - (x1 - x0) * 0.10
             setpx(int(round(bx)), int(round(by)), color)
-            # 갈래 2 (아래)
             bx = ax - (x1 - x0) * 0.12 * t - (y1 - y0) * 0.10
             by = ay - (y1 - y0) * 0.12 * t + (x1 - x0) * 0.10
             setpx(int(round(bx)), int(round(by)), color)
 
     s = size
-    draw_line(s * 0.24, s * 0.38, s * 0.64, s * 0.62, max(1, int(s * 0.045)), WHITE)
-    draw_arrow(s * 0.24, s * 0.38, s * 0.66, s * 0.64, max(1, int(s * 0.06)), WHITE)
+    lw = max(1, int(s * 0.055))
+    aw = max(1, int(s * 0.075))
+    draw_line(s * 0.26, s * 0.38, s * 0.62, s * 0.62, lw, BLUE)
+    draw_arrow(s * 0.26, s * 0.38, s * 0.66, s * 0.66, aw, BLUE)
     return make_png(size, pixels)
 
 
 for size in (16, 48, 128):
     with open(os.path.join(OUT, f"icon{size}.png"), "wb") as f:
         f.write(render(size))
-    print(f"icon{size}.png 생성 완료")
+    print(f"icon{size}.png 생성 완료 (v2)")
