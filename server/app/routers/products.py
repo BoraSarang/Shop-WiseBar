@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -174,3 +174,16 @@ def get_prices(product_id: str, limit: int = 200, db: Session = Depends(get_db))
         PricePointOut(price=p.price, source=p.source, captured_at=p.captured_at)
         for p in reversed(points)
     ]
+
+
+@router.delete("/products/{product_id}/prices/{price}")
+def delete_price_points(product_id: str, price: int, db: Session = Depends(get_db)) -> dict:
+    """관리용: 이상값/오탐 가격 포인트 일괄 삭제 (동일 가격 전체)"""
+    result = db.execute(
+        delete(PricePoint).where(
+            PricePoint.product_id == product_id,
+            PricePoint.price == price,
+        )
+    )
+    db.commit()
+    return {"product_id": product_id, "price": price, "deleted": result.rowcount}

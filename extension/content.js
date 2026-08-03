@@ -28,9 +28,18 @@ const Extractor = {
       const m1 = bodyText.match(/상품 가격[\s\S]{0,30}?([0-9,]+)원/);
       price = m1 ? parseInt(m1[1].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(bodyText);
     } else if (mall === "coupang") {
-      // 쿠팡: "%" 다음 줄 금액 (옵션 반영) — 폴백 body 첫 금액
-      const m = bodyText.match(/([0-9]{1,2})%\s*\n\s*([0-9][0-9,]*)\s*원/);
-      price = m ? parseInt(m[2].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(bodyText);
+      // 쿠팡: ① data-price 속성 우선 (쿠팡이 실제 판매가에 부여하는 표준 속성 —
+      //        정가/쿠폰가/사전구매 할인가가 여럿 노출되어 첫 % 매치가 진동하던 문제 해결)
+      //       ② "%" 다음 줄 금액 (옵션 반영) ③ 폴백 body 첫 금액
+      const attrEl = document.querySelector("span.total-price[data-price], strong.total-price[data-price], [data-price]");
+      if (attrEl) {
+        const ap = parseInt((attrEl.getAttribute("data-price") || "").replace(/[^0-9]/g, ""), 10);
+        if (ap && ap >= 1000) price = ap;
+      }
+      if (!price) {
+        const m = bodyText.match(/([0-9]{1,2})%\s*\n\s*([0-9][0-9,]*)\s*원/);
+        price = m ? parseInt(m[2].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(bodyText);
+      }
     } else if (mall === "oliveyoung") {
       // ① data-qa 할인가 ② tx_num ③ body 폴백
       const qa = document.querySelector('[data-qa-name="text-product-discount-price"]');
