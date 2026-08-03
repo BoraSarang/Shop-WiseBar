@@ -393,11 +393,15 @@ function setStatus(text) {
 
 (async function init() {
   $("status").textContent = "불러오는 중…";
+  const slowTimer = setTimeout(() => {
+    if ($("status").textContent === "불러오는 중…") $("status").textContent = "서버 연결 중… (최대 45초)";
+  }, 8000);
   try {
     await loadCurrent();
   } catch {}
   await loadDeals();
   await loadHistory();
   await loadList();
+  clearTimeout(slowTimer);
   $("status").textContent = "";
 })();
