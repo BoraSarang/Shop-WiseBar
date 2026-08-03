@@ -74,6 +74,8 @@ const SWB_UI = (() => {
       display: flex; align-items: center; gap: 8px;
       padding: 10px 14px; background: #2d4ae0; color: #fff;
     }
+    .swb-head-icon { display: flex; align-items: center; }
+    .swb-head-icon svg { width: 16px; height: 16px; }
     .swb-head-back { background: none; border: none; color: #fff; font-size: 15px; cursor: pointer; padding: 0 2px; line-height: 1; }
     .swb-head-title { flex: 1; font-weight: 600; font-size: 13px; }
     .swb-close { background: none; border: none; color: #fff; font-size: 16px; cursor: pointer; line-height: 1; padding: 2px; }
@@ -224,6 +226,7 @@ const SWB_UI = (() => {
     panel.className = "swb-panel hidden";
     panel.innerHTML = `
       <div class="swb-head">
+        <span class="swb-head-icon">${ICON.fab}</span>
         <button class="swb-head-back">‹</button>
         <div class="swb-head-title">가격 변동 추이</div>
         <button class="swb-close" title="닫기">✕</button>
@@ -355,7 +358,7 @@ const SWB_UI = (() => {
     const titles = { trend: "가격 변동 추이", list: "찜 목록 관리", set: "설정" };
     panel.querySelector(".swb-head-title").textContent = titles[name] || "";
     const back = panel.querySelector(".swb-head-back");
-    back.style.visibility = name === "trend" ? "hidden" : "visible";
+    back.style.display = name === "trend" ? "none" : "block";
     panel.classList.remove("hidden");
   }
 
