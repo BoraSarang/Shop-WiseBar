@@ -196,5 +196,17 @@ def delete_price_points(product_id: str, price: int, db: Session = Depends(get_d
             PricePoint.price == price,
         )
     )
+    # v0.8.16: 삭제된 값이 last_price였다면 최근 남은 포인트로 복구 —
+    #          오염 포인트 삭제 후에도 팝업(서버 last_price 표시)이 삭제값을
+    #          계속 보여주던 문제 (오리온 24,200원 사례) 방지
+    product = db.get(Product, product_id)
+    if product is not None and product.last_price == price:
+        newest = db.scalar(
+            select(PricePoint)
+            .where(PricePoint.product_id == product_id)
+            .order_by(PricePoint.captured_at.desc())
+            .limit(1)
+        )
+        product.last_price = newest.price if newest is not None else None
     db.commit()
     return {"product_id": product_id, "price": price, "deleted": result.rowcount}
