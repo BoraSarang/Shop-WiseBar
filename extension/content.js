@@ -84,7 +84,7 @@ const SWB_UI = (() => {
     .swb-fab:hover { transform: scale(1.08); box-shadow: 0 6px 18px rgba(45, 74, 224, 0.55); }
     .swb-fab svg { width: 22px; height: 22px; }
     .swb-panel {
-      position: fixed; right: calc(20px + 46px + 12px); top: calc(25vh); transform: translateY(-50%); z-index: 2147483647;
+      position: fixed; right: calc(20px + 46px + 12px); top: 75vh; transform: translateY(-50%); z-index: 2147483647;
       width: 320px; background: #fff; border-radius: 12px;
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
       overflow: hidden; display: flex; flex-direction: column;
