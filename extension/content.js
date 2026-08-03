@@ -277,8 +277,13 @@ function positionBadges() {
       continue;
     }
     el.style.display = "block";
+    // 이미지 상단 바로 위에 배치 — 카드 패딩과 이미지가 같은 위치에서 시작해도
+    // 배지가 이미지 콘텐츠를 가리지 않음 (v0.8.6)
+    const img = card.querySelector("img");
+    const ir = img ? img.getBoundingClientRect() : null;
+    const top = ir && ir.height ? ir.top - el.offsetHeight - 4 : r.top + 12;
     el.style.left = `${r.right - 12}px`;
-    el.style.top = `${r.top + 12}px`;
+    el.style.top = `${top}px`;
     el.style.transform = "translateX(-100%)";
     if (!window.__swbBadgeLogged) {
       window.__swbBadgeLogged = true;
