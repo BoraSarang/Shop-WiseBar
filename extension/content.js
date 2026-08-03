@@ -74,7 +74,7 @@ const SWB_UI = (() => {
     :host { all: initial; }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
     .swb-fab {
-      position: fixed; right: 20px; bottom: 20px; z-index: 2147483647;
+      position: fixed; right: 20px; bottom: calc(25vh - 23px); z-index: 2147483647;
       width: 46px; height: 46px; border-radius: 50%;
       background: #2d4ae0; color: #fff; border: none; cursor: pointer;
       box-shadow: 0 4px 14px rgba(45, 74, 224, 0.45);
@@ -84,7 +84,7 @@ const SWB_UI = (() => {
     .swb-fab:hover { transform: scale(1.08); box-shadow: 0 6px 18px rgba(45, 74, 224, 0.55); }
     .swb-fab svg { width: 22px; height: 22px; }
     .swb-panel {
-      position: fixed; right: 20px; bottom: 76px; z-index: 2147483647;
+      position: fixed; right: 20px; bottom: calc(25vh + 56px); z-index: 2147483647;
       width: 320px; background: #fff; border-radius: 12px;
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
       overflow: hidden; display: flex; flex-direction: column;
