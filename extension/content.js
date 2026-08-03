@@ -86,6 +86,19 @@ const Extractor = {
     return t;
   },
 
+  // 카드 텍스트에서 첫 유효 가격 추출 — v0.8.1: "월 N원" 할부 문구 오매치 방지
+  // (쿠팡 검색 카드의 "월 28,418원"이 상품 가격보다 먼저 매치되던 문제)
+  firstCardPrice(text) {
+    const matches = [...text.matchAll(/(\d{1,3}(?:,\d{3})*)\s*원/g)];
+    for (const m of matches) {
+      const before = text.slice(Math.max(0, m.index - 6), m.index);
+      if (/(월|개월)\s*$/.test(before)) continue; // 할부/개월수 문구 제외
+      const price = parseInt(m[1].replace(/[^0-9]/g, ""), 10);
+      if (price >= 1000 && price <= 50000000) return price;
+    }
+    return null;
+  },
+
   // 연관 상품 추출 (v0.5): 페이지의 상품 링크를 카드 단위로 수집
   // 특정 섹션명("함께 비교하면 좋을 상품" 등)에 의존하지 않는 범용 방식
   // → 몰별 섹션명/구조가 바뀌어도 동작, MallParser 규약으로 productID/몰 판별
@@ -141,9 +154,7 @@ const Extractor = {
       if (card) {
         const clone = card.cloneNode(true);
         clone.querySelectorAll("s, del, strike, [style*='line-through'], [class*='del-price'], [class*='base-price']").forEach((el) => el.remove());
-        const m = clone.textContent.match(/\d{1,3}(?:,\d{3})*\s*원/);
-        if (m) price = parseInt(m[0].replace(/[^0-9]/g, ""), 10) || null;
-        if (price !== null && (price < 1000 || price > 50000000)) price = null;
+        price = this.firstCardPrice(clone.textContent);
       }
 
       items.push({
@@ -181,10 +192,7 @@ const Extractor = {
       if (!name && card.textContent) name = card.textContent.trim();
       if (name) name = name.slice(0, 200);
 
-      let price = null;
-      const pm = card.textContent.match(/\d{1,3}(?:,\d{3})*\s*원/);
-      if (pm) price = parseInt(pm[0].replace(/[^0-9]/g, ""), 10) || null;
-      if (price !== null && (price < 1000 || price > 50000000)) price = null;
+      let price = this.firstCardPrice(card.textContent);
 
       items.push({
         productID,
