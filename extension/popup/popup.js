@@ -55,7 +55,7 @@ async function loadHistory() {
         <span class="alert-thumb"${a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : ""}>${a.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
         <span class="alert-badge drop">▼ 하락</span>
         <span class="alert-body">
-          <span class="alert-name"></span>
+          <span class="alert-name-row"><span class="alert-name"></span>${m ? `<em class="watch-mall">${m.label}</em>` : ""}</span>
           <span class="alert-meta"></span>
         </span>
         <button class="alert-del" title="삭제">✕</button>`;
@@ -208,7 +208,7 @@ async function loadList() {
     li.innerHTML = `
       <span class="watch-thumb"${w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : ""}>${w.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
       <span class="watch-body">
-        <span class="watch-name"></span>
+        <span class="watch-name-row"><span class="watch-name"></span>${m ? `<em class="watch-mall">${m.label}</em>` : ""}</span>
         <span class="watch-price"></span>
       </span>
       <button class="watch-unwatch" title="찜 삭제">✕</button>`;
