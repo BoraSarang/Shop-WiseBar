@@ -14,6 +14,7 @@ struct PopoverRootView: View {
     @State private var addMessage: String?
     @State private var lastViewed: CapturedProduct?
     @State private var isLoadingLastViewed = false
+    @State private var recommendations: [ServerRecommendation] = []
     @FocusState private var urlFieldFocused: Bool
 
     private let pasteboard = NSPasteboard.general
@@ -40,7 +41,7 @@ struct PopoverRootView: View {
             if pasteboard.string(forType: .string)?.isSupportedProductURL == true {
                 urlText = pasteboard.string(forType: .string) ?? ""
             }
-            Task { await refreshLastViewed() }
+            Task { await refreshHome() }
             // 디버그 자동화: AutoAddURL에 등록할 URL을 넣으면 자동 등록
             // 트리거: `defaults write com.borasarang.ShopWiseBar AutoAddURL -string "<url>"`
             #if DEBUG
@@ -53,7 +54,13 @@ struct PopoverRootView: View {
             #endif
         }
         .onChange(of: popoverState.lastOpenedAt) { _ in
-            Task { await refreshLastViewed() }
+            Task { await refreshHome() }
+        }
+        .onChange(of: popoverState.capturedProduct) { captured in
+            // 캐치 이탈 → 홈 모드 전환 시 최신 데이터 재조회 (T-58)
+            if captured == nil, popoverState.viewMode == .home {
+                Task { await refreshHome() }
+            }
         }
         .onChange(of: popoverState.focusAddField) { focused in
             if focused {
@@ -97,6 +104,9 @@ struct PopoverRootView: View {
     private var homeContent: some View {
         VStack(spacing: 10) {
             lastViewedSection
+            if !recommendations.isEmpty {
+                recommendationsSection
+            }
             Spacer()
             Button {
                 popoverState.showWatchlist()
@@ -109,6 +119,73 @@ struct PopoverRootView: View {
             .disabled(store.products.isEmpty && lastViewed == nil)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - 추천 상품 (T-58 — 최근 가격 하락)
+
+    private var recommendationsSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("추천 상품 — 최근 가격 하락")
+                .font(.caption.bold())
+            ForEach(recommendations, id: \.product_id) { rec in
+                recommendationCard(rec)
+            }
+        }
+    }
+
+    private func recommendationCard(_ rec: ServerRecommendation) -> some View {
+        HStack(spacing: 8) {
+            capturedProductImage(
+                CapturedProduct(
+                    id: rec.product_id,
+                    mall: Mall(rawValue: rec.mall) ?? .naver,
+                    name: rec.name ?? "상품 정보 없음",
+                    imageURLString: rec.image ?? "",
+                    urlString: rec.url,
+                    currentPrice: rec.last_price,
+                    isWatched: false,
+                    targetPrice: nil,
+                    pricePoints: []
+                ),
+                size: 34
+            )
+            Text(rec.name ?? "상품 정보 없음")
+                .font(.caption.weight(.medium))
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            if let price = rec.last_price {
+                Text(price.formatted(.number))
+                    .font(.caption.weight(.semibold))
+                    .monospacedDigit()
+            }
+            Label("\(rec.drop_amount.formatted(.number))", systemImage: "arrow.down.right")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.green)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture { openRecommendation(rec) }
+        .help("브라우저에서 열기")
+    }
+
+    private func openRecommendation(_ rec: ServerRecommendation) {
+        guard let url = URL(string: rec.url) else { return }
+        NSWorkspace.shared.open(url)
+        DebugLogger.shared.push(
+            level: .ACTION,
+            category: "OPEN",
+            message: "추천 상품 열기",
+            meta: ["productID": rec.product_id, "url": url.absoluteString]
+        )
     }
 
     @ViewBuilder
@@ -324,7 +401,22 @@ struct PopoverRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - 마지막 본 상품 조회 (T-57)
+    // MARK: - 홈 데이터 조회 (마지막 본 상품 + 추천, T-57/58)
+
+    private func refreshHome() async {
+        await refreshLastViewed()
+        do {
+            recommendations = try await ServerClient.shared.getRecommendations(limit: 3)
+        } catch {
+            recommendations = []
+            DebugLogger.shared.push(
+                level: .WARN,
+                category: "SERVER",
+                message: "추천 조회 실패",
+                meta: ["code": (error as? AppError)?.code ?? "unknown"]
+            )
+        }
+    }
 
     private func refreshLastViewed() async {
         guard popoverState.capturedProduct == nil else { return } // 캐치 중이면 캐치 뷰가 우선

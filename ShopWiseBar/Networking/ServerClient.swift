@@ -42,6 +42,18 @@ struct ServerPricePoint: Codable {
     let captured_at: String
 }
 
+struct ServerRecommendation: Codable {
+    let product_id: String
+    let mall: String
+    let url: String
+    let name: String?
+    let image: String?
+    let last_price: Int?
+    let last_checked_at: String?
+    let drop_amount: Int
+    let previous_price: Int
+}
+
 final class ServerClient {
     static let shared = ServerClient()
 
@@ -164,6 +176,19 @@ final class ServerClient {
         let deviceID = try await ensureDeviceID()
         let path = "/api/v1/devices/\(deviceID)/watches/\(productID.percentEncodedForPath)"
         _ = try await send(path: path, method: "DELETE")
+    }
+
+    // MARK: - 추천 (T-58)
+
+    /// 최근 가격 하락 상품 — 하락폭 큰 순 (홈 모드 추천 섹션)
+    func getRecommendations(limit: Int = 3) async throws -> [ServerRecommendation] {
+        let path = "/api/v1/recommendations?limit=\(limit)"
+        let data = try await send(path: path, method: "GET")
+        do {
+            return try decoder.decode([ServerRecommendation].self, from: data)
+        } catch {
+            throw AppError(code: "E-MAC-NET-2002", debugMessage: "추천 응답 해석 실패", cause: error)
+        }
     }
 
     // MARK: - 알림 폴링

@@ -56,3 +56,9 @@ class AlertOut(BaseModel):
     price: int
     previous_price: int | None
     captured_at: datetime
+
+
+class RecommendationOut(ProductOut):
+    """추천 상품 — ProductOut + 기간 내 하락폭 (T-58)"""
+    drop_amount: int
+    previous_price: int

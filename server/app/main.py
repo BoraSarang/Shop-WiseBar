@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import devices, products, watches
+from app.routers import devices, products, recommendations, watches
 
 app = FastAPI(
     title="ShopWiseBar API",
@@ -23,6 +23,7 @@ app.add_middleware(
 app.include_router(devices.router, prefix="/api/v1")
 app.include_router(products.router, prefix="/api/v1")
 app.include_router(watches.router, prefix="/api/v1")
+app.include_router(recommendations.router, prefix="/api/v1")
 
 
 @app.on_event("startup")

@@ -10,7 +10,7 @@ enum PopoverViewMode {
 }
 
 /// 캐치된 상품 (T-57) — 브라우저에서 보는 중인 상품의 스냅샷
-struct CapturedProduct: Identifiable {
+struct CapturedProduct: Identifiable, Equatable {
     let id: String // = productID
     let mall: Mall
     let name: String
