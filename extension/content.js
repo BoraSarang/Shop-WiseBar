@@ -125,8 +125,7 @@ const Extractor = {
       seen.add(parsed.productID);
 
       // 카드 컨테이너: 상품 카드 구조(리스트 아이템/상품 래퍼) 근접 탐색
-      let card = a.closest("li, [class*='item'], [class*='product'], [class*='card'], article");
-      if (!card) card = a.parentElement;
+      const card = this.findCard(a);
 
       const img = card ? card.querySelector("img") : null;
       let image = null;
@@ -245,15 +244,69 @@ function watchScrollForRelated() {
         const items = collectCurrentRelated();
         if (!items || !items.length) return;
         const fresh = items.filter((it) => !relatedSentIds.has(it.productID));
-        if (!fresh.length) return;
-        fresh.forEach((it) => relatedSentIds.add(it.productID));
-        chrome.runtime.sendMessage({ type: "RELATED_FOUND", items: fresh });
+        if (fresh.length) {
+          fresh.forEach((it) => relatedSentIds.add(it.productID));
+          chrome.runtime.sendMessage({ type: "RELATED_FOUND", items: fresh });
+        }
+        ensureWatchBadges(); // 새 카드 로드 시 찜 배지 재적용 (v0.8.5)
       }, 600); // 스크롤 멈춘 뒤 600ms — 스크롤 중 반복 전송 방지
     },
     { passive: true }
   );
 }
 watchScrollForRelated();
+
+// ── 목록/검색 페이지 찜 상품 배지 (v0.8.5) ───────────────
+// 검색/목록 화면에서 내 찜 상품 카드에 "★ 찜 N원" 배지 오버레이
+let watchedSet = new Set();
+let watchedMap = new Map();
+
+function findCard(a) {
+  return a.closest("li, [class*='item'], [class*='product'], [class*='card'], article") || a.parentElement;
+}
+
+function addBadgeToCard(card, watch) {
+  if (!card || card.__swbBadged) return;
+  card.__swbBadged = true;
+  if (getComputedStyle(card).position === "static") card.style.position = "relative";
+  const badge = document.createElement("div");
+  badge.textContent = watch && watch.last_price
+    ? `★ 찜 ${Number(watch.last_price).toLocaleString()}원`
+    : "★ 찜";
+  badge.style.cssText =
+    "position:absolute;top:4px;right:4px;z-index:10;background:#FF6B00;color:#fff;font-size:11px;" +
+    "font-weight:700;padding:2px 7px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.3);" +
+    "pointer-events:none;font-family:-apple-system,BlinkMacSystemFont,sans-serif;";
+  card.insertBefore(badge, card.firstChild);
+}
+
+async function ensureWatchBadges() {
+  const mall = MallParser.detectMall(window.location.href);
+  if (!mall || mall.kind !== "product") return; // 상품 페이지는 플로팅 패널이 처리
+  let watches;
+  try {
+    const res = await chrome.runtime.sendMessage({ type: "WATCHES_GET" });
+    if (!res || !res.ok || !Array.isArray(res.watches)) return;
+    watches = res.watches;
+  } catch {
+    return;
+  }
+  watchedSet = new Set(watches.map((w) => w.product_id));
+  watchedMap = new Map(watches.map((w) => [w.product_id, w]));
+  if (!watchedSet.size) return;
+
+  const anchors = document.querySelectorAll("a[href]");
+  for (const a of anchors) {
+    let parsed;
+    try {
+      parsed = MallParser.parse(a.href);
+    } catch {
+      continue;
+    }
+    if (!parsed || !watchedSet.has(parsed.productID)) continue;
+    addBadgeToCard(findCard(a), watchedMap.get(parsed.productID));
+  }
+}
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (!msg) return;
@@ -267,6 +320,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
     items.forEach((it) => relatedSentIds.add(it.productID));
     sendResponse({ ok: true, items });
+    ensureWatchBadges(); // 목록 페이지 찜 배지 (v0.8.5)
     return;
   }
   const parsed = MallParser.parse(window.location.href);

@@ -262,6 +262,23 @@ async function init() {
   if (!alarm) await chrome.alarms.create("alert-poll", { periodInMinutes: CONFIG.alertPollMinutes });
 }
 
+// ── 찜 목록 캐시 (v0.8.5 — 목록 페이지 찜 배지용) ───────
+let watchCache = null;
+let watchCacheAt = 0;
+const WATCH_CACHE_TTL = 30 * 1000;
+
+async function getWatchCache(force = false) {
+  if (!force && watchCache && Date.now() - watchCacheAt < WATCH_CACHE_TTL) return watchCache;
+  try {
+    const deviceId = await getDeviceId();
+    watchCache = await api(`/devices/${encodeURIComponent(deviceId)}/watches`);
+    watchCacheAt = Date.now();
+  } catch {
+    if (!watchCache) watchCache = [];
+  }
+  return watchCache || [];
+}
+
 // ── content script → 새 탭 열기 / 옵션 페이지 / 스크롤 연관 수집 브리지 ──────
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg && msg.type === "OPEN_TAB" && msg.url) {
@@ -271,6 +288,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg && msg.type === "OPEN_OPTIONS") {
     chrome.runtime.openOptionsPage();
+    sendResponse({ ok: true });
+    return true;
+  }
+  if (msg && msg.type === "WATCHES_GET") {
+    getWatchCache(!!msg.force).then((watches) => sendResponse({ ok: true, watches }));
+    return true;
+  }
+  if (msg && msg.type === "WATCHES_INVALIDATE") {
+    watchCache = null;
     sendResponse({ ok: true });
     return true;
   }

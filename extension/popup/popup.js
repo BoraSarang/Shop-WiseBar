@@ -229,6 +229,7 @@ $("watchBtn").addEventListener("click", async () => {
     }
     updateWatchBtn();
     loadList();
+    chrome.runtime.sendMessage({ type: "WATCHES_INVALIDATE" }).catch(() => {}); // 목록 배지 캐시 무효화 (v0.8.5)
   } catch (e) {
     setStatus("저장 실패 — 서버 연결 확인");
   }
@@ -321,6 +322,7 @@ function renderList() {
           setStatus("삭제 실패 — 서버 연결 확인");
         }
         loadList();
+        chrome.runtime.sendMessage({ type: "WATCHES_INVALIDATE" }).catch(() => {});
       });
     });
     li.addEventListener("click", () => {

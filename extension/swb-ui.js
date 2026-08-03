@@ -550,6 +550,7 @@ const SWB_UI = (() => {
         currentWatched = true;
       }
       updateWatchBtn();
+      chrome.runtime.sendMessage({ type: "WATCHES_INVALIDATE" }).catch(() => {}); // 목록 배지 캐시 무효화 (v0.8.5)
     } catch {
       const btn = shadow.querySelector(".swb-watch");
       if (btn) btn.title = "서버 연결 실패 (E-EXT-NET-1001)";
