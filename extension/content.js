@@ -125,9 +125,12 @@ const Extractor = {
 
       // 가격: 카드 텍스트에서 "N,NNN원" 패턴 (가격이 없는 섹션은 null — 방문 시 캡처)
       // v0.5.1: 천단위 표준 패턴만 허용 (쿠팡 원가+할인가 붙어쓰기 오매치 방지)
+      // v0.6.2: 취소선(정가/원가) 요소를 제외하고 추출 — 네이버/쿠팡 카드의 정가 159,990원 먼저 노출 문제 해결
       let price = null;
       if (card) {
-        const m = card.textContent.match(/\d{1,3}(?:,\d{3})*\s*원/);
+        const clone = card.cloneNode(true);
+        clone.querySelectorAll("s, del, strike, [style*='line-through'], [class*='del-price'], [class*='base-price']").forEach((el) => el.remove());
+        const m = clone.textContent.match(/\d{1,3}(?:,\d{3})*\s*원/);
         if (m) price = parseInt(m[0].replace(/[^0-9]/g, ""), 10) || null;
         if (price !== null && (price < 1000 || price > 50000000)) price = null;
       }

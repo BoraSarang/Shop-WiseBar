@@ -64,10 +64,11 @@ const SWB_UI = (() => {
     }
     .swb-mi:hover .swb-mi-label { opacity: 1; transform: translateX(0); }
     .swb-panel {
-      position: fixed; right: calc(20px + 46px + 12px); top: 75vh; transform: translateY(-50%); z-index: 2147483647;
-      width: 320px; background: #fff; border-radius: 12px;
+      position: fixed; right: calc(20px + 46px + 12px); top: 75vh; z-index: 2147483647;
+      width: 320px; max-height: calc(100vh - 24px);
+      background: #fff; border-radius: 12px;
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
-      overflow: hidden; display: flex; flex-direction: column;
+      overflow-y: auto; display: flex; flex-direction: column;
       color: #1c1c1e; font-size: 13px;
     }
     .swb-panel.hidden { display: none; }
@@ -206,6 +207,7 @@ const SWB_UI = (() => {
     style.textContent = CSS;
     shadow.appendChild(style);
     document.documentElement.appendChild(host);
+    window.addEventListener("resize", () => positionPanel());
   }
 
   // "상품명 : 회사명" 또는 "상품명 | 플랫폼" → 분리 (og:title 실측 패턴)
@@ -243,6 +245,7 @@ const SWB_UI = (() => {
 
     const panel = document.createElement("div");
     panel.className = "swb-panel hidden";
+    new ResizeObserver(() => positionPanel()).observe(panel);
     panel.innerHTML = `
       <div class="swb-head">
         <span class="swb-head-icon">${ICON.fab}</span>
@@ -355,9 +358,21 @@ const SWB_UI = (() => {
     if (tip) tip.classList.remove("show");
   }
 
+  // 패널 위치: 기본은 플로팅 버튼 왼쪽 중앙(화면 75vh), 하단이 넘치면 위로 이동
+  function positionPanel() {
+    const panel = shadow.querySelector(".swb-panel");
+    if (!panel || panel.classList.contains("hidden")) return;
+    const vh = window.innerHeight;
+    const h = panel.getBoundingClientRect().height;
+    const desired = vh * 0.75 - h / 2; // 아이콘 중앙 정렬
+    const maxTop = vh - h - 12;        // 브라우저 하단 12px 여유
+    panel.style.top = Math.max(12, Math.min(desired, maxTop)) + "px";
+  }
+
   function showPanel() {
     const panel = shadow.querySelector(".swb-panel");
     panel.classList.remove("hidden");
+    positionPanel();
   }
   function closePanel() {
     const panel = shadow.querySelector(".swb-panel");
@@ -381,6 +396,7 @@ const SWB_UI = (() => {
     const back = panel.querySelector(".swb-head-back");
     back.style.display = name === "trend" ? "none" : "block";
     panel.classList.remove("hidden");
+    positionPanel();
   }
 
   async function onMenuItem(key) {

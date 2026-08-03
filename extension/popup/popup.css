@@ -1,6 +1,11 @@
 /* 똑바 팝업 스타일 */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body {
+  height: 600px;
+  overflow-y: auto;
+}
+
 body {
   width: 320px;
   font-family: -apple-system, "Apple SD Gothic Neo", sans-serif;
