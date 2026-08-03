@@ -91,11 +91,12 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
         )
         db.add(product)
     else:
-        # v0.8.17: 이름은 실시간 요소(.product-title) 기반으로 항상 최신 유지 —
-        #          쿠팡 수량 옵션 변경 시 상품명이 "1개/2개/3개"로 바뀌는데
+        # v0.8.17: 상세 페이지 캡처(source=detail)의 실시간 이름(.product-title)은 항상
+        #          갱신 — 쿠팡 수량 옵션 변경 시 상품명이 "1개/2개/3개"로 바뀌는데
         #          최초 1회만 저장하면 팝업/추이/찜 목록에 옛 이름("1개")이 남는 문제
-        #          (og:title은 페이지 로드 시 고정 — 확장이 실시간 상품명을 전송)
-        if payload.name:
+        # v0.8.18: 카드 캡처(source=card, 검색/연관 카드의 짧은 이름)는 최초 1회만 —
+        #          카드 이름이 상세 페이지 이름을 덮어쓰는 회귀 방지 (네이버/올리브 포함)
+        if payload.name and (payload.source == "detail" or not product.name):
             product.name = payload.name
         if image:
             product.image = image

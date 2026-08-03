@@ -19,6 +19,7 @@ class ProductUpsertIn(BaseModel):
     url: str = Field(..., max_length=1024)
     name: str | None = None
     image: str | None = None
+    source: str | None = Field(None, max_length=16)  # detail(상세 페이지 실시간) | card(검색/연관 카드) — 이름 갱신 정책 분기
 
 
 class PriceUploadIn(BaseModel):

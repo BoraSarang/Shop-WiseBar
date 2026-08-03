@@ -87,6 +87,7 @@ async function captureProduct(tab) {
         url: target.url,
         name: data.title,
         image: data.image,
+        source: "detail",
       }),
     });
     await api(`/products/${encodeURIComponent(target.productID)}/prices`, {
@@ -124,6 +125,7 @@ async function uploadRelatedItems(items, label) {
           url: item.url,
           name: item.name,
           image: item.image,
+          source: "card",
         }),
       });
       if (item.price && item.price > 0) {
