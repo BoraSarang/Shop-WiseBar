@@ -25,13 +25,20 @@ const Extractor = {
 
     if (mall === "naver") {
       // 스마트스토어/브랜드: "상품 가격" 라벨 뒤 금액 / 카탈로그: body 첫 금액
-      const m1 = bodyText.match(/상품 가격[\s\S]{0,30}?([0-9,]+)원/);
-      price = m1 ? parseInt(m1[1].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(bodyText);
+      // v0.8.7: 정가 요소(취소선/deal-before)를 clone에서 제거 후 추출 —
+      //        판매가(9,000)와 정가(40,000)가 함께 렌더되어 번갈아 잡히던 진동 해결
+      const clone = document.body.cloneNode(true);
+      clone.querySelectorAll("del, s, strike, [class*='deal-before'], [class*='original-price']").forEach((el) => el.remove());
+      const clean = clone.innerText || "";
+      const m1 = clean.match(/상품 가격[\s\S]{0,30}?([0-9,]+)원/);
+      price = m1 ? parseInt(m1[1].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(clean);
     } else if (mall === "coupang") {
       // 쿠팡: ① data-price 속성 우선 (쿠팡이 실제 판매가에 부여하는 표준 속성 —
       //        정가/쿠폰가/사전구매 할인가가 여럿 노출되어 첫 % 매치가 진동하던 문제 해결)
-      //       ② "%" 다음 줄 금액 (옵션 반영) ③ 폴백 body 첫 금액
-      const attrEl = document.querySelector("span.total-price[data-price], strong.total-price[data-price], [data-price]");
+      //        v0.8.7: total-price(판매가 요소)로 한정 — 정가(예: 21,600원)도 data-price를
+      //        가지는 요소가 있어 일반 [data-price] 폴백이 정가를 잡던 문제 해결
+      //        ② "%" 다음 줄 금액 (옵션 반영) ③ 폴백 body 첫 금액
+      const attrEl = document.querySelector("span.total-price[data-price], strong.total-price[data-price], .total-price[data-price]");
       if (attrEl) {
         const ap = parseInt((attrEl.getAttribute("data-price") || "").replace(/[^0-9]/g, ""), 10);
         if (ap && ap >= 1000) price = ap;

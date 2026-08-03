@@ -1,6 +1,7 @@
 # 추천 라우터 — 최근 가격 하락 상품 (T-58, v0.7.2 할인율% 정렬)
 # 하락폭 = 기간 내 최신 포인트 vs 직전 포인트 차이
 # v0.7.3: N+1 제거 — 윈도우 함수(ROW_NUMBER + LAG) 단일 쿼리로 전환 (Neon 원격 왕복 59초 → 목표 <1초)
+# v0.8.7: 노이즈 필터 — drop 5% 미만(0.1%/0.0% 등 소폭 변동) 핫딜 제외
 # PLATFORM: server
 from datetime import datetime, timedelta, timezone
 
@@ -40,11 +41,12 @@ def get_recommendations(limit: int = 10, days: int = 7, db: Session = Depends(ge
             FROM ranked r
             JOIN products p ON p.id = r.product_id
             WHERE r.rn = 1 AND r.prev_price IS NOT NULL AND r.price < r.prev_price
+              AND (r.prev_price - r.price) * 100.0 / r.prev_price >= :min_drop
             ORDER BY (r.prev_price - r.price) * 100.0 / r.prev_price DESC
             LIMIT :limit
             """
         ),
-        {"cutoff": cutoff, "limit": limit},
+        {"cutoff": cutoff, "limit": limit, "min_drop": 5.0},
     ).mappings().all()
 
     return [
