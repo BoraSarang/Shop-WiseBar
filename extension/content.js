@@ -282,7 +282,7 @@ function addBadgeToCard(card, watch) {
 
 async function ensureWatchBadges() {
   const mall = MallParser.detectMall(window.location.href);
-  if (!mall || mall.kind !== "product") return; // 상품 페이지는 플로팅 패널이 처리
+  if (!mall || mall.kind !== "listing") return; // 목록/검색 페이지에서만 (상품 페이지는 플로팅 패널이 처리)
   let watches;
   try {
     const res = await chrome.runtime.sendMessage({ type: "WATCHES_GET" });
