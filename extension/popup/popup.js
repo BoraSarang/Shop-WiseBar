@@ -82,6 +82,7 @@ let currentWatched = false;
 async function loadCurrent() {
   const { tab, parsed } = await currentTabProduct();
   $("currentActions").classList.add("hidden");
+  $("currentPrice").textContent = "";
   if (!parsed) {
     $("currentName").textContent = "지원 상품 페이지를 열어주세요";
     return;
@@ -101,6 +102,9 @@ async function loadCurrent() {
     const product = await api(`/products/${encodeURIComponent(parsed.productID)}?device_id=${deviceId}`);
     if (product) {
       currentWatched = product.is_watched;
+      if (product.last_price != null) {
+        $("currentPrice").textContent = `${Number(product.last_price).toLocaleString()}원`;
+      }
     }
   } catch (e) {
     if (e.status !== 404) return;

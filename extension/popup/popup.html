@@ -8,6 +8,7 @@
 <body>
   <header>
     <h1>똑바</h1>
+    <span class="header-desc">찜한 상품 가격이 내려가면 알려드려요</span>
     <span id="status" class="status"></span>
   </header>
 
@@ -18,10 +19,14 @@
 
   <section id="current" class="current">
     <div class="current-head">
-      <span id="currentName" class="current-name">상품 페이지를 열면 자동으로 추적합니다</span>
-    </div>
-    <div id="currentActions" class="current-actions hidden">
-      <button id="watchBtn" class="btn btn-primary">찜하기</button>
+      <div class="current-info">
+        <span id="currentName" class="current-name">상품 페이지를 열면 자동으로 추적합니다</span>
+        <span id="currentPrice" class="current-price"></span>
+      </div>
+      <div id="currentActions" class="current-actions hidden">
+        <span class="current-hint">가격이 내려가면 알림으로 알려 드려요~</span>
+        <button id="watchBtn" class="btn btn-primary">찜하기</button>
+      </div>
     </div>
   </section>
 
