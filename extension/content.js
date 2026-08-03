@@ -282,7 +282,7 @@ function addBadgeToCard(card, watch) {
 
 async function ensureWatchBadges() {
   const mall = MallParser.detectMall(window.location.href);
-  if (!mall || mall.kind !== "listing") return; // 목록/검색 페이지에서만 (상품 페이지는 플로팅 패널이 처리)
+  if (!mall) return;
   let watches;
   try {
     const res = await chrome.runtime.sendMessage({ type: "WATCHES_GET" });
@@ -295,18 +295,41 @@ async function ensureWatchBadges() {
   watchedMap = new Map(watches.map((w) => [w.product_id, w]));
   if (!watchedSet.size) return;
 
-  const anchors = document.querySelectorAll("a[href]");
-  for (const a of anchors) {
-    let parsed;
-    try {
-      parsed = MallParser.parse(a.href);
-    } catch {
-      continue;
+  if (mall.kind === "listing") {
+    // 목록/검색 페이지: 찜 상품 카드마다 배지
+    const anchors = document.querySelectorAll("a[href]");
+    for (const a of anchors) {
+      let parsed;
+      try {
+        parsed = MallParser.parse(a.href);
+      } catch {
+        continue;
+      }
+      if (!parsed || !watchedSet.has(parsed.productID)) continue;
+      addBadgeToCard(findCard(a), watchedMap.get(parsed.productID));
     }
-    if (!parsed || !watchedSet.has(parsed.productID)) continue;
-    addBadgeToCard(findCard(a), watchedMap.get(parsed.productID));
+  } else {
+    // 상품 상세 페이지 (v0.8.5): 현재 상품이 찜이면 메인 이미지에 배지
+    const parsed = MallParser.parse(window.location.href);
+    if (!parsed || !watchedSet.has(parsed.productID)) return;
+    const imgs = [...document.querySelectorAll("img")]
+      .filter((i) => {
+        const r = i.getBoundingClientRect();
+        return r.width >= 200 && r.height >= 200 && !!i.src;
+      })
+      .sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width);
+    const main = imgs[0];
+    if (main) addBadgeToCard(main.closest("div") || main.parentElement, watchedMap.get(parsed.productID));
   }
 }
+
+// 상품 페이지 로드/렌더 지연 대비 재시도 (lazy 이미지 로드 후 메인 이미지 확정)
+function initWatchBadges() {
+  setTimeout(ensureWatchBadges, 400);
+  setTimeout(ensureWatchBadges, 1600);
+  setTimeout(ensureWatchBadges, 4000);
+}
+initWatchBadges();
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (!msg) return;
