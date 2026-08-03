@@ -1,7 +1,7 @@
 // popup.js — 찜 목록 + 현재 상품 찜/목표가 + 가격 추이 그래프
 // PLATFORM: extension
 
-const CONFIG = { server: "http://127.0.0.1:8000", api: "/api/v1" };
+const CONFIG = SWB_CONFIG; // common.js 공용 (서버 주소 단일 관리)
 
 const $ = (id) => document.getElementById(id);
 

@@ -4,8 +4,7 @@
 importScripts("common.js");
 
 const CONFIG = {
-  server: "http://127.0.0.1:8000",
-  api: "/api/v1",
+  ...SWB_CONFIG,
   captureCooldownMs: 10 * 60 * 1000, // 동일 상품 재수집 쿨다운 (10분)
   alertPollMinutes: 5, // 알림 폴링 주기
 };
