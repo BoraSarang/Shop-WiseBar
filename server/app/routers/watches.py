@@ -66,6 +66,7 @@ def list_watches(device_id: str, db: Session = Depends(get_db)) -> list[WatchOut
                 url=p.url if p else None,
                 image=p.image if p else None,
                 last_price=p.last_price if p else None,
+                last_checked_at=p.last_checked_at if p else None,
                 created_at=w.created_at,
             )
         )

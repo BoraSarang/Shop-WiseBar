@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -11,6 +11,20 @@ from app.models import Device, PricePoint, Product, Watch
 from app.schemas import PricePointOut, PriceUploadIn, ProductOut, ProductUpsertIn
 
 router = APIRouter(tags=["products"])
+
+
+def _product_stats(db: Session, product_id: str) -> tuple[int | None, int | None, int, int]:
+    """가격 통계 (전 기록 기준) + 추적 기기 수 — 인기/최저가 배지 지표"""
+    min_price = db.scalar(select(func.min(PricePoint.price)).where(PricePoint.product_id == product_id))
+    avg_price = db.scalar(select(func.avg(PricePoint.price)).where(PricePoint.product_id == product_id))
+    price_count = db.scalar(select(func.count(PricePoint.id)).where(PricePoint.product_id == product_id))
+    watch_count = db.scalar(select(func.count(Watch.id)).where(Watch.product_id == product_id))
+    return (
+        int(min_price) if min_price is not None else None,
+        round(float(avg_price)) if avg_price is not None else None,
+        price_count or 0,
+        watch_count or 0,
+    )
 
 
 def _product_out(product: Product, db: Session, device_id: str | None = None) -> ProductOut:
@@ -21,6 +35,7 @@ def _product_out(product: Product, db: Session, device_id: str | None = None) ->
         )
         if watch:
             is_watched = True
+    min_price, avg_price, price_count, watch_count = _product_stats(db, product.id)
     return ProductOut(
         product_id=product.id,
         mall=product.mall,
@@ -30,6 +45,10 @@ def _product_out(product: Product, db: Session, device_id: str | None = None) ->
         last_price=product.last_price,
         last_checked_at=product.last_checked_at,
         is_watched=is_watched,
+        min_price=min_price,
+        avg_price=avg_price,
+        price_count=price_count,
+        watch_count=watch_count,
     )
 
 

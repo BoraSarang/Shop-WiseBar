@@ -146,12 +146,14 @@ async function pollAlerts() {
 
   for (const alert of alerts) {
     const notificationId = `swb-${Date.now()}-${alert.product_id}`;
-    const title = "가격이 내려갔습니다";
-    const message = `${alert.product_id} · ${Number(alert.price).toLocaleString()}원${
-      alert.previous_price != null
-        ? ` (기존 ${Number(alert.previous_price).toLocaleString()}원)`
-        : ""
-    }`;
+    const pct =
+      alert.previous_price != null && alert.previous_price > 0
+        ? Math.round(((alert.previous_price - alert.price) / alert.previous_price) * 100)
+        : null;
+    const title = pct != null ? `가격 ${pct}% 내려갔습니다!` : "가격이 내려갔습니다";
+    const message = `${Number(alert.price).toLocaleString()}원${
+      pct != null ? ` (-${pct}%)` : ""
+    }${alert.previous_price != null ? ` · 기존 ${Number(alert.previous_price).toLocaleString()}원` : ""}`;
     await chrome.storage.session.set({ [`nid:${notificationId}`]: alert.product_id });
     chrome.notifications.create(notificationId, {
       type: "basic",

@@ -12,6 +12,7 @@ const SWB_UI = (() => {
   let rangeDays = 7;
   let pointsCache = [];
   let nowPriceCache = null;
+  let serverStatsCache = null;
 
   const CSS = `
     :host { all: initial; }
@@ -122,6 +123,13 @@ const SWB_UI = (() => {
     .swb-xaxis { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 2px; }
     .swb-stats { display: flex; gap: 12px; margin-top: 8px; font-size: 11px; color: #888; }
     .swb-stats b { color: #333; }
+    .swb-deal {
+      display: inline-block; margin: 8px 0 0; padding: 3px 8px; border-radius: 8px;
+      font-size: 11px; font-weight: 800; color: #fff; background: #2d4ae0;
+    }
+    .swb-deal.hot { background: #e5484d; }
+    .swb-deal.warn { background: #8a8f98; }
+    .swb-deal.hidden { display: none; }
     .swb-foot { padding: 8px 14px 12px; font-size: 11px; color: #aaa; }
     .swb-list { padding: 6px 14px 12px; max-height: 380px; overflow-y: auto; }
     .swb-li {
@@ -152,6 +160,11 @@ const SWB_UI = (() => {
     .swb-li-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .swb-li-name { font-size: 12px; color: #333; line-height: 1.35; max-height: 2.6em; overflow: hidden; }
     .swb-li-price { font-size: 12px; font-weight: 700; color: #2d4ae0; }
+    .swb-li-check { font-size: 10px; color: #aaa; }
+    .swb-li-check.stale {
+      align-self: flex-start; color: #e5484d; background: #fff3f2;
+      border-radius: 8px; padding: 1px 8px; font-weight: 700;
+    }
     .swb-li-del { background: none; border: none; color: #ccc; font-size: 14px; cursor: pointer; padding: 4px; }
     .swb-li-del:hover { color: #e5484d; }
     .swb-confirm {
@@ -260,8 +273,9 @@ const SWB_UI = (() => {
             <span>최고가 <b class="st-max">—</b></span>
             <span>기록 <b class="st-count">—</b>일</span>
           </div>
+          <span class="swb-deal hidden"></span>
         </div>
-        <div class="swb-foot">똑바 · 가격은 상품 페이지를 볼 때마다 자동 기록됩니다</div>
+        <div class="swb-foot">똑바 · 최저가를 놓치지 마세요</div>
       </div>
       <div class="swb-view swb-view-list">
         <div class="swb-list"></div>
@@ -479,6 +493,12 @@ const SWB_UI = (() => {
       if (product) {
         if (!nowPriceCache && product.last_price) nowPriceCache = Number(product.last_price);
         if (product.is_watched) currentWatched = true;
+        serverStatsCache = {
+          min_price: product.min_price,
+          avg_price: product.avg_price,
+          price_count: product.price_count,
+          watch_count: product.watch_count,
+        };
       }
     } catch {
       serverError = true;
@@ -575,6 +595,8 @@ const SWB_UI = (() => {
     }
     stCount.textContent = String(recordDays);
 
+    renderDealBadge(panel, nowPrice);
+
     bodyEl.querySelectorAll(".swb-error").forEach((el) => el.remove());
     if (serverError) {
       const err = document.createElement("div");
@@ -582,6 +604,57 @@ const SWB_UI = (() => {
       err.textContent = "서버 이력을 불러오지 못했습니다 (E-EXT-NET-1001)";
       bodyEl.appendChild(err);
     }
+  }
+
+  // '지금 사도 돼' 배지 — 서버 전체 통계(역대 최저/평균)와 현재가 비교 (v0.4)
+  // 기록 3개 미만은 평균 비교가 무의미 → '기록 N개 · 데이터 쌓이는 중' 안내 (오탐 방지)
+  function renderDealBadge(panel, nowPrice) {
+    const deal = panel.querySelector(".swb-deal");
+    if (!deal) return;
+    deal.classList.add("hidden");
+    deal.className = "swb-deal hidden";
+    if (!nowPrice || !serverStatsCache || serverStatsCache.avg_price == null) return;
+
+    if (serverStatsCache.price_count != null && serverStatsCache.price_count < 3) {
+      deal.className = "swb-deal warn";
+      deal.textContent = `기록 ${serverStatsCache.price_count}개 · 데이터 쌓이는 중`;
+      deal.classList.remove("hidden");
+      return;
+    }
+
+    const cur = Number(nowPrice);
+    const min = serverStatsCache.min_price != null ? Number(serverStatsCache.min_price) : null;
+    const avg = Number(serverStatsCache.avg_price);
+
+    if (min != null && cur <= min) {
+      deal.className = "swb-deal";
+      deal.textContent = "역대 최저가 🎉";
+    } else if (cur < avg) {
+      const pct = (((avg - cur) / avg) * 100).toFixed(1);
+      deal.className = "swb-deal hot";
+      deal.textContent = `평균보다 ${pct}% 저렴 🔥`;
+    } else if (cur > avg) {
+      const pct = (((cur - avg) / avg) * 100).toFixed(1);
+      deal.className = "swb-deal warn";
+      deal.textContent = `평균보다 ${pct}% 비쌈`;
+    } else {
+      deal.className = "swb-deal";
+      deal.textContent = "평균 가격 수준";
+    }
+    deal.classList.remove("hidden");
+  }
+
+  // 가격 정보 갱신 배지 — 마지막 캡처로부터 오래될수록 확인 권유 (v0.4 방문 유도)
+  function staleCheckLabel(lastCheckedAt, opt = {}) {
+    if (!lastCheckedAt) return null;
+    const d = new Date(lastCheckedAt);
+    if (isNaN(d.getTime())) return null;
+    const DAY = 24 * 60 * 60 * 1000;
+    const diff = Date.now() - d.getTime();
+    if (diff < DAY) return null;
+    const days = Math.floor(diff / DAY);
+    const text = `확인 필요 · ${days}일 전`;
+    return days >= (opt.staleDays ?? 3) ? { text, stale: true } : null;
   }
 
   async function getDeviceId() {
@@ -630,6 +703,7 @@ const SWB_UI = (() => {
         <span class="swb-li-body">
           <span class="swb-li-name"></span>
           <span class="swb-li-price"></span>
+          <span class="swb-li-check"></span>
         </span>
         <button class="swb-li-del" title="삭제">✕</button>`;
       const badgeImg = m ? row.querySelector(".swb-li-badge img") : null;
@@ -642,6 +716,12 @@ const SWB_UI = (() => {
       row.querySelector(".swb-li-name").textContent = w.product_name || w.product_id;
       row.querySelector(".swb-li-price").textContent =
         w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";
+      const chk = staleCheckLabel(w.last_checked_at);
+      const chkEl = row.querySelector(".swb-li-check");
+      if (chk) {
+        chkEl.textContent = chk.text;
+        chkEl.classList.add("stale");
+      }
       row.querySelector(".swb-li-del").addEventListener("click", (e) => {
         e.stopPropagation();
         const label = (w.product_name || w.product_id).slice(0, 20);

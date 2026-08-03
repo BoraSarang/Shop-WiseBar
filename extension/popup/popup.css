@@ -79,6 +79,19 @@ header h1 { font-size: 15px; font-weight: 700; }
 
 .current-price { font-size: 12px; font-weight: 800; color: #2d4ae0; flex-shrink: 0; }
 
+.current-stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.deal-badge {
+  font-size: 10px; font-weight: 800; color: #fff;
+  background: #2d4ae0; border-radius: 10px; padding: 2px 8px;
+  white-space: nowrap;
+}
+.deal-badge.hot { background: #e5484d; }
+.deal-badge.low { background: #2d4ae0; }
+.deal-badge.warn { background: #8a8f98; }
+
+.stats-text { font-size: 11px; color: #888; }
+
 .current-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
 
 .current-hint {
@@ -156,6 +169,15 @@ header h1 { font-size: 15px; font-weight: 700; }
 }
 
 .watch-price { font-size: 13px; font-weight: 700; margin-top: 2px; }
+
+.watch-check { font-size: 11px; color: #aaa; }
+.watch-check.stale {
+  color: #e5484d; background: #fff3f2;
+  border-radius: 8px; padding: 1px 8px; font-weight: 700;
+  align-self: flex-start;
+}
+.watch-item.stale-row { background: #fffdfd; }
+.watch-item.stale-row:hover { background: #f7f8fa; }
 
 .watch-unwatch {
   border: none; background: none;

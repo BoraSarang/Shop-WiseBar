@@ -36,6 +36,11 @@ class ProductOut(BaseModel):
     last_price: int | None
     last_checked_at: datetime | None
     is_watched: bool = False
+    # v0.4 — 가격 통계 (전체 기록 기준, 클라이언트는 '지금 사도 돼' 배지 등에 사용)
+    min_price: int | None = None
+    avg_price: int | None = None
+    price_count: int = 0
+    watch_count: int = 0  # 이 상품을 추적 중인 기기 수 (계정 규모 지표)
 
 
 class PricePointOut(BaseModel):
@@ -56,6 +61,7 @@ class WatchOut(BaseModel):
     url: str | None = None
     image: str | None = None
     last_price: int | None = None
+    last_checked_at: datetime | None = None  # 마지막 캡처 시각 — 방문 유도 배지용 (v0.4)
     created_at: datetime
 
 

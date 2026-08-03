@@ -39,6 +39,14 @@
 - [ ] 테스트 기록 docs/tests/v0.3_extension.md
 - [ ] CHANGELOG/TODO 갱신 + 커밋
 
+## Phase 6 — 가격 통계·방문 유도 (T-65 — v0.4.0 완료 2026-08-03)
+- [x] 서버: ProductOut 통계 (min/avg/count/watch_count) + WatchOut last_checked_at
+- [x] 팝업: '역대 최저가'/'평균보다 저렴' 배지 + 통계 라인
+- [x] 플로팅 패널: 통계 배지
+- [x] 알림: 할인율 % 강조
+- [x] 찜 목록: 3일 미갱신 '확인 필요' 배지 (방문 캡처 유도)
+- [ ] 실기기 검증 (TC-10 추가 예정)
+
 ## 테스트 계획 (TC 번호)
 
 | TC | 내용 | 디바이스 |

@@ -90,6 +90,8 @@ async function loadCurrent() {
   const { tab, parsed } = await currentTabProduct();
   $("currentActions").classList.add("hidden");
   $("currentPrice").textContent = "";
+  $("dealBadge").classList.add("hidden");
+  $("currentStats").textContent = "";
   if (!parsed) {
     $("currentName").textContent = "지원 상품 페이지를 열어주세요";
     return;
@@ -112,6 +114,7 @@ async function loadCurrent() {
       if (product.last_price != null) {
         $("currentPrice").textContent = `${Number(product.last_price).toLocaleString()}원`;
       }
+      renderStats(product);
     }
   } catch (e) {
     if (e.status !== 404) return;
@@ -122,8 +125,63 @@ async function loadCurrent() {
   updateWatchBtn();
 }
 
+// 지금 사도 돼 배지 + 최저가/평균가/추적자 수 (서버 통계 기반, v0.4)
+// 3상태: 역대 최저가 / 평균보다 저렴 / 평균보다 비쌈 (항상 표시)
+function renderStats(product) {
+  const badge = $("dealBadge");
+  const stats = $("currentStats");
+  const parts = [];
+  if (product.avg_price != null) parts.push(`평균 ${Number(product.avg_price).toLocaleString()}원`);
+  if (product.min_price != null) parts.push(`최저 ${Number(product.min_price).toLocaleString()}원`);
+  if (product.watch_count != null) parts.push(`${product.watch_count}명 추적`);
+  stats.textContent = parts.join(" · ");
+
+  const cur = product.last_price;
+  if (cur == null || product.avg_price == null) return;
+  badge.classList.remove("hidden");
+  if (product.price_count != null && product.price_count < 3) {
+    badge.textContent = `기록 ${product.price_count}개 · 데이터 쌓이는 중`;
+    badge.className = "deal-badge warn";
+    return;
+  }
+  const curNum = Number(cur);
+  const avg = Number(product.avg_price);
+  const min = product.min_price != null ? Number(product.min_price) : null;
+  if (min != null && curNum <= min) {
+    badge.textContent = "역대 최저가";
+    badge.className = "deal-badge low";
+  } else if (curNum < avg) {
+    const pct = (((avg - curNum) / avg) * 100).toFixed(1);
+    badge.textContent = `평균보다 ${pct}% 저렴`;
+    badge.className = "deal-badge hot";
+  } else if (curNum > avg) {
+    const pct = (((curNum - avg) / avg) * 100).toFixed(1);
+    badge.textContent = `평균보다 ${pct}% 비쌈`;
+    badge.className = "deal-badge warn";
+  } else {
+    badge.textContent = "평균 가격 수준";
+    badge.className = "deal-badge low";
+  }
+}
+
 function mallLabel(mall) {
   return { naver: "네이버", coupang: "쿠팡", oliveyoung: "올리브영" }[mall] || mall;
+}
+
+// 가격 정보 갱신 배지 — 마지막 캡처로부터 오래될수록 확인 권유 (v0.4 방문 유도)
+function staleCheckLabel(lastCheckedAt, opt = {}) {
+  const DAY = 24 * 60 * 60 * 1000;
+  if (!lastCheckedAt) return null;
+  const d = new Date(lastCheckedAt);
+  if (isNaN(d.getTime())) return null;
+  const diff = Date.now() - d.getTime();
+  if (diff < 24 * 60 * 60 * 1000) return null; // 하루 이내는 갱신 표시 생략
+  const days = Math.floor(diff / DAY);
+  const label = days === 0 ? "오늘" : `${days}일 전`;
+  if (days >= (opt.staleDays ?? 3)) {
+    return { text: `확인 필요 · ${label}`, stale: true };
+  }
+  return null;
 }
 
 async function fetchProductName(productId) {
@@ -210,6 +268,7 @@ async function loadList() {
       <span class="watch-body">
         <span class="watch-name"></span>
         <span class="watch-price"></span>
+        <span class="watch-check"></span>
       </span>
       <button class="watch-unwatch" title="찜 삭제">✕</button>`;
     const badgeImg = m ? li.querySelector(".watch-badge img") : null;
@@ -222,6 +281,13 @@ async function loadList() {
     li.querySelector(".watch-name").textContent = w.product_name || w.product_id;
     li.querySelector(".watch-price").textContent =
       w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";
+    const checkEl = li.querySelector(".watch-check");
+    const stale = staleCheckLabel(w.last_checked_at);
+    if (stale) {
+      checkEl.textContent = stale.text;
+      checkEl.classList.add("stale");
+      li.classList.add("stale-row");
+    }
     li.querySelector(".watch-unwatch").addEventListener("click", (e) => {
       e.stopPropagation();
       const label = (w.product_name || w.product_id).slice(0, 20);
