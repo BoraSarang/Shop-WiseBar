@@ -1,5 +1,13 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.7.1 (2026-08-03) — [extension] Render 콜드스타트 대응 (공용 API 모듈)
+
+- **문제**: Render 무료 티어는 15분 무요청 시 스핀다운 — 다음 요청이 30~60초 걸려 팝업/찜/가격 추이에서 `E-EXT-NET-1001` 발생 (브라우저가 켜진 동안엔 5분 폴링이 서버를 유지하므로 1~2초 지연은 정상)
+- **공용 API 모듈**: `common.js`에 `SWB_API(path, options)` 추가 — fetch 타임아웃 45초(AbortController) + GET 전용 콜드스타트 재시도 2회(3초 간격) + 404 특수 처리 (`NOT_FOUND` 에러 유지)
+- **중복 제거**: popup.js / background.js / swb-ui.js의 개별 `api()`/직접 fetch 전부 `SWB_API`로 통합 (직접 fetch 0건)
+- **로딩 UX**: 팝업 초기화 중 "불러오는 중…" 표시 (찜 목록 로딩은 기존 유지)
+- 버전 0.7.1 — Chrome에서 확장 리로드 필요
+
 ## v0.7.0 (2026-08-03) — [server] [extension] 클라우드 전환 (Render + Neon)
 
 - **서버 이전**: 로컬 uvicorn(SQLite) → **Render 무료 웹서비스 + Neon 무료 Postgres 18**

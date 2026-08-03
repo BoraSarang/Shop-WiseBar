@@ -435,14 +435,9 @@ const SWB_UI = (() => {
   async function refreshWatchState() {
     if (!currentParsed) return;
     try {
-      const base = `${SWB_CONFIG.server}${SWB_CONFIG.api}`;
       const deviceId = await getDeviceId();
       if (!deviceId) return;
-      const res = await fetch(
-        `${base}/products/${encodeURIComponent(currentParsed.productID)}?device_id=${encodeURIComponent(deviceId)}`
-      );
-      if (!res.ok) return;
-      const p = await res.json();
+      const p = await SWB_API(`/products/${encodeURIComponent(currentParsed.productID)}?device_id=${encodeURIComponent(deviceId)}`);
       currentWatched = !!p.is_watched;
       updateWatchBtn();
     } catch {
@@ -459,13 +454,12 @@ const SWB_UI = (() => {
       return;
     }
     const pid = encodeURIComponent(currentParsed.productID);
-    const base = `${SWB_CONFIG.server}${SWB_CONFIG.api}`;
     try {
       if (currentWatched) {
-        await fetch(`${base}/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, { method: "DELETE" });
+        await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, { method: "DELETE" });
         currentWatched = false;
       } else {
-        await fetch(`${base}/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, {
+        await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
@@ -499,11 +493,10 @@ const SWB_UI = (() => {
     currentWatched = false;
     updateWatchBtn();
     try {
-      const base = `${SWB_CONFIG.server}${SWB_CONFIG.api}`;
       const deviceId = await getDeviceId();
       const [product, points] = await Promise.all([
-        fetch(`${base}/products/${pid}${deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : ""}`).then((r) => (r.ok ? r.json() : null)),
-        fetch(`${base}/products/${pid}/prices?limit=200`).then((r) => (r.ok ? r.json() : [])),
+        SWB_API(`/products/${pid}${deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : ""}`).catch(() => null),
+        SWB_API(`/products/${pid}/prices?limit=200`).catch(() => []),
       ]);
       pointsCache = points || [];
       if (product) {
@@ -688,10 +681,7 @@ const SWB_UI = (() => {
     listEl.innerHTML = `<div class="swb-loading">불러오는 중…</div>`;
     let watches = [];
     try {
-      const base = `${SWB_CONFIG.server}${SWB_CONFIG.api}`;
-      const res = await fetch(`${base}/devices/${encodeURIComponent(deviceId)}/watches`);
-      if (!res.ok) throw new Error("http " + res.status);
-      watches = await res.json();
+      watches = await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches`);
     } catch {
       listEl.innerHTML = `<div class="swb-error">서버에 연결할 수 없습니다 (E-EXT-NET-1001)</div>`;
       return;
@@ -782,8 +772,7 @@ const SWB_UI = (() => {
 
   async function deleteWatch(deviceId, productId) {
     try {
-      const base = `${SWB_CONFIG.server}${SWB_CONFIG.api}`;
-      await fetch(`${base}/devices/${encodeURIComponent(deviceId)}/watches/${encodeURIComponent(productId)}`, {
+      await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches/${encodeURIComponent(productId)}`, {
         method: "DELETE",
       });
     } catch {

@@ -4,7 +4,38 @@
 const SWB_CONFIG = {
   server: "https://shop-wisebar.onrender.com", // v0.7.0 — Render + Neon (클라우드)
   api: "/api/v1",
+  requestTimeoutMs: 45000, // Render 무료 티어 콜드스타트(30~60s) 대기
+  coldStartRetry: 2, // 콜드스타트 대기 재시도 횟수 (GET에만 적용 — 중복 저장 방지)
 };
+
+// 공용 API — 타임아웃 + 콜드스타트 자동 재시도 (v0.7.1)
+async function SWB_API(path, options = {}) {
+  const url = `${SWB_CONFIG.server}${SWB_CONFIG.api}${path}`;
+  const method = (options.method || "GET").toUpperCase();
+  const maxAttempts = method === "GET" ? SWB_CONFIG.coldStartRetry + 1 : 1;
+  let lastErr;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), SWB_CONFIG.requestTimeoutMs);
+    try {
+      const res = await fetch(url, {
+        ...options,
+        signal: ctrl.signal,
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      });
+      clearTimeout(timer);
+      if (res.status === 404) throw Object.assign(new Error("NOT_FOUND"), { status: 404 });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.status === 204 ? null : res.json();
+    } catch (e) {
+      clearTimeout(timer);
+      lastErr = e;
+      if (e && e.status === 404) throw e;
+      if (attempt < maxAttempts - 1) await new Promise((r) => setTimeout(r, 3000));
+    }
+  }
+  throw lastErr;
+}
 
 const MallParser = {
   // URL → { mall, productID, url } | null

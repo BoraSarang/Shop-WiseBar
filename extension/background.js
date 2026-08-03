@@ -10,18 +10,7 @@ const CONFIG = {
 };
 
 async function api(path, options = {}) {
-  const res = await fetch(`${CONFIG.server}${CONFIG.api}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-  });
-  if (!res.ok) {
-    let detail = null;
-    try {
-      detail = await res.json();
-    } catch {}
-    throw Object.assign(new Error(`HTTP ${res.status}`), { status: res.status, detail });
-  }
-  return res.status === 204 ? null : res.json();
+  return SWB_API(path, options);
 }
 
 // ── 기기ID ──────────────────────────────────────────────

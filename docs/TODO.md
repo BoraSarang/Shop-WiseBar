@@ -2,6 +2,14 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-69 — Render 콜드스타트 대응 (v0.7.1 — 완료)
+- [x] 원인 파악: Render 무료 티어 15분 스핀다운 → 다음 요청 30~60초 → E-EXT-NET-1001
+- [x] common.js에 `SWB_API` 공용 함수: 타임아웃 45초 + GET 콜드스타트 재시도 2회 + 404 특수 처리
+- [x] popup.js/background.js/swb-ui.js 직접 fetch 전부 SWB_API로 통합 (직접 fetch 0건)
+- [x] 팝업 초기화 로딩 표시 ("불러오는 중…")
+- [ ] 사용자 확장 리로드 후 실기기 확인 (Chrome/웨일 — 팝업·찜·추이·알림)
+- [ ] UptimeRobot 5분 핑 등록 시 콜드스타트 제거 확인 (사용자 계정 필요)
+
 ## T-68 — 가격 로우데이터 dedup + 일별 통계 (v0.6.0 — 완료)
 - [x] price_points: 가격 변동 시에만 INSERT (같은 가격 재방문은 로우 생성 없음)
 - [x] price_daily_stats 신규 테이블: 일별 open/close/low/high/point_count (UNIQUE product_id+stat_date)

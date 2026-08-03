@@ -6,13 +6,7 @@ const CONFIG = SWB_CONFIG; // common.js 공용 (서버 주소 단일 관리)
 const $ = (id) => document.getElementById(id);
 
 async function api(path, options = {}) {
-  const res = await fetch(`${CONFIG.server}${CONFIG.api}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-  });
-  if (res.status === 404) throw Object.assign(new Error("NOT_FOUND"), { status: 404 });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.status === 204 ? null : res.json();
+  return SWB_API(path, options);
 }
 
 async function getDeviceId() {
@@ -336,9 +330,11 @@ function setStatus(text) {
 }
 
 (async function init() {
+  $("status").textContent = "불러오는 중…";
   try {
     await loadCurrent();
   } catch {}
   await loadHistory();
   await loadList();
+  $("status").textContent = "";
 })();
