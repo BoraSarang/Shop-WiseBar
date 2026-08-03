@@ -2,6 +2,14 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-67 — 연관 상품 자동 수집 (v0.5 — Phase 1 진행)
+- [x] content.js: EXTRACT_RELATED — 상품 페이지 연관 섹션 카드 추출 (MallParser 규약 재사용, 가격 없어도 등록)
+- [x] background.js: captureRelated — 연관 상품 upsert + 가격 업로드 (10개 제한, 메인 캡처 쿨다운 공유)
+- [x] 스크롤 수집 보정: 자동 스크롤 제거 → 사용자 스크롤 시 새로 로드된 카드만 재수집 (RELATED_FOUND, 600ms 디바운스, 이중 중복 방지)
+- [ ] 실기기 실측: 쿠팡/네이버/올리브영 상품 페이지 각 1회 — 초기 수집 + 스크롤 수집 확인 — 사용자 확인 필요
+- [ ] Phase 2: 목록/검색 페이지 캡처 (쿠팡 검색 결과, 네이버 쇼핑 등)
+- [ ] Phase 3: product_relations 관계 그래프 저장 (추천/핫딜 기반)
+
 ## T-65 — 가격 통계·추적자·방문 유도 (v0.4.0 — 완료)
 - [x] 서버: ProductOut에 min_price/avg_price/price_count/watch_count 추가 (전 기록 집계)
 - [x] 서버: WatchOut에 last_checked_at 추가
