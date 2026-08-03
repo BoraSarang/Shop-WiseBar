@@ -32,6 +32,6 @@ def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health() -> dict:
     return {"status": "ok", "version": "0.2.0"}
