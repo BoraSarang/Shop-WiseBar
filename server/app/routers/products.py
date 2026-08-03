@@ -53,6 +53,17 @@ def _product_out(product: Product, db: Session, device_id: str | None = None) ->
     )
 
 
+@router.get("/products", response_model=list[ProductOut])
+def list_products(limit: int = 30, db: Session = Depends(get_db)) -> list[ProductOut]:
+    """최근 수집 순 상품 목록 (관리/검증용)"""
+    products = db.scalars(
+        select(Product)
+        .order_by(Product.created_at.desc(), Product.id.desc())
+        .limit(limit)
+    ).all()
+    return [_product_out(p, db) for p in products]
+
+
 @router.get("/products/{product_id}", response_model=ProductOut)
 def get_product(product_id: str, device_id: str | None = None, db: Session = Depends(get_db)) -> ProductOut:
     """브라우저 캐치 → 서버 조회 (관심 여부 포함). 없으면 404 — 클라이언트가 등록 요청"""
