@@ -80,7 +80,7 @@ header h1 { font-size: 15px; font-weight: 700; }
 
 .deal-day-btn.active { background: #2d4ae0; color: #fff; border-color: #2d4ae0; }
 
-.deal-list { list-style: none; }
+.deal-list { list-style: none; max-height: 168px; overflow-y: auto; } /* v0.7.6 — 넘치면 내부 스크롤 (찜 목록 공간 확보) */
 
 .deal-item {
   display: flex; align-items: center; gap: 8px;
