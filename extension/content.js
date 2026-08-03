@@ -281,7 +281,7 @@ function positionBadges() {
     // 카드 경계 밖(위 카드 위)으로는 벗어나지 않음
     const img = card.querySelector("img");
     const ir = img ? img.getBoundingClientRect() : null;
-    const top = ir && ir.height ? ir.top + 8 : r.top + 12;
+    const top = ir && ir.height ? ir.top + 4 : r.top + 12;
     el.style.left = `${r.right - 12}px`;
     el.style.top = `${top}px`;
     el.style.transform = "translateX(-100%)";
