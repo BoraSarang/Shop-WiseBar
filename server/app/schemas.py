@@ -35,7 +35,6 @@ class ProductOut(BaseModel):
     last_price: int | None
     last_checked_at: datetime | None
     is_watched: bool = False
-    target_price: int | None = None
 
 
 class PricePointOut(BaseModel):
@@ -45,7 +44,7 @@ class PricePointOut(BaseModel):
 
 
 class WatchIn(BaseModel):
-    target_price: int | None = Field(None, gt=0)
+    pass
 
 
 class WatchOut(BaseModel):
@@ -55,13 +54,12 @@ class WatchOut(BaseModel):
     url: str | None = None
     image: str | None = None
     last_price: int | None = None
-    target_price: int | None
     created_at: datetime
 
 
 class AlertOut(BaseModel):
     product_id: str
-    alert_type: str  # price_dropped | target_reached
+    alert_type: str  # price_dropped
     price: int
     previous_price: int | None
     captured_at: datetime
@@ -69,7 +67,7 @@ class AlertOut(BaseModel):
 
 class AlertRecordIn(BaseModel):
     product_id: str
-    alert_type: str  # price_dropped | target_reached
+    alert_type: str  # price_dropped
     price: int = Field(..., gt=0)
     previous_price: int | None = None
 

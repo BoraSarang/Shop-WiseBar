@@ -144,8 +144,7 @@ async function pollAlerts() {
 
   for (const alert of alerts) {
     const notificationId = `swb-${Date.now()}-${alert.product_id}`;
-    const title =
-      alert.alert_type === "target_reached" ? "목표가에 도달했습니다" : "가격이 내려갔습니다";
+    const title = "가격이 내려갔습니다";
     const message = `${alert.product_id} · ${Number(alert.price).toLocaleString()}원${
       alert.previous_price != null
         ? ` (기존 ${Number(alert.previous_price).toLocaleString()}원)`

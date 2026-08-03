@@ -1,4 +1,4 @@
-// popup.js — 찜 목록 + 현재 상품 찜/목표가 + 가격 추이 그래프
+// popup.js — 알림 내역 + 현재 상품 찜 + 찜 목록
 // PLATFORM: extension
 
 const CONFIG = SWB_CONFIG; // common.js 공용 (서버 주소 단일 관리)
@@ -43,10 +43,9 @@ async function loadHistory() {
   listEl.innerHTML = "";
   if (!alerts.length) {
     listEl.innerHTML =
-      '<li class="alert-empty">알림 내역이 없습니다.<br>가격이 내려가거나 목표가에 도달하면 여기에 표시됩니다.</li>';
+      '<li class="alert-empty">알림 내역이 없습니다.<br>찜한 상품의 가격이 내려가면 여기에 표시됩니다.</li>';
   } else {
     for (const a of alerts) {
-      const dropped = a.alert_type === "price_dropped";
       const d = new Date(a.created_at);
       const ts = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
       const li = document.createElement("li");
@@ -54,7 +53,7 @@ async function loadHistory() {
       const m = mallMeta[a.mall] || null;
       li.innerHTML = `
         <span class="alert-thumb"${a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : ""}>${a.image ? "" : (m ? m.label.slice(0, 1) : "?")}${m ? `<em class="watch-badge ${m.cls}">${m.label}</em>` : ""}</span>
-        <span class="alert-badge ${dropped ? "drop" : "target"}">${dropped ? "▼ 하락" : "목표가 도달"}</span>
+        <span class="alert-badge drop">▼ 하락</span>
         <span class="alert-body">
           <span class="alert-name"></span>
           <span class="alert-meta"></span>
@@ -89,7 +88,6 @@ async function loadCurrent() {
   }
   current = parsed;
   currentWatched = false;
-  current.targetPrice = null;
 
   // 현재 탭에서 직접 추출 (og:title 등)
   let liveTitle = null;
@@ -103,7 +101,6 @@ async function loadCurrent() {
     const product = await api(`/products/${encodeURIComponent(parsed.productID)}?device_id=${deviceId}`);
     if (product) {
       currentWatched = product.is_watched;
-      current.targetPrice = product.target_price;
     }
   } catch (e) {
     if (e.status !== 404) return;
@@ -111,7 +108,6 @@ async function loadCurrent() {
   $("currentName").textContent =
     liveTitle || (await fetchProductName(parsed.productID)) || `${mallLabel(parsed.mall)} 상품`;
   $("currentActions").classList.remove("hidden");
-  $("targetInput").value = current.targetPrice || "";
   updateWatchBtn();
 }
 
@@ -148,12 +144,10 @@ $("watchBtn").addEventListener("click", async () => {
         method: "DELETE",
       });
       currentWatched = false;
-      $("targetInput").value = "";
     } else {
-      const target = parseInt($("targetInput").value, 10) || null;
       await api(`/devices/${deviceId}/watches/${encodeURIComponent(current.productID)}`, {
         method: "PUT",
-        body: JSON.stringify({ target_price: target }),
+        body: JSON.stringify({}),
       });
       currentWatched = true;
     }
@@ -161,22 +155,6 @@ $("watchBtn").addEventListener("click", async () => {
     loadList();
   } catch (e) {
     setStatus("저장 실패 — 서버 연결 확인");
-  }
-});
-
-$("targetInput").addEventListener("change", async () => {
-  if (!currentWatched || !current) return;
-  const deviceId = await getDeviceId();
-  const target = parseInt($("targetInput").value, 10) || null;
-  try {
-    await api(`/devices/${deviceId}/watches/${encodeURIComponent(current.productID)}`, {
-      method: "PUT",
-      body: JSON.stringify({ target_price: target }),
-    });
-    setStatus("목표가 저장됨");
-    loadList();
-  } catch {
-    setStatus("저장 실패");
   }
 });
 
@@ -217,15 +195,11 @@ async function loadList() {
       <span class="watch-body">
         <span class="watch-name"></span>
         <span class="watch-price"></span>
-        <span class="watch-target"></span>
       </span>
       <button class="watch-unwatch" title="찜 삭제">✕</button>`;
     li.querySelector(".watch-name").textContent = w.product_name || w.product_id;
     li.querySelector(".watch-price").textContent =
       w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";
-    li.querySelector(".watch-target").textContent = w.target_price
-      ? `목표가 ${Number(w.target_price).toLocaleString()}원`
-      : "";
     li.querySelector(".watch-unwatch").addEventListener("click", (e) => {
       e.stopPropagation();
       const label = (w.product_name || w.product_id).slice(0, 20);

@@ -15,14 +15,12 @@ router = APIRouter(tags=["products"])
 
 def _product_out(product: Product, db: Session, device_id: str | None = None) -> ProductOut:
     is_watched = False
-    target_price = None
     if device_id:
         watch = db.scalar(
             select(Watch).where(Watch.device_id == device_id, Watch.product_id == product.id)
         )
         if watch:
             is_watched = True
-            target_price = watch.target_price
     return ProductOut(
         product_id=product.id,
         mall=product.mall,
@@ -32,7 +30,6 @@ def _product_out(product: Product, db: Session, device_id: str | None = None) ->
         last_price=product.last_price,
         last_checked_at=product.last_checked_at,
         is_watched=is_watched,
-        target_price=target_price,
     )
 
 

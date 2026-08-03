@@ -433,7 +433,7 @@ const SWB_UI = (() => {
         await fetch(`${base}/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ target_price: null }),
+          body: JSON.stringify({}),
         });
         currentWatched = true;
       }

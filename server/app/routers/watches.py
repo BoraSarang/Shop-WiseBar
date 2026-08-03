@@ -1,4 +1,4 @@
-# 관심 상품 라우터 — 관심 CRUD + 폴링 알림 (하락/목표가 도달 감지)
+# 관심 상품 라우터 — 관심 CRUD + 폴링 알림 (가격 하락 감지)
 # PLATFORM: server
 from datetime import datetime, timezone
 
@@ -22,19 +22,17 @@ def _get_device_or_404(db: Session, device_id: str) -> Device:
 
 @router.put("/devices/{device_id}/watches/{product_id}", response_model=WatchOut)
 def add_watch(device_id: str, product_id: str, payload: WatchIn, db: Session = Depends(get_db)) -> WatchOut:
-    """관심 상품 등록 (목표가 선택) — 추적 제안 배너의 '추적 시작'"""
+    """관심 상품 등록 — 추적 제안 배너의 '추적 시작'"""
     _get_device_or_404(db, device_id)
     if db.get(Product, product_id) is None:
         raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1001", "message": "상품을 찾을 수 없습니다"})
     watch = db.scalar(select(Watch).where(Watch.device_id == device_id, Watch.product_id == product_id))
     if watch is None:
-        watch = Watch(device_id=device_id, product_id=product_id, target_price=payload.target_price)
+        watch = Watch(device_id=device_id, product_id=product_id)
         db.add(watch)
-    else:
-        watch.target_price = payload.target_price
     db.commit()
     db.refresh(watch)
-    return WatchOut(product_id=watch.product_id, target_price=watch.target_price, created_at=watch.created_at)
+    return WatchOut(product_id=watch.product_id, created_at=watch.created_at)
 
 
 @router.delete("/devices/{device_id}/watches/{product_id}", status_code=204)
@@ -68,7 +66,6 @@ def list_watches(device_id: str, db: Session = Depends(get_db)) -> list[WatchOut
                 url=p.url if p else None,
                 image=p.image if p else None,
                 last_price=p.last_price if p else None,
-                target_price=w.target_price,
                 created_at=w.created_at,
             )
         )
@@ -151,7 +148,7 @@ def delete_alert(device_id: str, alert_id: int, db: Session = Depends(get_db)) -
 
 @router.get("/devices/{device_id}/alerts", response_model=list[AlertOut])
 def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depends(get_db)) -> list[AlertOut]:
-    """폴링 알림 — since 이후 가격이 (a)목표가 이하 도달 (b)이전 가격 대비 하락한 관심 상품 목록
+    """폴링 알림 — since 이후 마지막 가격이 이전 가격 대비 하락한 관심 상품 목록
     since 경계: since 이전 마지막 포인트를 previous로 사용 (T-59 — 재실행 시 1건만 변동이어도 감지)"""
     _get_device_or_404(db, device_id)
     watches = db.scalars(select(Watch).where(Watch.device_id == device_id)).all()
@@ -186,17 +183,7 @@ def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depe
             previous = points[1] if len(points) > 1 else None
         if latest is None:
             continue
-        if w.target_price is not None and latest.price <= w.target_price:
-            alerts.append(
-                AlertOut(
-                    product_id=w.product_id,
-                    alert_type="target_reached",
-                    price=latest.price,
-                    previous_price=previous.price if previous else None,
-                    captured_at=latest.captured_at,
-                )
-            )
-        elif previous is not None and latest.price < previous.price:
+        if previous is not None and latest.price < previous.price:
             alerts.append(
                 AlertOut(
                     product_id=w.product_id,
