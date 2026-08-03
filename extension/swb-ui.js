@@ -362,7 +362,7 @@ const SWB_UI = (() => {
   async function onMenuItem(key) {
     if (key === "set") {
       closeAll();
-      chrome.runtime.openOptionsPage();
+      chrome.runtime.sendMessage({ type: "OPEN_OPTIONS" }); // openOptionsPage는 content script에서 직접 호출 불가 — background 경유
       return;
     }
     toggleMenu();

@@ -171,10 +171,15 @@ async function init() {
   if (!alarm) await chrome.alarms.create("alert-poll", { periodInMinutes: CONFIG.alertPollMinutes });
 }
 
-// ── content script → 새 탭 열기 브리지 (찜 목록 관리) ────
+// ── content script → 새 탭 열기 / 옵션 페이지 브리지 ──────
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg && msg.type === "OPEN_TAB" && msg.url) {
     chrome.tabs.create({ url: msg.url });
+    sendResponse({ ok: true });
+    return true;
+  }
+  if (msg && msg.type === "OPEN_OPTIONS") {
+    chrome.runtime.openOptionsPage();
     sendResponse({ ok: true });
     return true;
   }
