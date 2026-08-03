@@ -41,9 +41,20 @@ header h1 { font-size: 15px; font-weight: 700; }
 .alert-badge.drop { background: #2d4ae0; }
 .alert-badge.target { background: #e5484d; }
 
-.alert-name { flex: 1; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.alert-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 
-.alert-price { font-size: 12px; font-weight: 700; color: #e5484d; white-space: nowrap; }
+.alert-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.alert-meta { font-size: 11px; color: #e5484d; font-weight: 600; }
+
+.alert-del {
+  border: none; background: none;
+  color: #bbb; font-size: 13px; cursor: pointer; padding: 3px 5px; flex-shrink: 0;
+}
+
+.alert-del:hover { color: #e5484d; }
+
+.alert-empty { list-style: none; font-size: 11px; color: #aaa; text-align: center; padding: 14px 8px; line-height: 1.6; }
 
 .current { padding: 12px 14px; border-bottom: 1px solid #eee; }
 

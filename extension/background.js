@@ -125,6 +125,23 @@ async function pollAlerts() {
   const nowIso = new Date().toISOString();
   await chrome.storage.local.set({ lastAlertAt: nowIso });
 
+  // 히스토리 저장 (실패해도 알림 표시는 계속)
+  try {
+    await api(`/devices/${deviceId}/alerts`, {
+      method: "POST",
+      body: JSON.stringify(
+        alerts.map((a) => ({
+          product_id: a.product_id,
+          alert_type: a.alert_type,
+          price: a.price,
+          previous_price: a.previous_price,
+        }))
+      ),
+    });
+  } catch (e) {
+    console.warn("[똑바] 알림 히스토리 저장 실패", e);
+  }
+
   for (const alert of alerts) {
     const notificationId = `swb-${Date.now()}-${alert.product_id}`;
     const title =

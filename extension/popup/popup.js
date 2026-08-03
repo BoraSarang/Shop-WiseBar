@@ -25,44 +25,57 @@ async function currentTabProduct() {
   return { tab, parsed: tab ? MallParser.parse(tab.url || "") : null };
 }
 
-// ── 할인 알림 (최상단) ───────────────────────────────────
-async function loadAlerts() {
+// ── 알림 내역 (최상단) ───────────────────────────────────
+async function loadHistory() {
   const section = $("alerts");
   section.classList.add("hidden");
   const deviceId = await getDeviceId();
   if (!deviceId) return;
-  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+
   let alerts = [];
   try {
-    alerts = await api(`/devices/${deviceId}/alerts?since=${encodeURIComponent(since)}`);
+    alerts = await api(`/devices/${deviceId}/alerts/history`);
   } catch {
     return;
   }
-  if (!alerts.length) return;
 
   let watches = [];
   try {
     watches = await api(`/devices/${deviceId}/watches`);
   } catch {}
   const nameMap = Object.fromEntries(watches.map((w) => [w.product_id, w.product_name || w.product_id]));
-  const urlMap = Object.fromEntries(watches.map((w) => [w.product_id, w.url]));
 
   const listEl = $("alertList");
   listEl.innerHTML = "";
-  for (const a of alerts) {
-    const dropped = a.alert_type === "price_dropped";
-    const from = a.previous_price != null ? `${Number(a.previous_price).toLocaleString()}원 → ` : "";
-    const li = document.createElement("li");
-    li.className = "alert-item";
-    li.innerHTML = `
-      <span class="alert-badge ${dropped ? "drop" : "target"}">${dropped ? "▼ 하락" : "목표가 도달"}</span>
-      <span class="alert-name"></span>
-      <span class="alert-price"></span>`;
-    li.querySelector(".alert-name").textContent = nameMap[a.product_id] || a.product_id;
-    li.querySelector(".alert-price").textContent = `${from}${Number(a.price).toLocaleString()}원`;
-    const url = urlMap[a.product_id];
-    if (url) li.addEventListener("click", () => chrome.tabs.create({ url }));
-    listEl.appendChild(li);
+  if (!alerts.length) {
+    listEl.innerHTML =
+      '<li class="alert-empty">알림 내역이 없습니다.<br>가격이 내려가거나 목표가에 도달하면 여기에 표시됩니다.</li>';
+  } else {
+    for (const a of alerts) {
+      const dropped = a.alert_type === "price_dropped";
+      const d = new Date(a.created_at);
+      const ts = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+      const li = document.createElement("li");
+      li.className = "alert-item";
+      li.innerHTML = `
+        <span class="alert-badge ${dropped ? "drop" : "target"}">${dropped ? "▼ 하락" : "목표가 도달"}</span>
+        <span class="alert-body">
+          <span class="alert-name"></span>
+          <span class="alert-meta"></span>
+        </span>
+        <button class="alert-del" title="삭제">✕</button>`;
+      li.querySelector(".alert-name").textContent = nameMap[a.product_id] || a.product_id;
+      li.querySelector(".alert-meta").textContent = `${Number(a.price).toLocaleString()}원 · ${ts}`;
+      li.querySelector(".alert-del").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        try {
+          await api(`/devices/${deviceId}/alerts/${a.id}`, { method: "DELETE" });
+        } catch {}
+        loadHistory();
+      });
+      if (a.url) li.addEventListener("click", () => chrome.tabs.create({ url: a.url }));
+      listEl.appendChild(li);
+    }
   }
   section.classList.remove("hidden");
 }
@@ -304,7 +317,7 @@ $("backBtn").addEventListener("click", () => {
   $("detail").classList.add("hidden");
   $("current").classList.remove("hidden");
   $("listSection").classList.remove("hidden");
-  loadAlerts();
+  loadHistory();
 });
 
 // ── 공통 ────────────────────────────────────────────────
@@ -317,6 +330,6 @@ function setStatus(text) {
   try {
     await loadCurrent();
   } catch {}
-  await loadAlerts();
+  await loadHistory();
   await loadList();
 })();
