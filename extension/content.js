@@ -280,6 +280,12 @@ function positionBadges() {
     el.style.left = `${r.right - 12}px`;
     el.style.top = `${r.top + 12}px`;
     el.style.transform = "translateX(-100%)";
+    if (!window.__swbBadgeLogged) {
+      window.__swbBadgeLogged = true;
+      console.log(
+        "[똑바] badge rect:", JSON.stringify({ cardTop: r.top, cardRight: r.right, cardW: r.width, cardH: r.height })
+      );
+    }
   }
 }
 
