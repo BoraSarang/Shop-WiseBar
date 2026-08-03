@@ -276,8 +276,8 @@ function positionBadges() {
       continue;
     }
     el.style.display = "block";
-    el.style.left = `${r.right - 10}px`;
-    el.style.top = `${r.top + 8}px`;
+    el.style.left = `${r.right - 12}px`;
+    el.style.top = `${r.top + 10}px`;
     el.style.transform = "translateX(-100%)";
   }
 }
