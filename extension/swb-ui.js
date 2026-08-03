@@ -8,6 +8,10 @@ const SWB_UI = (() => {
   let currentParsed = null;
   let menuOpen = false;
   let currentWatched = false;
+  let menuWatchBtn = null;
+  let rangeDays = 7;
+  let pointsCache = [];
+  let nowPriceCache = null;
 
   const CSS = `
     :host { all: initial; }
@@ -47,6 +51,8 @@ const SWB_UI = (() => {
       transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
     }
     .swb-mi:hover { transform: translateX(-4px); background: #2d4ae0; color: #fff; }
+    .swb-mi.active { background: #e5484d; color: #fff; }
+    .swb-mi.active:hover { background: #e5484d; }
     .swb-mi svg { width: 18px; height: 18px; }
     .swb-mi-label {
       position: absolute; right: calc(100% + 8px); white-space: nowrap;
@@ -82,6 +88,13 @@ const SWB_UI = (() => {
     .swb-delta { font-size: 12px; font-weight: 700; }
     .swb-delta.down { color: #2d4ae0; }
     .swb-delta.up { color: #e5484d; }
+    .swb-range { display: flex; gap: 4px; margin-bottom: 10px; }
+    .swb-range-btn {
+      flex: 1; padding: 4px 0; font-size: 11px; font-weight: 600;
+      background: #f2f4ff; color: #2d4ae0; border: none; border-radius: 8px; cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .swb-range-btn.active { background: #2d4ae0; color: #fff; }
     .swb-watch {
       position: relative;
       margin-left: auto; align-self: center;
@@ -104,6 +117,7 @@ const SWB_UI = (() => {
     .swb-watch:hover .swb-watch-label { opacity: 1; transform: translate(0, -50%); }
     .swb-chart-wrap { position: relative; }
     canvas.swb-chart { width: 100%; height: 140px; display: block; }
+    .swb-xaxis { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 2px; }
     .swb-stats { display: flex; gap: 12px; margin-top: 8px; font-size: 11px; color: #888; }
     .swb-stats b { color: #333; }
     .swb-foot { padding: 8px 14px 12px; font-size: 11px; color: #aaa; }
@@ -193,16 +207,22 @@ const SWB_UI = (() => {
           <div class="swb-brand"></div>
         </div>
         <div class="swb-body">
+          <div class="swb-range">
+            <button class="swb-range-btn active" data-days="7">7일</button>
+            <button class="swb-range-btn" data-days="14">2주</button>
+            <button class="swb-range-btn" data-days="30">1달</button>
+          </div>
           <div class="swb-price-row">
             <span class="swb-now">—</span>
             <span class="swb-delta"></span>
             <button class="swb-watch" title="찜 하기">${ICON.watch}<span class="swb-watch-label">찜 하기</span></button>
           </div>
           <div class="swb-chart-wrap"><canvas class="swb-chart" width="292" height="140"></canvas></div>
+          <div class="swb-xaxis"><span class="x-start"></span><span class="x-end"></span></div>
           <div class="swb-stats">
             <span>최저가 <b class="st-min">—</b></span>
             <span>최고가 <b class="st-max">—</b></span>
-            <span>기록 <b class="st-count">—</b>건</span>
+            <span>기록 <b class="st-count">—</b>일</span>
           </div>
         </div>
         <div class="swb-foot">똑바 · 가격은 상품 페이지를 볼 때마다 자동 기록됩니다</div>
@@ -225,6 +245,12 @@ const SWB_UI = (() => {
       e.stopPropagation();
       toggleWatch();
     });
+    panel.querySelectorAll(".swb-range-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setRange(Number(btn.dataset.days));
+      });
+    });
     shadow.appendChild(panel);
 
     buildMenu(menu);
@@ -245,6 +271,7 @@ const SWB_UI = (() => {
         e.stopPropagation();
         onMenuItem(it.key);
       });
+      if (it.key === "list") menuWatchBtn = btn;
       menu.appendChild(btn);
     });
   }
@@ -255,8 +282,10 @@ const SWB_UI = (() => {
     const menu = shadow.querySelector(".swb-menu");
     fab.classList.toggle("open", menuOpen);
     menu.classList.toggle("open", menuOpen);
-    if (menuOpen) hideTooltip();
-    else closePanel();
+    if (menuOpen) {
+      hideTooltip();
+      refreshWatchState();
+    } else closePanel();
   }
 
   function showTooltip() {
@@ -325,6 +354,25 @@ const SWB_UI = (() => {
     btn.title = text;
     const label = btn.querySelector(".swb-watch-label");
     if (label) label.textContent = text;
+    if (menuWatchBtn) menuWatchBtn.classList.toggle("active", currentWatched);
+  }
+
+  async function refreshWatchState() {
+    if (!currentParsed) return;
+    try {
+      const base = `${SWB_CONFIG.server}${SWB_CONFIG.api}`;
+      const deviceId = await getDeviceId();
+      if (!deviceId) return;
+      const res = await fetch(
+        `${base}/products/${encodeURIComponent(currentParsed.productID)}?device_id=${encodeURIComponent(deviceId)}`
+      );
+      if (!res.ok) return;
+      const p = await res.json();
+      currentWatched = !!p.is_watched;
+      updateWatchBtn();
+    } catch {
+      // E-EXT-NET-1001 — 메뉴 아이콘은 기존 상태 유지
+    }
   }
 
   async function toggleWatch() {
@@ -363,78 +411,124 @@ const SWB_UI = (() => {
     const pid = encodeURIComponent(parsed.productID);
     const titleEl = panel.querySelector(".swb-title");
     const brandEl = panel.querySelector(".swb-brand");
-    const nowEl = panel.querySelector(".swb-now");
-    const deltaEl = panel.querySelector(".swb-delta");
-    const canvas = panel.querySelector("canvas.swb-chart");
-    const stMin = panel.querySelector(".st-min");
-    const stMax = panel.querySelector(".st-max");
-    const stCount = panel.querySelector(".st-count");
-    const bodyEl = panel.querySelector(".swb-view-trend .swb-body");
 
-    // 1) 상품명은 페이지에서 즉시 추출 (서버 대기 없음)
+    // 1) 상품명/현재 가격은 페이지에서 즉시 추출 (서버 대기 없음)
     const live = Extractor.extract(parsed.mall);
-    const livePrice = Number(live.price) || null;
+    nowPriceCache = Number(live.price) || null;
     const { title, brand } = splitTitle(live.title);
     titleEl.textContent = title || parsed.productID;
     brandEl.textContent = brand;
 
-    // 2) 서버 이력 조회 (실패해도 현재 가격으로 그래프는 표시)
-    let product = null;
-    let points = [];
+    // 2) 서버 이력 조회 → 캐시 (실패해도 현재 가격으로 그래프는 표시)
     let serverError = false;
     currentWatched = false;
     updateWatchBtn();
     try {
       const base = `${SWB_CONFIG.server}${SWB_CONFIG.api}`;
       const deviceId = await getDeviceId();
-      [product, points] = await Promise.all([
+      const [product, points] = await Promise.all([
         fetch(`${base}/products/${pid}${deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : ""}`).then((r) => (r.ok ? r.json() : null)),
-        fetch(`${base}/products/${pid}/prices?limit=50`).then((r) => (r.ok ? r.json() : [])),
+        fetch(`${base}/products/${pid}/prices?limit=200`).then((r) => (r.ok ? r.json() : [])),
       ]);
+      pointsCache = points || [];
+      if (product) {
+        if (!nowPriceCache && product.last_price) nowPriceCache = Number(product.last_price);
+        if (product.is_watched) currentWatched = true;
+      }
     } catch {
       serverError = true;
     }
-    if (product && product.is_watched) {
-      currentWatched = true;
-      updateWatchBtn();
-    }
+    updateWatchBtn();
+    renderTrend(serverError);
+  }
 
-    // 3) 현재 페이지 가격을 마지막 포인트로 병합 (중복이면 유지)
-    const nowPrice = livePrice || (product && product.last_price) || null;
-    if (nowPrice) {
-      const lastPoint = points.length ? Number(points[points.length - 1].price) : null;
-      if (lastPoint !== nowPrice) {
-        points = [...points, { price: nowPrice, captured_at: new Date().toISOString() }];
+  // 일별 시리즈: 기간(일) 동안 날짜별 가격, 결측일은 직전 가격 유지,
+  // 첫 기록 이전 날짜는 첫 기록 가격으로 채움 (새 상품 → 7일 그래프가 평평하게 시작)
+  function dailySeries(points, days, nowPrice) {
+    const today = new Date();
+    const keyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const keys = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      keys.push(keyOf(d));
+    }
+    const byDay = {};
+    (points || []).forEach((pt) => {
+      const d = new Date(pt.captured_at);
+      if (!isNaN(d)) byDay[keyOf(d)] = Number(pt.price);
+    });
+    if (nowPrice) byDay[keyOf(today)] = nowPrice; // 오늘은 페이지 현재 가격 우선
+
+    const raw = keys.map((k) => (k in byDay ? byDay[k] : null));
+    let last = null;
+    const fwd = raw.map((v) => (v !== null ? (last = v) : last)); // 중간 결측 = 직전 가격 유지
+    let first = null;
+    for (let i = fwd.length - 1; i >= 0; i--) {
+      if (fwd[i] !== null) {
+        first = fwd[i];
+        break;
       }
     }
+    return { series: fwd.map((v) => (v === null ? first : v)), recordDays: keys.filter((k) => k in byDay).length };
+  }
 
-    // 4) 그래프는 무조건 표시 (이력 0건이면 현재 가격 1포인트)
-    const prices = points.map((pt) => Number(pt.price));
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
+  function setRange(days) {
+    rangeDays = days;
+    shadow.querySelectorAll(".swb-range-btn").forEach((b) => {
+      b.classList.toggle("active", Number(b.dataset.days) === days);
+    });
+    renderTrend(false);
+  }
 
-    drawChart(canvas, prices);
+  function renderTrend(serverError) {
+    const panel = shadow.querySelector(".swb-panel");
+    const nowEl = panel.querySelector(".swb-now");
+    const deltaEl = panel.querySelector(".swb-delta");
+    const canvas = panel.querySelector("canvas.swb-chart");
+    const stMin = panel.querySelector(".st-min");
+    const stMax = panel.querySelector(".st-max");
+    const stCount = panel.querySelector(".st-count");
+    const xStart = panel.querySelector(".x-start");
+    const xEnd = panel.querySelector(".x-end");
+    const bodyEl = panel.querySelector(".swb-view-trend .swb-body");
 
-    const first = prices[0];
-    nowEl.textContent = nowPrice ? `${nowPrice.toLocaleString()}원` : "—";
-    if (points.length > 1) {
-      if (nowPrice < first) {
-        deltaEl.textContent = `▼ ${(first - nowPrice).toLocaleString()}원`;
-        deltaEl.className = "swb-delta down";
-      } else if (nowPrice > first) {
-        deltaEl.textContent = `▲ ${(nowPrice - first).toLocaleString()}원`;
-        deltaEl.className = "swb-delta up";
-      } else {
-        deltaEl.textContent = "변동 없음";
-        deltaEl.className = "swb-delta";
-      }
-    } else {
+    const { series, recordDays } = dailySeries(pointsCache, rangeDays, nowPriceCache);
+    drawChart(canvas, series);
+
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - (rangeDays - 1));
+    const fmt = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+    xStart.textContent = `${fmt(start)} ~`;
+    xEnd.textContent = `오늘 ${fmt(today)}`;
+
+    const nowPrice = nowPriceCache;
+    nowEl.textContent = nowPrice != null ? `${nowPrice.toLocaleString()}원` : "—";
+    const first = series[0];
+    if (recordDays <= 1) {
       deltaEl.textContent = "첫 기록";
       deltaEl.className = "swb-delta";
+    } else if (nowPrice != null && first != null && nowPrice < first) {
+      deltaEl.textContent = `▼ ${(first - nowPrice).toLocaleString()}원`;
+      deltaEl.className = "swb-delta down";
+    } else if (nowPrice != null && first != null && nowPrice > first) {
+      deltaEl.textContent = `▲ ${(nowPrice - first).toLocaleString()}원`;
+      deltaEl.className = "swb-delta up";
+    } else {
+      deltaEl.textContent = "변동 없음";
+      deltaEl.className = "swb-delta";
     }
-    stMin.textContent = `${min.toLocaleString()}원`;
-    stMax.textContent = `${max.toLocaleString()}원`;
-    stCount.textContent = String(points.length);
+
+    const valid = series.filter((v) => v != null);
+    if (valid.length) {
+      stMin.textContent = `${Math.min(...valid).toLocaleString()}원`;
+      stMax.textContent = `${Math.max(...valid).toLocaleString()}원`;
+    } else {
+      stMin.textContent = "—";
+      stMax.textContent = "—";
+    }
+    stCount.textContent = String(recordDays);
 
     bodyEl.querySelectorAll(".swb-error").forEach((el) => el.remove());
     if (serverError) {
@@ -490,7 +584,7 @@ const SWB_UI = (() => {
         loadWatchList();
       });
       row.addEventListener("click", () => {
-        chrome.runtime.sendMessage({ type: "OPEN_TAB", url: w.url || "" });
+        if (w.url) chrome.runtime.sendMessage({ type: "OPEN_TAB", url: w.url });
       });
       listEl.appendChild(row);
     }
@@ -525,6 +619,7 @@ const SWB_UI = (() => {
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
+    prices = prices.filter((v) => v != null);
     if (!prices.length) return;
 
     const min = Math.min(...prices);
