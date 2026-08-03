@@ -42,16 +42,17 @@ const Extractor = {
       //        v0.8.9: 품절 상품의 total-price[data-price]도 잔존값(14,900)을 가질 수
       //        있음이 확인됨 — 품절이면 무조건 스킵 (price=null → captureProduct 스킵)
       const isSoldOut = /(일시\s?)?품절|재입고\s?알림/.test(bodyText);
-      if (!isSoldOut) {
-        const attrEl = document.querySelector("span.total-price[data-price], strong.total-price[data-price], .total-price[data-price]");
-        if (attrEl) {
-          const ap = parseInt((attrEl.getAttribute("data-price") || "").replace(/[^0-9]/g, ""), 10);
-          if (ap && ap >= 1000) price = ap;
-        }
-        if (!price) {
-          const m = bodyText.match(/([0-9]{1,2})%\s*\n\s*([0-9][0-9,]*)\s*원/);
-          price = m ? parseInt(m[2].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(bodyText);
-        }
+      const attrEl = document.querySelector("span.total-price[data-price], strong.total-price[data-price], .total-price[data-price]");
+      if (attrEl) {
+        const ap = parseInt((attrEl.getAttribute("data-price") || "").replace(/[^0-9]/g, ""), 10);
+        // v0.8.9: 품절 상품의 total-price[data-price]는 잔존값(14,900)일 수 있어 불신 — 스킵
+        if (ap && ap >= 1000 && !isSoldOut) price = ap;
+      }
+      if (!price) {
+        // v0.8.12: 품절이어도 판매가가 표시되는 페이지(오리온 95871591795, 27,530원)는
+        //          total-price 잔존값이 없으면 body 첫 금액으로 정상 캡처
+        const m = bodyText.match(/([0-9]{1,2})%\s*\n\s*([0-9][0-9,]*)\s*원/);
+        price = m ? parseInt(m[2].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(bodyText);
       }
       // TEMP DEBUG (v0.8.11 확인 후 제거): 가격 요소 후보 전수 출력
       console.log("[똑바] PRICE DEBUG", {
