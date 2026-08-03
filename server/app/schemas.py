@@ -78,6 +78,7 @@ class AlertHistoryOut(BaseModel):
     id: int
     product_id: str
     product_name: str | None = None
+    mall: str | None = None
     image: str | None = None
     alert_type: str
     price: int

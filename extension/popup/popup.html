@@ -27,20 +27,21 @@
     </div>
   </section>
 
-  <section id="detail" class="detail hidden">
-    <div class="detail-head">
-      <button id="backBtn" class="btn btn-ghost">← 목록</button>
-      <span class="detail-title">가격 추이</span>
-    </div>
-    <canvas id="chart" width="300" height="140"></canvas>
-    <div id="detailInfo" class="detail-info"></div>
-  </section>
-
   <section id="listSection">
-    <h2>내 상품</h2>
+    <h2>찜 목록</h2>
     <ul id="watchList" class="watch-list"></ul>
     <p id="emptyMsg" class="empty">찜한 상품이 없습니다.<br>상품 페이지에서 똑바 아이콘을 누르고 찜해 보세요.</p>
   </section>
+
+  <div id="confirmDlg" class="confirm hidden">
+    <div class="confirm-box">
+      <div id="confirmMsg" class="confirm-msg"></div>
+      <div class="confirm-actions">
+        <button id="confirmNo" class="btn btn-ghost">취소</button>
+        <button id="confirmYes" class="btn btn-danger">삭제</button>
+      </div>
+    </div>
+  </div>
 
   <script src="../common.js"></script>
   <script src="popup.js"></script>

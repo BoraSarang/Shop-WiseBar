@@ -107,6 +107,7 @@ def get_alert_history(device_id: str, limit: int = 50, db: Session = Depends(get
             id=a.id,
             product_id=a.product_id,
             product_name=(products.get(a.product_id).name if products.get(a.product_id) else None),
+            mall=(products.get(a.product_id).mall if products.get(a.product_id) else None),
             image=(products.get(a.product_id).image if products.get(a.product_id) else None),
             alert_type=a.alert_type,
             price=a.price,

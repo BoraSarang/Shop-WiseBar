@@ -112,7 +112,20 @@ header h1 { font-size: 15px; font-weight: 700; }
   border-radius: 6px;
   background: #eee center/cover no-repeat;
   flex-shrink: 0;
+  position: relative;
+  display: flex; align-items: flex-end; justify-content: flex-end;
+  font-size: 14px; font-weight: 700; color: #fff;
 }
+
+.watch-badge {
+  font-style: normal;
+  font-size: 9px; font-weight: 800; color: #fff;
+  padding: 1px 5px; border-radius: 5px;
+}
+
+.b-naver { background: #03c75a; }
+.b-coupang { background: #0074e9; }
+.b-oliveyoung { background: #56a99c; }
 
 .watch-body { flex: 1; min-width: 0; }
 

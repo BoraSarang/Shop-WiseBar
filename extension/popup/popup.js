@@ -51,8 +51,9 @@ async function loadHistory() {
       const ts = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
       const li = document.createElement("li");
       li.className = "alert-item";
+      const m = mallMeta[a.mall] || null;
       li.innerHTML = `
-        <span class="alert-thumb"${a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : ""}></span>
+        <span class="alert-thumb"${a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : ""}>${a.image ? "" : (m ? m.label.slice(0, 1) : "?")}${m ? `<em class="watch-badge ${m.cls}">${m.label}</em>` : ""}</span>
         <span class="alert-badge ${dropped ? "drop" : "target"}">${dropped ? "▼ 하락" : "목표가 도달"}</span>
         <span class="alert-body">
           <span class="alert-name"></span>
@@ -180,6 +181,12 @@ $("targetInput").addEventListener("change", async () => {
 });
 
 // ── 찜 목록 ─────────────────────────────────────────────
+const mallMeta = {
+  naver: { label: "네이버", cls: "b-naver" },
+  coupang: { label: "쿠팡", cls: "b-coupang" },
+  oliveyoung: { label: "올영", cls: "b-oliveyoung" },
+};
+
 async function loadList() {
   const deviceId = await getDeviceId();
   $("watchList").innerHTML = "";
@@ -201,118 +208,63 @@ async function loadList() {
   }
   $("emptyMsg").classList.add("hidden");
 
-  const items = await Promise.all(
-    watches.map(async (w) => {
-      try {
-        const p = await api(`/products/${encodeURIComponent(w.product_id)}`);
-        return { w, p };
-      } catch {
-        return { w, p: null };
-      }
-    })
-  );
-  for (const { w, p } of items) {
+  for (const w of watches) {
+    const m = mallMeta[w.mall] || null;
     const li = document.createElement("li");
     li.className = "watch-item";
-
-    const thumb = document.createElement("div");
-    thumb.className = "watch-thumb";
-    if (p && p.image) thumb.style.backgroundImage = `url('${p.image}')`;
-
-    const body = document.createElement("div");
-    body.className = "watch-body";
-    const name = document.createElement("div");
-    name.className = "watch-name";
-    name.textContent = (p && p.name) || w.product_id;
-    const price = document.createElement("div");
-    price.className = "watch-price";
-    price.textContent = p && p.last_price ? `${p.last_price.toLocaleString()}원` : "가격 없음";
-    const target = document.createElement("div");
-    target.className = "watch-target";
-    target.textContent = w.target_price ? `목표가 ${w.target_price.toLocaleString()}원` : "";
-    body.append(name, price, target);
-
-    const removeBtn = document.createElement("button");
-    removeBtn.className = "watch-unwatch";
-    removeBtn.textContent = "✕";
-    removeBtn.title = "찜 해제";
-    removeBtn.addEventListener("click", async (e) => {
+    li.innerHTML = `
+      <span class="watch-thumb"${w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : ""}>${w.image ? "" : (m ? m.label.slice(0, 1) : "?")}${m ? `<em class="watch-badge ${m.cls}">${m.label}</em>` : ""}</span>
+      <span class="watch-body">
+        <span class="watch-name"></span>
+        <span class="watch-price"></span>
+        <span class="watch-target"></span>
+      </span>
+      <button class="watch-unwatch" title="찜 삭제">✕</button>`;
+    li.querySelector(".watch-name").textContent = w.product_name || w.product_id;
+    li.querySelector(".watch-price").textContent =
+      w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";
+    li.querySelector(".watch-target").textContent = w.target_price
+      ? `목표가 ${Number(w.target_price).toLocaleString()}원`
+      : "";
+    li.querySelector(".watch-unwatch").addEventListener("click", (e) => {
       e.stopPropagation();
-      await api(`/devices/${deviceId}/watches/${encodeURIComponent(w.product_id)}`, {
-        method: "DELETE",
+      const label = (w.product_name || w.product_id).slice(0, 20);
+      confirmDialog(`'${label}…' 찜을 삭제할까요?`, async () => {
+        try {
+          await api(`/devices/${deviceId}/watches/${encodeURIComponent(w.product_id)}`, {
+            method: "DELETE",
+          });
+        } catch {
+          setStatus("삭제 실패 — 서버 연결 확인");
+        }
+        loadList();
       });
-      loadList();
     });
-
-    li.append(thumb, body, removeBtn);
-    li.addEventListener("click", () => showDetail(w.product_id, p));
+    li.addEventListener("click", () => {
+      if (w.url) chrome.tabs.create({ url: w.url });
+    });
     $("watchList").append(li);
   }
 }
 
-// ── 가격 추이 ───────────────────────────────────────────
-let detailProductId = null;
+// ── 컨펌 다이얼로그 (플로팅 찜 목록과 동일 동작) ──────────
+let confirmCallback = null;
 
-async function showDetail(productId, cachedProduct) {
-  detailProductId = productId;
-  $("listSection").classList.add("hidden");
-  $("current").classList.add("hidden");
-  $("alerts").classList.add("hidden");
-  $("detail").classList.remove("hidden");
-  $("detailInfo").textContent = "";
-  try {
-    const p =
-      cachedProduct ||
-      (await api(`/products/${encodeURIComponent(productId)}`)) ||
-      {};
-    $("detailInfo").textContent = `${p.name || productId} · 최근 ${
-      p.last_price ? `${p.last_price.toLocaleString()}원` : "없음"
-    }`;
-    const points = await api(`/products/${encodeURIComponent(productId)}/prices?limit=100`);
-    drawChart(points || []);
-  } catch {
-    $("detailInfo").textContent = "추이를 불러오지 못했습니다";
-  }
+function confirmDialog(message, onConfirm) {
+  $("confirmMsg").textContent = message;
+  confirmCallback = onConfirm;
+  $("confirmDlg").classList.remove("hidden");
 }
 
-function drawChart(points) {
-  const canvas = $("chart");
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width;
-  const h = canvas.height;
-  ctx.clearRect(0, 0, w, h);
-  if (points.length < 1) return;
-
-  const prices = points.map((pt) => Number(pt.price));
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
-  const range = max - min || 1;
-  const pad = 8;
-
-  ctx.strokeStyle = "#2d4ae0";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  points.forEach((pt, i) => {
-    const x = pad + (i / Math.max(points.length - 1, 1)) * (w - pad * 2);
-    const y = h - pad - ((Number(pt.price) - min) / range) * (h - pad * 2);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.stroke();
-
-  const last = points[points.length - 1];
-  const first = points[0];
-  ctx.fillStyle = "#888";
-  ctx.font = "11px sans-serif";
-  ctx.fillText(`${first.price.toLocaleString()}원`, pad, h - 3);
-  ctx.textAlign = "right";
-  ctx.fillText(`${last.price.toLocaleString()}원`, w - pad, 12);
-}
-
-$("backBtn").addEventListener("click", () => {
-  $("detail").classList.add("hidden");
-  $("current").classList.remove("hidden");
-  $("listSection").classList.remove("hidden");
-  loadHistory();
+$("confirmNo").addEventListener("click", () => {
+  confirmCallback = null;
+  $("confirmDlg").classList.add("hidden");
+});
+$("confirmYes").addEventListener("click", () => {
+  const cb = confirmCallback;
+  confirmCallback = null;
+  $("confirmDlg").classList.add("hidden");
+  if (cb) cb();
 });
 
 // ── 공통 ────────────────────────────────────────────────
