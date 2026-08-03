@@ -132,11 +132,6 @@ const SWB_UI = (() => {
     .swb-li-price { font-size: 12px; font-weight: 700; color: #2d4ae0; white-space: nowrap; }
     .swb-li-del { background: none; border: none; color: #ccc; font-size: 14px; cursor: pointer; padding: 4px; }
     .swb-li-del:hover { color: #e5484d; }
-    .swb-set { padding: 14px; }
-    .swb-set-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
-    .swb-set-row:last-child { border-bottom: none; }
-    .swb-set-label { font-size: 12px; color: #555; }
-    .swb-set-val { font-size: 12px; color: #2d4ae0; font-weight: 600; word-break: break-all; }
     .swb-loading { padding: 24px 14px; text-align: center; color: #aaa; }
     .swb-error { padding: 24px 14px; text-align: center; color: #e5484d; line-height: 1.6; }
     .swb-empty { padding: 24px 14px; text-align: center; color: #aaa; }
@@ -229,9 +224,6 @@ const SWB_UI = (() => {
       </div>
       <div class="swb-view swb-view-list">
         <div class="swb-list"></div>
-      </div>
-      <div class="swb-view swb-view-set">
-        <div class="swb-set"></div>
       </div>`;
     panel.querySelector(".swb-close").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -332,17 +324,19 @@ const SWB_UI = (() => {
   }
 
   async function onMenuItem(key) {
+    if (key === "set") {
+      closeAll();
+      chrome.runtime.openOptionsPage();
+      return;
+    }
     toggleMenu();
     showPanel();
     if (key === "trend") {
       showView("trend");
       loadTrend();
-    } else if (key === "list") {
+    } else {
       showView("list");
       loadWatchList();
-    } else {
-      showView("set");
-      loadSettings();
     }
   }
 
@@ -599,19 +593,6 @@ const SWB_UI = (() => {
     } catch {
       // E-EXT-NET-1001 — 목록 새로고침 시 재시도 가능
     }
-  }
-
-  async function loadSettings() {
-    const setEl = shadow.querySelector(".swb-view-set .swb-set");
-    const deviceId = await getDeviceId();
-    const rows = [
-      { label: "서버 주소", val: `${SWB_CONFIG.server}${SWB_CONFIG.api}` },
-      { label: "기기 ID", val: deviceId ? deviceId.slice(0, 8) + "…" : "등록 전" },
-      { label: "수집 몰", val: "네이버 · 쿠팡 · 올리브영" },
-    ];
-    setEl.innerHTML = rows
-      .map((r) => `<div class="swb-set-row"><span class="swb-set-label">${r.label}</span><span class="swb-set-val">${r.val}</span></div>`)
-      .join("");
   }
 
   function drawChart(canvas, prices) {

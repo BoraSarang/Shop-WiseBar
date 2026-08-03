@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>똑바 설정</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+  body { background: #f5f6fa; color: #1c1c1e; padding: 24px; }
+  .wrap { max-width: 480px; margin: 0 auto; }
+  .head { background: #2d4ae0; color: #fff; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .head h1 { font-size: 17px; font-weight: 700; }
+  .head p { font-size: 12px; opacity: 0.85; margin-top: 4px; }
+  .card { background: #fff; border-radius: 12px; padding: 6px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 16px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid #f0f0f0; }
+  .row:last-child { border-bottom: none; }
+  .label { font-size: 13px; color: #555; }
+  .val { font-size: 13px; font-weight: 600; color: #2d4ae0; word-break: break-all; text-align: right; }
+  .status { font-size: 12px; margin-top: 2px; }
+  .ok { color: #2dd4bf; }
+  .fail { color: #e5484d; }
+  .btn {
+    background: #f2f4ff; color: #2d4ae0; border: none; cursor: pointer;
+    font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 8px;
+  }
+  .btn:hover { background: #e2e7ff; }
+  .foot { font-size: 11px; color: #aaa; text-align: center; padding: 8px 0 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>똑바 (Shop WiseBar) 설정</h1>
+    <p>서버 주소는 common.js의 SWB_CONFIG에서 단일 관리됩니다</p>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <span class="label">서버 주소</span>
+      <span class="val" id="server"></span>
+    </div>
+    <div class="row">
+      <span class="label">서버 상태</span>
+      <span class="val"><span id="serverStatus">확인 중…</span></span>
+    </div>
+    <div class="row">
+      <span class="label">수집 몰</span>
+      <span class="val">네이버 · 쿠팡 · 올리브영</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <span class="label">기기 ID</span>
+      <span class="val" id="deviceId">—</span>
+    </div>
+    <div class="row">
+      <span class="label">기기 ID 복사</span>
+      <button class="btn" id="copyBtn">복사</button>
+    </div>
+  </div>
+
+  <div class="foot">똑바 · 가격은 상품 페이지를 볼 때마다 자동 기록됩니다</div>
+</div>
+<script src="common.js"></script>
+<script src="options.js"></script>
+</body>
+</html>
