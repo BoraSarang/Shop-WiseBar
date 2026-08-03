@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "똑바 (Shop WiseBar)",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "쇼핑몰 상품 가격을 자동으로 추적하고, 내려가면 알려드려요. 똑바로 사세요.",
   "permissions": ["storage", "alarms", "notifications", "tabs", "webNavigation"],
   "host_permissions": [

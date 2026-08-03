@@ -48,7 +48,15 @@
   </section>
 
   <section id="listSection">
-    <h2>찜 목록</h2>
+    <div class="list-head">
+      <h2>찜 목록 <span id="watchCount" class="watch-count"></span></h2>
+      <div class="mall-filter">
+        <button data-mall="all" class="mall-filter-btn active">전체</button>
+        <button data-mall="naver" class="mall-filter-btn">네이버</button>
+        <button data-mall="coupang" class="mall-filter-btn">쿠팡</button>
+        <button data-mall="oliveyoung" class="mall-filter-btn">올리브영</button>
+      </div>
+    </div>
     <ul id="watchList" class="watch-list"><li class="row-loading"><span class="spinner"></span>불러오는 중…</li></ul>
     <p id="emptyMsg" class="empty hidden">찜한 상품이 없습니다.<br>상품 페이지에서 똑바 아이콘을 누르고 찜해 보세요.</p>
   </section>

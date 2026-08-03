@@ -304,6 +304,9 @@ function mallBadgeHtml(m) {
   return m ? `<em class="watch-badge ${m.cls}"><img src="${m.icon}" alt="${m.label}"></em>` : "";
 }
 
+let watchCache = []; // v0.7.4 — 전체 찜 목록 캐시 (몰 필터는 로컬 처리)
+let watchMallFilter = "all";
+
 async function loadList() {
   const deviceId = await getDeviceId();
   $("watchList").innerHTML = loadingRow();
@@ -312,22 +315,31 @@ async function loadList() {
     $("emptyMsg").classList.remove("hidden");
     return;
   }
-  let watches;
   try {
-    watches = await api(`/devices/${deviceId}/watches`);
+    watchCache = await api(`/devices/${deviceId}/watches`);
   } catch {
     $("watchList").innerHTML = loadingRow("찜 목록을 불러오지 못했습니다 (E-EXT-NET-1001)").replace("row-loading", "row-loading row-error");
     return;
   }
-  if (!watches.length) {
+  renderList();
+}
+
+function renderList() {
+  $("watchCount").textContent = watchCache.length ? `(${watchCache.length})` : "";
+  const filtered =
+    watchMallFilter === "all" ? watchCache : watchCache.filter((w) => w.mall === watchMallFilter);
+  if (!filtered.length) {
     $("watchList").innerHTML = "";
+    $("emptyMsg").textContent = watchCache.length
+      ? "이 몰에서 찜한 상품이 없습니다."
+      : "찜한 상품이 없습니다.<br>상품 페이지에서 똑바 아이콘을 누르고 찜해 보세요.";
     $("emptyMsg").classList.remove("hidden");
     return;
   }
   $("emptyMsg").classList.add("hidden");
   $("watchList").innerHTML = "";
 
-  for (const w of watches) {
+  for (const w of filtered) {
     const m = mallMeta[w.mall] || null;
     const li = document.createElement("li");
     li.className = "watch-item";
@@ -376,6 +388,16 @@ async function loadList() {
     $("watchList").append(li);
   }
 }
+
+// 몰 필터 픽커 (v0.7.4) — 로컬 필터, 캐시 재렌더
+document.querySelectorAll(".mall-filter-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    watchMallFilter = btn.dataset.mall;
+    document.querySelectorAll(".mall-filter-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    renderList();
+  });
+});
 
 // ── 컨펌 다이얼로그 (플로팅 찜 목록과 동일 동작) ──────────
 let confirmCallback = null;
