@@ -278,27 +278,13 @@ function positionBadges() {
     }
     el.style.display = "block";
     // 이미지 안쪽 상단 + 8px — 이미지 콘텐츠와 여백을 두고 겹치되
-    // 카드 경계 밖(위 카드 위)으로는 벗어나지 않음 (v0.8.6)
+    // 카드 경계 밖(위 카드 위)으로는 벗어나지 않음
     const img = card.querySelector("img");
     const ir = img ? img.getBoundingClientRect() : null;
     const top = ir && ir.height ? ir.top + 8 : r.top + 12;
     el.style.left = `${r.right - 12}px`;
     el.style.top = `${top}px`;
     el.style.transform = "translateX(-100%)";
-    if (!window.__swbBadgeLogged) {
-      window.__swbBadgeLogged = true;
-      const br = el.getBoundingClientRect();
-      const img = card.querySelector("img");
-      const ir = img ? img.getBoundingClientRect() : null;
-      console.log(
-        "[똑바] badge rect:", JSON.stringify({
-          cardTop: r.top, cardRight: r.right, cardW: r.width, cardH: r.height,
-          badgeTop: br.top, badgeLeft: br.left, badgeW: br.width, badgeH: br.height,
-          imgTop: ir ? ir.top : null, imgLeft: ir ? ir.left : null, imgW: ir ? ir.width : null, imgH: ir ? ir.height : null,
-          fixed: getComputedStyle(el).position,
-        })
-      );
-    }
   }
 }
 
