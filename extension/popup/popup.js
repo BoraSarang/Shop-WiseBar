@@ -39,12 +39,6 @@ async function loadHistory() {
     return;
   }
 
-  let watches = [];
-  try {
-    watches = await api(`/devices/${deviceId}/watches`);
-  } catch {}
-  const nameMap = Object.fromEntries(watches.map((w) => [w.product_id, w.product_name || w.product_id]));
-
   const listEl = $("alertList");
   listEl.innerHTML = "";
   if (!alerts.length) {
@@ -58,13 +52,14 @@ async function loadHistory() {
       const li = document.createElement("li");
       li.className = "alert-item";
       li.innerHTML = `
+        <span class="alert-thumb"${a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : ""}></span>
         <span class="alert-badge ${dropped ? "drop" : "target"}">${dropped ? "▼ 하락" : "목표가 도달"}</span>
         <span class="alert-body">
           <span class="alert-name"></span>
           <span class="alert-meta"></span>
         </span>
         <button class="alert-del" title="삭제">✕</button>`;
-      li.querySelector(".alert-name").textContent = nameMap[a.product_id] || a.product_id;
+      li.querySelector(".alert-name").textContent = a.product_name || a.product_id;
       li.querySelector(".alert-meta").textContent = `${Number(a.price).toLocaleString()}원 · ${ts}`;
       li.querySelector(".alert-del").addEventListener("click", async (e) => {
         e.stopPropagation();

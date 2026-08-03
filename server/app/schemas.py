@@ -77,6 +77,8 @@ class AlertRecordIn(BaseModel):
 class AlertHistoryOut(BaseModel):
     id: int
     product_id: str
+    product_name: str | None = None
+    image: str | None = None
     alert_type: str
     price: int
     previous_price: int | None

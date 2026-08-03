@@ -89,6 +89,10 @@ def get_alert_history(device_id: str, limit: int = 50, db: Session = Depends(get
             .limit(limit)
         ).all()
     )
+    products = {
+        p.id: p
+        for p in db.scalars(select(Product).where(Product.id.in_([a.product_id for a in rows]))).all()
+    }
     stale = db.scalars(
         select(Alert.id)
         .where(Alert.device_id == device_id)
@@ -102,6 +106,8 @@ def get_alert_history(device_id: str, limit: int = 50, db: Session = Depends(get
         AlertHistoryOut(
             id=a.id,
             product_id=a.product_id,
+            product_name=(products.get(a.product_id).name if products.get(a.product_id) else None),
+            image=(products.get(a.product_id).image if products.get(a.product_id) else None),
             alert_type=a.alert_type,
             price=a.price,
             previous_price=a.previous_price,

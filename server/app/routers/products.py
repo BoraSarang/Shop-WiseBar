@@ -48,6 +48,10 @@ def get_product(product_id: str, device_id: str | None = None, db: Session = Dep
 @router.post("/products", response_model=ProductOut, status_code=201)
 def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: Session = Depends(get_db)) -> ProductOut:
     """클라이언트가 캐치한 상품 등록/정보 업데이트 (name/image 최신화)"""
+    # 프로토콜-상대 URL("//cdn...") → https: 정규화 (팝업/확장 페이지에서 로드 가능하도록)
+    image = payload.image
+    if image and image.startswith("//"):
+        image = f"https:{image}"
     product = db.get(Product, payload.product_id)
     if product is None:
         product = Product(
@@ -55,14 +59,14 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
             mall=payload.mall,
             url=payload.url,
             name=payload.name,
-            image=payload.image,
+            image=image,
         )
         db.add(product)
     else:
         if payload.name:
             product.name = payload.name
-        if payload.image:
-            product.image = payload.image
+        if image:
+            product.image = image
         if payload.mall:
             product.mall = payload.mall
     db.commit()
