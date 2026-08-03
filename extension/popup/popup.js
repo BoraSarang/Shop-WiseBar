@@ -93,7 +93,7 @@ async function loadCurrent() {
   $("dealBadge").classList.add("hidden");
   $("currentStats").textContent = "";
   if (!parsed) {
-    $("currentName").textContent = "지원 상품 페이지를 열어주세요";
+    $("currentName").textContent = "지원 몰(네이버·쿠팡·올리브영)의 상품 페이지를 열어주세요";
     return;
   }
   current = parsed;
