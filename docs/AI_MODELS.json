@@ -1,0 +1,10 @@
+{
+  "version": "0.3.0",
+  "default_chain": ["openrouter/free", "gemini-1.5-flash", "openrouter/paid-fallback"],
+  "models": {
+    "chat": { "model": "openrouter/auto", "temperature": 0.2, "max_tokens": 4096, "prompt_version": "chat_v0.3" },
+    "code": { "model": "gemini-1.5-pro", "temperature": 0.1, "max_tokens": 8192, "prompt_version": "code_v0.3" },
+    "vision": { "model": "gemini-1.5-flash", "temperature": 0.2, "prompt_version": "vision_v0.3" }
+  },
+  "cost_guard": { "max_cost_per_task_usd": 1.0, "alert_at_usd": 0.5 }
+}
