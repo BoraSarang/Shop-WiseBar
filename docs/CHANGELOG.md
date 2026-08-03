@@ -1,5 +1,10 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.8.10 (2026-08-04) — [extension] 쿠팡 vendorItemId(딜) variant 분리
+
+- **옵션/딜별 가격 분리**: `vendorItemId`를 variant로 추가 추출 — 같은 productId라도 vendorItemId(딜)마다 가격이 다른데 itemId만 추출해서 **옵션별 가격이 한 상품에 섞이던 문제** 해결 (오리온 황치즈칩쿠키 9,880/14,900/27,530 혼합 사례)
+- 성능 영향 없음
+
 ## v0.8.9 (2026-08-04) — [extension] 품절 상품 캡처 완전 스킵 (잔존 가격 요소 제거)
 
 - v0.8.8에서 품절 상품의 `.total-price[data-price]`도 잔존값(14,900)을 가질 수 있음이 확인됨 — **품절이면 total-price 포함 전부 무시하고 무조건 스킵** (price=null → 캡처 안 함, 오리온 황치즈칩 품절 14,900원 사례)

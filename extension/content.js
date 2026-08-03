@@ -78,11 +78,14 @@ const Extractor = {
     };
   },
 
-  // 쿠팡 옵션(itemId) 추출 — 옵션별 가격/제목 분리용 (다른 몰은 옵션이 URL에 없어 null)
+  // 쿠팡 옵션/딜(itemId, vendorItemId) 추출 — 옵션/딜별 가격 분리용
+  // v0.8.10: vendorItemId 추가 — 같은 productId라도 vendorItemId(딜)마다 가격이 달라
+  //          itemId만 추출하면 옵션별 가격이 한 상품에 섞이는 문제 (오리온 9,880/14,900/27,530 사례)
   extractVariant(mall) {
     if (mall !== "coupang") return null;
     try {
-      return new URLSearchParams(window.location.search).get("itemId") || null;
+      const qs = new URLSearchParams(window.location.search);
+      return qs.get("itemId") || qs.get("vendorItemId") || null;
     } catch {
       return null;
     }
