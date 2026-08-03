@@ -139,22 +139,26 @@ const Extractor = {
       }
       if (image && image.startsWith("//")) image = `https:${image}`;
 
-      // 이름: v0.8.3 — name/title/tit 클래스 후보 중 가장 긴 텍스트 선택.
-      // (네이버 쇼핑 검색 카드는 스토어명 요소가 상품명보다 먼저/안쪽에 있어
-      // 첫 매치만으로는 상점명이 잡힘 — 상품명이 항상 가장 길다)
+      // 이름: v0.8.4 — name/title/tit 클래스 후보 중 가장 긴 텍스트 선택 + 잡음 문구 제외.
+      // (네이버 쇼핑 검색 카드는 스토어명/UI 문구("새 창에서 열림") 요소가 상품명보다
+      // 먼저 매치됨 — 상품명이 항상 가장 길고 잡음 문구와 다르다는 점 이용)
       let name = null;
+      const NOISE_NAMES = ["새 창에서 열림", "새 창으로 열기", "새창에서 열기", "새창으로 열기", "찜", "장바구니", "상품 이미지"];
       if (card) {
         let best = null;
         const scope = card.querySelector("a[href]") || card;
         const cands = scope.querySelectorAll("[class*='name'], [class*='title'], [class*='tit']");
         for (const el of cands) {
           const t = (el.textContent || "").trim();
-          if (t.length < 3) continue;
+          if (t.length < 3 || NOISE_NAMES.includes(t)) continue;
           if (!best || t.length > best.length) best = t;
         }
         if (best) name = best;
       }
-      if (!name && img) name = img.getAttribute("alt");
+      if (!name && img) {
+        const alt = (img.getAttribute("alt") || "").trim();
+        if (alt && !NOISE_NAMES.includes(alt)) name = alt;
+      }
       if (!name && a.textContent) name = a.textContent.trim();
       if (name) name = this.normalizeTitle(parsed.mall, name.replace(/^@[^\s]+\s+/, "").slice(0, 200));
 
