@@ -83,6 +83,7 @@ const SWB_UI = (() => {
     .swb-delta.down { color: #2d4ae0; }
     .swb-delta.up { color: #e5484d; }
     .swb-watch {
+      position: relative;
       margin-left: auto; align-self: center;
       background: none; border: none; cursor: pointer;
       color: #ccc; padding: 4px;
@@ -92,6 +93,15 @@ const SWB_UI = (() => {
     .swb-watch.active { color: #e5484d; }
     .swb-watch.active svg { fill: currentColor; }
     .swb-watch svg { width: 20px; height: 20px; }
+    .swb-watch-label {
+      position: absolute; right: calc(100% + 8px); top: 50%;
+      transform: translate(4px, -50%);
+      white-space: nowrap; font-size: 11px; font-weight: 600; color: #333;
+      background: #fff; padding: 3px 8px; border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.14); opacity: 0;
+      transition: opacity 0.12s ease, transform 0.12s ease; pointer-events: none;
+    }
+    .swb-watch:hover .swb-watch-label { opacity: 1; transform: translate(0, -50%); }
     .swb-chart-wrap { position: relative; }
     canvas.swb-chart { width: 100%; height: 140px; display: block; }
     .swb-stats { display: flex; gap: 12px; margin-top: 8px; font-size: 11px; color: #888; }
@@ -186,7 +196,7 @@ const SWB_UI = (() => {
           <div class="swb-price-row">
             <span class="swb-now">—</span>
             <span class="swb-delta"></span>
-            <button class="swb-watch" title="찜하기">${ICON.watch}</button>
+            <button class="swb-watch" title="찜 하기">${ICON.watch}<span class="swb-watch-label">찜 하기</span></button>
           </div>
           <div class="swb-chart-wrap"><canvas class="swb-chart" width="292" height="140"></canvas></div>
           <div class="swb-stats">
@@ -307,12 +317,22 @@ const SWB_UI = (() => {
     }
   }
 
+  function updateWatchBtn() {
+    const btn = shadow.querySelector(".swb-watch");
+    if (!btn) return;
+    const text = currentWatched ? "찜 해제" : "찜 하기";
+    btn.classList.toggle("active", currentWatched);
+    btn.title = text;
+    const label = btn.querySelector(".swb-watch-label");
+    if (label) label.textContent = text;
+  }
+
   async function toggleWatch() {
     const deviceId = await getDeviceId();
-    const btn = shadow.querySelector(".swb-watch");
     if (!deviceId || !currentParsed) {
-      btn.title = "기기 등록이 필요합니다 (설정 참조)";
-      setTimeout(() => (btn.title = "찜하기"), 2000);
+      const btn = shadow.querySelector(".swb-watch");
+      if (btn) btn.title = "기기 등록이 필요합니다 (설정 참조)";
+      setTimeout(updateWatchBtn, 2000);
       return;
     }
     const pid = encodeURIComponent(currentParsed.productID);
@@ -321,7 +341,6 @@ const SWB_UI = (() => {
       if (currentWatched) {
         await fetch(`${base}/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, { method: "DELETE" });
         currentWatched = false;
-        btn.title = "찜하기";
       } else {
         await fetch(`${base}/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, {
           method: "PUT",
@@ -329,12 +348,12 @@ const SWB_UI = (() => {
           body: JSON.stringify({ target_price: null }),
         });
         currentWatched = true;
-        btn.title = "찜 해제";
       }
-      btn.classList.toggle("active", currentWatched);
+      updateWatchBtn();
     } catch {
-      btn.title = "서버 연결 실패 (E-EXT-NET-1001)";
-      setTimeout(() => (btn.title = currentWatched ? "찜 해제" : "찜하기"), 2000);
+      const btn = shadow.querySelector(".swb-watch");
+      if (btn) btn.title = "서버 연결 실패 (E-EXT-NET-1001)";
+      setTimeout(updateWatchBtn, 2000);
     }
   }
 
@@ -364,9 +383,7 @@ const SWB_UI = (() => {
     let points = [];
     let serverError = false;
     currentWatched = false;
-    const watchBtn = panel.querySelector(".swb-watch");
-    watchBtn.classList.remove("active");
-    watchBtn.title = "찜하기";
+    updateWatchBtn();
     try {
       const base = `${SWB_CONFIG.server}${SWB_CONFIG.api}`;
       const deviceId = await getDeviceId();
@@ -379,8 +396,7 @@ const SWB_UI = (() => {
     }
     if (product && product.is_watched) {
       currentWatched = true;
-      watchBtn.classList.add("active");
-      watchBtn.title = "찜 해제";
+      updateWatchBtn();
     }
 
     // 3) 현재 페이지 가격을 마지막 포인트로 병합 (중복이면 유지)
