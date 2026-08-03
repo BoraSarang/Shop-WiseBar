@@ -67,6 +67,23 @@ class AlertOut(BaseModel):
     captured_at: datetime
 
 
+class AlertRecordIn(BaseModel):
+    product_id: str
+    alert_type: str  # price_dropped | target_reached
+    price: int = Field(..., gt=0)
+    previous_price: int | None = None
+
+
+class AlertHistoryOut(BaseModel):
+    id: int
+    product_id: str
+    alert_type: str
+    price: int
+    previous_price: int | None
+    url: str | None
+    created_at: datetime
+
+
 class RecommendationOut(ProductOut):
     """추천 상품 — ProductOut + 기간 내 하락폭 (T-58)"""
     drop_amount: int

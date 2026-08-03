@@ -63,3 +63,20 @@ class Watch(Base):
 
     device: Mapped[Device] = relationship(back_populates="watches")
     product: Mapped[Product] = relationship()
+
+
+class Alert(Base):
+    """알림 히스토리 — 폴링에서 감지된 하락/목표 도달 기록 (최신순 50건 보존)"""
+
+    __tablename__ = "alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    device_id: Mapped[str] = mapped_column(ForeignKey("devices.id"), index=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+    alert_type: Mapped[str] = mapped_column(String(32))  # price_dropped | target_reached
+    price: Mapped[int] = mapped_column(Integer)
+    previous_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    url: Mapped[str | None] = mapped_column(String(1024), nullable=True)  # 상품 링크 스냅샷
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    device: Mapped[Device] = relationship()

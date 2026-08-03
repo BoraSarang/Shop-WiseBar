@@ -7,8 +7,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Device, PricePoint, Product, Watch
-from app.schemas import AlertOut, WatchIn, WatchOut
+from app.models import Alert, Device, PricePoint, Product, Watch
+from app.schemas import AlertHistoryOut, AlertOut, AlertRecordIn, WatchIn, WatchOut
 
 router = APIRouter(tags=["watches"])
 
@@ -73,6 +73,73 @@ def list_watches(device_id: str, db: Session = Depends(get_db)) -> list[WatchOut
             )
         )
     return out
+
+
+@router.get("/devices/{device_id}/alerts/history", response_model=list[AlertHistoryOut])
+def get_alert_history(device_id: str, limit: int = 50, db: Session = Depends(get_db)) -> list[AlertHistoryOut]:
+    """알림 히스토리 — 최신순 limit건 (기본 50, 초과 시 오래된 것 정리)"""
+    _get_device_or_404(db, device_id)
+    if limit > 50:
+        limit = 50
+    rows = list(
+        db.scalars(
+            select(Alert)
+            .where(Alert.device_id == device_id)
+            .order_by(Alert.created_at.desc(), Alert.id.desc())
+            .limit(limit)
+        ).all()
+    )
+    stale = db.scalars(
+        select(Alert.id)
+        .where(Alert.device_id == device_id)
+        .order_by(Alert.created_at.desc(), Alert.id.desc())
+        .offset(limit)
+    ).all()
+    if stale:
+        db.execute(delete(Alert).where(Alert.id.in_(stale)))
+        db.commit()
+    return [
+        AlertHistoryOut(
+            id=a.id,
+            product_id=a.product_id,
+            alert_type=a.alert_type,
+            price=a.price,
+            previous_price=a.previous_price,
+            url=a.url,
+            created_at=a.created_at,
+        )
+        for a in rows
+    ]
+
+
+@router.post("/devices/{device_id}/alerts", response_model=list[AlertHistoryOut])
+def record_alerts(device_id: str, payload: list[AlertRecordIn], db: Session = Depends(get_db)) -> list[AlertHistoryOut]:
+    """폴링 감지 알림 배치 저장 — url은 Product에서 스냅샷"""
+    _get_device_or_404(db, device_id)
+    products = {
+        p.id: p.url
+        for p in db.scalars(select(Product).where(Product.id.in_([a.product_id for a in payload]))).all()
+    }
+    for a in payload:
+        db.add(
+            Alert(
+                device_id=device_id,
+                product_id=a.product_id,
+                alert_type=a.alert_type,
+                price=a.price,
+                previous_price=a.previous_price,
+                url=products.get(a.product_id),
+            )
+        )
+    db.commit()
+    return get_alert_history(device_id, db=db)
+
+
+@router.delete("/devices/{device_id}/alerts/{alert_id}", status_code=204)
+def delete_alert(device_id: str, alert_id: int, db: Session = Depends(get_db)) -> None:
+    _get_device_or_404(db, device_id)
+    db.execute(delete(Alert).where(Alert.id == alert_id, Alert.device_id == device_id))
+    db.commit()
 
 
 @router.get("/devices/{device_id}/alerts", response_model=list[AlertOut])
