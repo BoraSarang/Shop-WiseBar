@@ -1,10 +1,11 @@
 # ORM 모델 — Device(익명 기기ID) / Product(상품 마스터) / PricePoint(가격 이력) / Watch(관심 상품)
+# v0.6.0: PriceDailyStat(일별 가격 통계) 추가 — 로우 데이터 축적 대신 일별 집계
 # product.id는 클라이언트 MallParser의 productID 규약과 동일한 문자열 PK
 #   coupang: 상품번호 / naver: "store:{store}:{id}" | "brand:{store}:{id}" | "c:{id}" / oliveyoung: goodsNo | "oyrun:{url}"
 # PLATFORM: server
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -50,6 +51,27 @@ class PricePoint(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     product: Mapped[Product] = relationship(back_populates="price_points")
+
+
+class PriceDailyStat(Base):
+    """일별 가격 통계 (v0.6.0) — 가격이 변했을 때만 price_points에 기록하고,
+    방문(수집) 자체는 당일 통계에 집계한다. 그래프/요약은 이 테이블 사용.
+    open: 하루 첫 수집 가격 / close: 하루 마지막 수집 가격 / low·high: 하루 최저·최고"""
+
+    __tablename__ = "price_daily_stats"
+    __table_args__ = (UniqueConstraint("product_id", "stat_date", name="uq_product_date"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+    stat_date: Mapped[date] = mapped_column(Date, index=True)
+    open_price: Mapped[int] = mapped_column(Integer)
+    close_price: Mapped[int] = mapped_column(Integer)
+    low_price: Mapped[int] = mapped_column(Integer)
+    high_price: Mapped[int] = mapped_column(Integer)
+    point_count: Mapped[int] = mapped_column(Integer, default=1)  # 당일 수집(방문) 횟수
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    product: Mapped[Product] = relationship()
 
 
 class Watch(Base):

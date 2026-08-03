@@ -4,10 +4,11 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Device, PricePoint, Product, Watch
+from app.models import Device, PriceDailyStat, PricePoint, Product, Watch
 from app.schemas import PricePointOut, PriceUploadIn, ProductOut, ProductUpsertIn
 
 router = APIRouter(tags=["products"])
@@ -95,16 +96,67 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
 @router.post("/products/{product_id}/prices", response_model=PricePointOut, status_code=201)
 def upload_price(product_id: str, payload: PriceUploadIn, db: Session = Depends(get_db)) -> PricePointOut:
     """가격 수집 결과 업로드 (클라이언트 브라우저 세션 / 서버 크롤러) — last_price 최신화
-    variant(쿠팡 itemId)로 옵션별 가격을 분리 저장 — 옵션 간 가격 차이가 하락 오탐을 내지 않도록"""
+    variant(쿠팡 itemId)로 옵션별 가격을 분리 저장 — 옵션 간 가격 차이가 하락 오탐을 내지 않도록
+
+    v0.6.0 — 로우 데이터 dedup + 일별 통계:
+      - 같은 variant의 직전 가격과 같으면 price_points INSERT 생략 (가격 변화 시점만 로우 기록)
+      - 방문(수집)은 항상 price_daily_stats 당일 행에 집계 (open/close/low/high/point_count)"""
     product = db.get(Product, product_id)
     if product is None:
         raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1001", "message": "상품을 찾을 수 없습니다"})
-    now = datetime.now(timezone.utc)
-    point = PricePoint(product_id=product_id, price=payload.price, source=payload.source, variant=payload.variant, captured_at=now)
-    db.add(point)
+    # 초 단위 절단: UNIQUE(product_id, captured_at)가 같은 초 중복(동시 캡처)을 막는 방어선이 되도록
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    today = now.date()
+
+    variant_cond = PricePoint.variant.is_(None) if payload.variant is None else PricePoint.variant == payload.variant
+    last = db.scalar(
+        select(PricePoint)
+        .where(PricePoint.product_id == product_id, variant_cond)
+        .order_by(PricePoint.captured_at.desc())
+        .limit(1)
+    )
+
+    # dedup: 가격 변화 없으면 로우 INSERT 생략, 통계만 갱신
+    inserted = False
+    if last is None or last.price != payload.price:
+        point = PricePoint(
+            product_id=product_id, price=payload.price, source=payload.source,
+            variant=payload.variant, captured_at=now,
+        )
+        db.add(point)
+        try:
+            db.flush()
+            inserted = True
+        except IntegrityError:
+            # 같은 초에 이미 저장된 동시 캡처(중복 POST) — 기존 행 유지, 통계만 갱신
+            db.rollback()
+
     product.last_price = payload.price
     product.last_checked_at = now
+
+    # 일별 통계 upsert
+    stat = db.scalar(
+        select(PriceDailyStat)
+        .where(PriceDailyStat.product_id == product_id, PriceDailyStat.stat_date == today)
+    )
+    if stat is None:
+        stat = PriceDailyStat(
+            product_id=product_id, stat_date=today,
+            open_price=payload.price, close_price=payload.price,
+            low_price=payload.price, high_price=payload.price,
+            point_count=1, updated_at=now,
+        )
+        db.add(stat)
+    else:
+        stat.close_price = payload.price
+        stat.low_price = min(stat.low_price, payload.price)
+        stat.high_price = max(stat.high_price, payload.price)
+        stat.point_count += 1
+        stat.updated_at = now
+
     db.commit()
+    if not inserted:
+        return PricePointOut(price=payload.price, source=payload.source, variant=payload.variant, captured_at=now)
     db.refresh(point)
     return PricePointOut(price=point.price, source=point.source, variant=point.variant, captured_at=point.captured_at)
 

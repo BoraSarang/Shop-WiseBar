@@ -2,11 +2,20 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
-## T-67 — 연관 상품 자동 수집 (v0.5 — Phase 1 진행)
+## T-68 — 가격 로우데이터 dedup + 일별 통계 (v0.6.0 — 완료)
+- [x] price_points: 가격 변동 시에만 INSERT (같은 가격 재방문은 로우 생성 없음)
+- [x] price_daily_stats 신규 테이블: 일별 open/close/low/high/point_count (UNIQUE product_id+stat_date)
+- [x] race 방어: captured_at 초 단위 절단 + IntegrityError catch
+- [x] 실기기 실측: 3사 방문 89행 dedup / 해피바스 재방문 point_count 3→5 / 리멤버린 가격 변동 정상 캡처 (2026-08-03 사용자 확인)
+
+## T-67 — 연관 상품 자동 수집 (v0.5 — 완료)
 - [x] content.js: EXTRACT_RELATED — 상품 페이지 연관 섹션 카드 추출 (MallParser 규약 재사용, 가격 없어도 등록)
 - [x] background.js: captureRelated — 연관 상품 upsert + 가격 업로드 (10개 제한, 메인 캡처 쿨다운 공유)
 - [x] 스크롤 수집 보정: 자동 스크롤 제거 → 사용자 스크롤 시 새로 로드된 카드만 재수집 (RELATED_FOUND, 600ms 디바운스, 이중 중복 방지)
-- [ ] 실기기 실측: 쿠팡/네이버/올리브영 상품 페이지 각 1회 — 초기 수집 + 스크롤 수집 확인 — 사용자 확인 필요
+- [x] SPA 이동 캡처: webNavigation.onHistoryStateUpdated (800ms 딜레이) — 올리브영 클릭 이동 확인 (A000000167392 22,950원)
+- [x] 올리브영 전용 추출: CurationItem div 카드 → 이미지 URL goodsNo 파싱 (`A(\d+)ko\.jpg`) — 스크롤 후 2→22개
+- [x] 가격 오매치 수정: `\d{1,3}(?:,\d{3})*` + 1,000~5,000만원 필터 — 쿠팡 12,9009,670 오탐 해결
+- [x] 실기기 실측 완료: 쿠팡 42 / 네이버 41+11(롯데웰푸드) / 올리브영 22 = 총 116개 등록 (2026-08-03 사용자 확인)
 - [ ] Phase 2: 목록/검색 페이지 캡처 (쿠팡 검색 결과, 네이버 쇼핑 등)
 - [ ] Phase 3: product_relations 관계 그래프 저장 (추천/핫딜 기반)
 

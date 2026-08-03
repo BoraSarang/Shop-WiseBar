@@ -1,5 +1,14 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.6.0 (2026-08-03) — [server] 가격 로우데이터 dedup + 일별 통계
+
+- **가격 기록 구조 변경**: 가격이 **변할 때만** `price_points`에 INSERT (같은 가격 재방문은 로우 생성 없음)
+  - 문제: 방문마다 로우가 쌓여 같은 가격이 중복 기록 — 가격 추이/차트 왜곡
+- **신규 `price_daily_stats` 테이블**: 일별 1행 — `open_price/close_price/low_price/high_price/point_count` (UNIQUE(product_id, stat_date))
+  - 방문은 전부 통계로 집계: 기존 178행이 89행으로 dedup, stats 78행 자동 생성
+- **race 방어**: `captured_at` 초 단위 절단 + UNIQUE 위반 시 IntegrityError catch (동시 POST/이벤트 중복 호출에도 중복 INSERT 차단)
+- **실기기 실측**: 해피바스 재방문 (같은 5,990원) → price_points 2행 유지 + point_count 3→5 증가 / 리멤버린 가격 변동 4,980→24,900 → 신규 로우 정상 캡처
+
 ## v0.5.0 (2026-08-03) — [extension] 연관 상품 자동 수집 (Phase 1)
 
 - **상품 페이지 연관 상품 캡처**: 상품 페이지에서 "함께 비교하면 좋을 상품/비슷한 상품/이런 상품은 어때요" 등 연관 섹션의 상품 카드를 자동 수집해 카탈로그에 등록
