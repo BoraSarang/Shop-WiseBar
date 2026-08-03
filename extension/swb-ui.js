@@ -626,7 +626,7 @@ const SWB_UI = (() => {
       const row = document.createElement("div");
       row.className = "swb-li";
       row.innerHTML = `
-        <span class="swb-li-thumb"${img}>${w.image ? "" : (m ? m.label.slice(0, 1) : "?")}${badge}</span>
+        <span class="swb-li-thumb"${img}>${w.image ? "" : (m ? "" : "?")}${badge}</span>
         <span class="swb-li-body">
           <span class="swb-li-name"></span>
           <span class="swb-li-price"></span>

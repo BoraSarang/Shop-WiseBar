@@ -52,7 +52,7 @@ async function loadHistory() {
       li.className = "alert-item";
       const m = mallMeta[a.mall] || null;
       li.innerHTML = `
-        <span class="alert-thumb"${a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : ""}>${a.image ? "" : (m ? m.label.slice(0, 1) : "?")}${mallBadgeHtml(m)}</span>
+        <span class="alert-thumb"${a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : ""}>${a.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
         <span class="alert-badge drop">▼ 하락</span>
         <span class="alert-body">
           <span class="alert-name"></span>
@@ -206,7 +206,7 @@ async function loadList() {
     const li = document.createElement("li");
     li.className = "watch-item";
     li.innerHTML = `
-      <span class="watch-thumb"${w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : ""}>${w.image ? "" : (m ? m.label.slice(0, 1) : "?")}${mallBadgeHtml(m)}</span>
+      <span class="watch-thumb"${w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : ""}>${w.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
       <span class="watch-body">
         <span class="watch-name"></span>
         <span class="watch-price"></span>
