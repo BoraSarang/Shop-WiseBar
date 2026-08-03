@@ -31,7 +31,7 @@ def get_recommendations(limit: int = 10, days: int = 7, db: Session = Depends(ge
             WITH ranked AS (
               SELECT product_id, price,
                      ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY captured_at DESC) AS rn,
-                     LAG(price) OVER (PARTITION BY product_id ORDER BY captured_at DESC) AS prev_price
+                     LEAD(price) OVER (PARTITION BY product_id ORDER BY captured_at DESC) AS prev_price
               FROM price_points
               WHERE captured_at >= :cutoff
             )
