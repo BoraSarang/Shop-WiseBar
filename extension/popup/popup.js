@@ -325,6 +325,7 @@ async function loadList() {
     return;
   }
   $("emptyMsg").classList.add("hidden");
+  $("watchList").innerHTML = "";
 
   for (const w of watches) {
     const m = mallMeta[w.mall] || null;

@@ -3,7 +3,7 @@
 
 html, body {
   height: 600px;
-  overflow-y: auto;
+  overflow: hidden; /* v0.7.3 — 메인 스크롤 제거, 찜 목록만 내부 스크롤 */
 }
 
 body {
@@ -12,6 +12,8 @@ body {
   font-size: 13px;
   color: #1c1c1e;
   background: #fff;
+  display: flex;
+  flex-direction: column;
 }
 
 header {
@@ -55,11 +57,11 @@ header h1 { font-size: 15px; font-weight: 700; }
 
 .status { font-size: 11px; opacity: 0.85; margin-left: auto; }
 
-.alerts { padding: 10px 14px 12px; background: #fff8f6; border-bottom: 1px solid #fbe3dd; }
+.alerts { padding: 10px 14px 12px; background: #fff8f6; border-bottom: 1px solid #fbe3dd; flex-shrink: 0; }
 
 .alerts h2 { font-size: 12px; color: #e5484d; margin-bottom: 6px; }
 
-.alert-list { list-style: none; }
+.alert-list { list-style: none; max-height: 132px; overflow-y: auto; }
 
 .alert-item {
   display: flex; align-items: center; gap: 8px;
@@ -95,7 +97,7 @@ header h1 { font-size: 15px; font-weight: 700; }
 .alert-empty { list-style: none; font-size: 11px; color: #aaa; text-align: center; padding: 14px 8px; line-height: 1.6; }
 
 /* ── 오늘의 핫딜 (v0.7.2) ─────────────────────────── */
-.deals { padding: 10px 14px 12px; background: #f4f7ff; border-bottom: 1px solid #e0e7ff; }
+.deals { padding: 10px 14px 12px; background: #f4f7ff; border-bottom: 1px solid #e0e7ff; flex-shrink: 0; }
 
 .deals-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 
@@ -134,7 +136,7 @@ header h1 { font-size: 15px; font-weight: 700; }
   padding: 2px 6px; border-radius: 5px; flex-shrink: 0;
 }
 
-.current { padding: 12px 14px; border-bottom: 1px solid #eee; }
+.current { padding: 12px 14px; border-bottom: 1px solid #eee; flex-shrink: 0; }
 
 .current-head { display: flex; flex-direction: column; gap: 8px; }
 
@@ -192,7 +194,9 @@ header h1 { font-size: 15px; font-weight: 700; }
   color: #888;
 }
 
-.watch-list { list-style: none; max-height: 260px; overflow-y: auto; }
+.watch-list { list-style: none; flex: 1; min-height: 0; overflow-y: auto; }
+
+#listSection { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 .watch-item {
   display: flex;
