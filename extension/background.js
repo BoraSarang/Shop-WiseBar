@@ -53,15 +53,6 @@ async function captureProduct(tab) {
   const parsed = MallParser.parse(tab.url);
   if (!parsed) return;
 
-  const { lastCapture } = await chrome.storage.local.get("lastCapture");
-  if (
-    lastCapture &&
-    lastCapture.productID === parsed.productID &&
-    Date.now() - lastCapture.at < CONFIG.captureCooldownMs
-  ) {
-    return;
-  }
-
   let response;
   try {
     response = await chrome.tabs.sendMessage(tab.id, { type: "EXTRACT" });
@@ -69,6 +60,17 @@ async function captureProduct(tab) {
     return; // content script 미로드 (리다이렉트/중간 페이지)
   }
   if (!response || !response.ok || !response.data) return;
+
+  const variant = response.data.variant || null;
+  const { lastCapture } = await chrome.storage.local.get("lastCapture");
+  const captureKey = `${parsed.productID}:${variant || ""}`;
+  if (
+    lastCapture &&
+    lastCapture.key === captureKey &&
+    Date.now() - lastCapture.at < CONFIG.captureCooldownMs
+  ) {
+    return;
+  }
 
   const { parsed: target, data } = response;
   const price = Number(data.price);
@@ -87,12 +89,12 @@ async function captureProduct(tab) {
     });
     await api(`/products/${encodeURIComponent(target.productID)}/prices`, {
       method: "POST",
-      body: JSON.stringify({ price, source: "extension" }),
+      body: JSON.stringify({ price, source: "extension", variant }),
     });
     await chrome.storage.local.set({
-      lastCapture: { productID: target.productID, at: Date.now() },
+      lastCapture: { key: captureKey, at: Date.now() },
     });
-    console.log(`[똑바] 수집 완료 ${target.productID} ${price.toLocaleString()}원`);
+    console.log(`[똑바] 수집 완료 ${target.productID}${variant ? " (" + variant + ")" : ""} ${price.toLocaleString()}원`);
   } catch (e) {
     console.warn("[똑바] 업로드 실패 (다음 방문 시 재시도)", e);
   }

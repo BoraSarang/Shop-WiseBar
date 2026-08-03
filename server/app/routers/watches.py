@@ -148,49 +148,66 @@ def delete_alert(device_id: str, alert_id: int, db: Session = Depends(get_db)) -
 
 @router.get("/devices/{device_id}/alerts", response_model=list[AlertOut])
 def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depends(get_db)) -> list[AlertOut]:
-    """폴링 알림 — since 이후 마지막 가격이 이전 가격 대비 하락한 관심 상품 목록
-    since 경계: since 이전 마지막 포인트를 previous로 사용 (T-59 — 재실행 시 1건만 변동이어도 감지)"""
+    """폴링 알림 — 같은 옵션(variant)끼리만 최신/이전 가격 비교해 하락 감지
+    쿠팡 itemId 등 옵션별 가격이 다른 경우, 옵션 간 가격 차이를 하락으로 오탐하지 않도록 variant 단위로 분리"""
     _get_device_or_404(db, device_id)
     watches = db.scalars(select(Watch).where(Watch.device_id == device_id)).all()
     alerts: list[AlertOut] = []
     for w in watches:
-        latest: PricePoint | None = None
-        previous: PricePoint | None = None
         if since is not None:
-            latest = db.scalar(
-                select(PricePoint)
-                .where(PricePoint.product_id == w.product_id, PricePoint.captured_at >= since)
-                .order_by(PricePoint.captured_at.desc())
-                .limit(1)
+            points = list(
+                db.scalars(
+                    select(PricePoint)
+                    .where(PricePoint.product_id == w.product_id, PricePoint.captured_at >= since)
+                    .order_by(PricePoint.captured_at.desc())
+                    .limit(100)
+                ).all()
             )
-            if latest is not None:
+            latest_by_variant: dict[str | None, PricePoint] = {}
+            for pt in points:
+                if pt.variant not in latest_by_variant:
+                    latest_by_variant[pt.variant] = pt
+            for variant, latest in latest_by_variant.items():
+                prev_cond = (
+                    PricePoint.variant.is_(None) if variant is None else PricePoint.variant == variant
+                )
                 previous = db.scalar(
                     select(PricePoint)
-                    .where(PricePoint.product_id == w.product_id, PricePoint.captured_at < since)
+                    .where(
+                        PricePoint.product_id == w.product_id,
+                        PricePoint.captured_at < since,
+                        prev_cond,
+                    )
                     .order_by(PricePoint.captured_at.desc())
                     .limit(1)
                 )
+                if previous is not None and latest.price < previous.price:
+                    alerts.append(_alert_out(latest, previous))
         else:
             points = list(
                 db.scalars(
                     select(PricePoint)
                     .where(PricePoint.product_id == w.product_id)
                     .order_by(PricePoint.captured_at.desc())
-                    .limit(2)
+                    .limit(500)
                 ).all()
             )
-            latest = points[0] if points else None
-            previous = points[1] if len(points) > 1 else None
-        if latest is None:
-            continue
-        if previous is not None and latest.price < previous.price:
-            alerts.append(
-                AlertOut(
-                    product_id=w.product_id,
-                    alert_type="price_dropped",
-                    price=latest.price,
-                    previous_price=previous.price,
-                    captured_at=latest.captured_at,
-                )
-            )
+            by_variant: dict[str | None, list[PricePoint]] = {}
+            for pt in points:
+                by_variant.setdefault(pt.variant, []).append(pt)
+            for variant, group in by_variant.items():
+                latest = group[0]
+                previous = group[1] if len(group) > 1 else None
+                if previous is not None and latest.price < previous.price:
+                    alerts.append(_alert_out(latest, previous))
     return alerts
+
+
+def _alert_out(latest: PricePoint, previous: PricePoint | None) -> AlertOut:
+    return AlertOut(
+        product_id=latest.product_id,
+        alert_type="price_dropped",
+        price=latest.price,
+        previous_price=previous.price if previous else None,
+        captured_at=latest.captured_at,
+    )

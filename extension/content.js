@@ -48,7 +48,18 @@ const Extractor = {
       price,
       title: this.normalizeTitle(mall, this.ogMeta("og:title")),
       image: this.ogMeta("og:image"),
+      variant: this.extractVariant(mall),
     };
+  },
+
+  // 쿠팡 옵션(itemId) 추출 — 옵션별 가격/제목 분리용 (다른 몰은 옵션이 URL에 없어 null)
+  extractVariant(mall) {
+    if (mall !== "coupang") return null;
+    try {
+      return new URLSearchParams(window.location.search).get("itemId") || null;
+    } catch {
+      return null;
+    }
   },
 
   // 몰별 og:title 정리 (og:title은 몰이 마케팅용으로 채우는 값이라 잡음 제거)

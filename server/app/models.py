@@ -44,6 +44,7 @@ class PricePoint(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+    variant: Mapped[str | None] = mapped_column(String(128), nullable=True)  # 쿠팡 옵션(itemId) 등 — 옵션별 가격 분리
     price: Mapped[int] = mapped_column(Integer)
     source: Mapped[str] = mapped_column(String(16), default="client")  # client | crawler
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

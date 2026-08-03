@@ -60,7 +60,9 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
         )
         db.add(product)
     else:
-        if payload.name:
+        # 이름은 최초 1회만 저장 — 쿠팡은 옵션(itemId)별 og:title이 달라
+        # 같은 상품인데 이름이 옵션에 따라 바뀌는 것을 방지
+        if not product.name and payload.name:
             product.name = payload.name
         if image:
             product.image = image
@@ -73,18 +75,19 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
 
 @router.post("/products/{product_id}/prices", response_model=PricePointOut, status_code=201)
 def upload_price(product_id: str, payload: PriceUploadIn, db: Session = Depends(get_db)) -> PricePointOut:
-    """가격 수집 결과 업로드 (클라이언트 브라우저 세션 / 서버 크롤러) — last_price 최신화"""
+    """가격 수집 결과 업로드 (클라이언트 브라우저 세션 / 서버 크롤러) — last_price 최신화
+    variant(쿠팡 itemId)로 옵션별 가격을 분리 저장 — 옵션 간 가격 차이가 하락 오탐을 내지 않도록"""
     product = db.get(Product, product_id)
     if product is None:
         raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1001", "message": "상품을 찾을 수 없습니다"})
     now = datetime.now(timezone.utc)
-    point = PricePoint(product_id=product_id, price=payload.price, source=payload.source, captured_at=now)
+    point = PricePoint(product_id=product_id, price=payload.price, source=payload.source, variant=payload.variant, captured_at=now)
     db.add(point)
     product.last_price = payload.price
     product.last_checked_at = now
     db.commit()
     db.refresh(point)
-    return PricePointOut(price=point.price, source=point.source, captured_at=point.captured_at)
+    return PricePointOut(price=point.price, source=point.source, variant=point.variant, captured_at=point.captured_at)
 
 
 @router.get("/products/{product_id}/prices", response_model=list[PricePointOut])

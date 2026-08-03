@@ -24,6 +24,7 @@ class ProductUpsertIn(BaseModel):
 class PriceUploadIn(BaseModel):
     price: int = Field(..., gt=0)
     source: str = Field("client", max_length=16)  # client | crawler | extension
+    variant: str | None = Field(None, max_length=128)  # 쿠팡 옵션(itemId) — 옵션별 가격 분리용
 
 
 class ProductOut(BaseModel):
@@ -40,6 +41,7 @@ class ProductOut(BaseModel):
 class PricePointOut(BaseModel):
     price: int
     source: str
+    variant: str | None = None
     captured_at: datetime
 
 
