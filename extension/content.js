@@ -125,7 +125,7 @@ const Extractor = {
       seen.add(parsed.productID);
 
       // 카드 컨테이너: 상품 카드 구조(리스트 아이템/상품 래퍼) 근접 탐색
-      const card = this.findCard(a);
+      const card = findCard(a);
 
       const img = card ? card.querySelector("img") : null;
       let image = null;
