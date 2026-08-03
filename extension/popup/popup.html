@@ -12,12 +12,12 @@
     <span id="status" class="status"></span>
   </header>
 
-  <section id="alerts" class="alerts hidden">
+  <section id="alerts" class="alerts">
     <h2>알림 내역</h2>
-    <ul id="alertList" class="alert-list"></ul>
+    <ul id="alertList" class="alert-list"><li class="row-loading"><span class="spinner"></span>불러오는 중…</li></ul>
   </section>
 
-  <section id="deals" class="deals hidden">
+  <section id="deals" class="deals">
     <div class="deals-head">
       <h2>오늘의 핫딜</h2>
       <div class="deals-days">
@@ -26,7 +26,7 @@
         <button data-days="30" class="deal-day-btn">30일</button>
       </div>
     </div>
-    <ul id="dealList" class="deal-list"></ul>
+    <ul id="dealList" class="deal-list"><li class="row-loading"><span class="spinner"></span>불러오는 중…</li></ul>
     <p id="dealEmpty" class="empty hidden">아직 하락 기록이 없습니다.<br>쇼핑을 하면 자동으로 쌓여요!</p>
   </section>
 
@@ -49,8 +49,8 @@
 
   <section id="listSection">
     <h2>찜 목록</h2>
-    <ul id="watchList" class="watch-list"></ul>
-    <p id="emptyMsg" class="empty">찜한 상품이 없습니다.<br>상품 페이지에서 똑바 아이콘을 누르고 찜해 보세요.</p>
+    <ul id="watchList" class="watch-list"><li class="row-loading"><span class="spinner"></span>불러오는 중…</li></ul>
+    <p id="emptyMsg" class="empty hidden">찜한 상품이 없습니다.<br>상품 페이지에서 똑바 아이콘을 누르고 찜해 보세요.</p>
   </section>
 
   <div id="confirmDlg" class="confirm hidden">

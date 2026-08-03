@@ -186,6 +186,8 @@ const SWB_UI = (() => {
     .swb-confirm-no { background: #f2f4ff; color: #2d4ae0; }
     .swb-confirm-yes { background: #e5484d; color: #fff; }
     .swb-loading { padding: 24px 14px; text-align: center; color: #aaa; }
+    .swb-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #dfe3f8; border-top-color: #2d4ae0; border-radius: 50%; vertical-align: -2px; margin-right: 6px; animation: swb-spin .8s linear infinite; }
+    @keyframes swb-spin { to { transform: rotate(360deg); } }
     .swb-error { padding: 24px 14px; text-align: center; color: #e5484d; line-height: 1.6; }
     .swb-empty { padding: 24px 14px; text-align: center; color: #aaa; }
   `;
@@ -489,6 +491,9 @@ const SWB_UI = (() => {
     brandEl.textContent = brand;
 
     // 2) 서버 이력 조회 → 캐시 (실패해도 현재 가격으로 그래프는 표시)
+    // 로딩 인디케이터 — 서버 조회 동안 차트 자리 표시
+    const chartWrap = panel.querySelector(".swb-chart-wrap");
+    chartWrap.innerHTML = `<div class="swb-loading"><span class="swb-spinner"></span>가격 이력 불러오는 중…</div>`;
     let serverError = false;
     currentWatched = false;
     updateWatchBtn();
@@ -557,6 +562,10 @@ const SWB_UI = (() => {
 
   function renderTrend(serverError) {
     const panel = shadow.querySelector(".swb-panel");
+    const chartWrap = panel.querySelector(".swb-chart-wrap");
+    if (!chartWrap.querySelector("canvas")) {
+      chartWrap.innerHTML = `<canvas class="swb-chart" width="292" height="140"></canvas>`;
+    }
     const nowEl = panel.querySelector(".swb-now");
     const deltaEl = panel.querySelector(".swb-delta");
     const canvas = panel.querySelector("canvas.swb-chart");

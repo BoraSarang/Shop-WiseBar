@@ -19,21 +19,29 @@ async function currentTabProduct() {
   return { tab, parsed: tab ? MallParser.parse(tab.url || "") : null };
 }
 
+// ── 로딩 인디케이터 (v0.7.3) ───────────────────────────
+function loadingRow(text = "불러오는 중…") {
+  return `<li class="row-loading"><span class="spinner"></span>${text}</li>`;
+}
+
 // ── 알림 내역 (최상단) ───────────────────────────────────
 async function loadHistory() {
-  const section = $("alerts");
-  section.classList.add("hidden");
+  const listEl = $("alertList");
+  listEl.innerHTML = loadingRow();
   const deviceId = await getDeviceId();
-  if (!deviceId) return;
+  if (!deviceId) {
+    listEl.innerHTML = `<li class="alert-empty">알림 내역이 없습니다.<br>찜한 상품의 가격이 내려가면 여기에 표시됩니다.</li>`;
+    return;
+  }
 
   let alerts = [];
   try {
     alerts = await api(`/devices/${deviceId}/alerts/history`);
   } catch {
+    listEl.innerHTML = loadingRow("알림을 불러오지 못했습니다 (E-EXT-NET-1001)").replace("row-loading", "row-loading row-error");
     return;
   }
 
-  const listEl = $("alertList");
   listEl.innerHTML = "";
   if (!alerts.length) {
     listEl.innerHTML =
@@ -73,7 +81,6 @@ async function loadHistory() {
       listEl.appendChild(li);
     }
   }
-  section.classList.remove("hidden");
 }
 
 // ── 오늘의 핫딜 ──────────────────────────────────────────
@@ -81,23 +88,24 @@ async function loadHistory() {
 let dealDays = 7;
 
 async function loadDeals() {
-  const section = $("deals");
-  section.classList.add("hidden");
   const listEl = $("dealList");
-  listEl.innerHTML = "";
-  $("dealEmpty").classList.add("hidden");
+  const emptyEl = $("dealEmpty");
+  listEl.innerHTML = loadingRow();
+  emptyEl.classList.add("hidden");
 
   let deals;
   try {
     deals = await api(`/recommendations?limit=5&days=${dealDays}`);
   } catch {
-    return; // 서버 오류 시 섹션 숨김 유지
-  }
-  if (!deals.length) {
-    $("dealEmpty").classList.remove("hidden");
-    section.classList.remove("hidden");
+    listEl.innerHTML = loadingRow("핫딜을 불러오지 못했습니다 (E-EXT-NET-1001)").replace("row-loading", "row-loading row-error");
     return;
   }
+  if (!deals.length) {
+    listEl.innerHTML = "";
+    emptyEl.classList.remove("hidden");
+    return;
+  }
+  listEl.innerHTML = "";
   for (const d of deals) {
     const m = mallMeta[d.mall] || null;
     const li = document.createElement("li");
@@ -125,7 +133,6 @@ async function loadDeals() {
     });
     listEl.appendChild(li);
   }
-  section.classList.remove("hidden");
 }
 
 document.querySelectorAll(".deal-day-btn").forEach((btn) => {
@@ -133,8 +140,7 @@ document.querySelectorAll(".deal-day-btn").forEach((btn) => {
     dealDays = Number(btn.dataset.days);
     document.querySelectorAll(".deal-day-btn").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    $("status").textContent = "불러오는 중…";
-    loadDeals().finally(() => ($("status").textContent = ""));
+    loadDeals();
   });
 });
 
@@ -154,6 +160,7 @@ async function loadCurrent() {
   }
   current = parsed;
   currentWatched = false;
+  $("currentStats").innerHTML = `<span class="spinner"></span>`;
 
   // 현재 탭에서 직접 추출 (og:title 등)
   let liveTitle = null;
@@ -171,8 +178,11 @@ async function loadCurrent() {
         $("currentPrice").textContent = `${Number(product.last_price).toLocaleString()}원`;
       }
       renderStats(product);
+    } else {
+      $("currentStats").textContent = "";
     }
   } catch (e) {
+    $("currentStats").textContent = "";
     if (e.status !== 404) return;
   }
   $("currentName").textContent =
@@ -296,7 +306,8 @@ function mallBadgeHtml(m) {
 
 async function loadList() {
   const deviceId = await getDeviceId();
-  $("watchList").innerHTML = "";
+  $("watchList").innerHTML = loadingRow();
+  $("emptyMsg").classList.add("hidden");
   if (!deviceId) {
     $("emptyMsg").classList.remove("hidden");
     return;
@@ -305,11 +316,11 @@ async function loadList() {
   try {
     watches = await api(`/devices/${deviceId}/watches`);
   } catch {
-    setStatus("서버 연결 실패");
-    $("emptyMsg").classList.remove("hidden");
+    $("watchList").innerHTML = loadingRow("찜 목록을 불러오지 못했습니다 (E-EXT-NET-1001)").replace("row-loading", "row-loading row-error");
     return;
   }
   if (!watches.length) {
+    $("watchList").innerHTML = "";
     $("emptyMsg").classList.remove("hidden");
     return;
   }

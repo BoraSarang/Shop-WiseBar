@@ -21,7 +21,33 @@ header {
   padding: 12px 14px;
   background: #2d4ae0;
   color: #fff;
+  position: sticky;  /* v0.7.3 — 스크롤해도 항상 최상단 고정 */
+  top: 0;
+  z-index: 20;
 }
+
+/* ── 로딩 인디케이터 (v0.7.3) ─────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid #dfe3f8;
+  border-top-color: #2d4ae0;
+  border-radius: 50%;
+  vertical-align: -2px;
+  margin-right: 6px;
+  animation: spin .8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.row-loading {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 8px; font-size: 12px; color: #888;
+}
+
+.watch-list .row-loading { padding: 10px 14px; } /* 찜 목록 항목(14px)과 여백 정렬 */
+
+.row-error { color: #e5484d; }
 
 header h1 { font-size: 15px; font-weight: 700; }
 
