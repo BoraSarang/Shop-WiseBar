@@ -48,10 +48,29 @@ def remove_watch(device_id: str, product_id: str, db: Session = Depends(get_db))
 
 @router.get("/devices/{device_id}/watches", response_model=list[WatchOut])
 def list_watches(device_id: str, db: Session = Depends(get_db)) -> list[WatchOut]:
-    """관심 상품 목록 (앱 시작 시 동기화용)"""
+    """관심 상품 목록 (상품명/url/최신 가격 포함)"""
     _get_device_or_404(db, device_id)
     watches = db.scalars(select(Watch).where(Watch.device_id == device_id)).all()
-    return [WatchOut(product_id=w.product_id, target_price=w.target_price, created_at=w.created_at) for w in watches]
+    products = {
+        p.id: p
+        for p in db.scalars(
+            select(Product).where(Product.id.in_([w.product_id for w in watches]))
+        ).all()
+    }
+    out: list[WatchOut] = []
+    for w in watches:
+        p = products.get(w.product_id)
+        out.append(
+            WatchOut(
+                product_id=w.product_id,
+                product_name=p.name if p else None,
+                url=p.url if p else None,
+                last_price=p.last_price if p else None,
+                target_price=w.target_price,
+                created_at=w.created_at,
+            )
+        )
+    return out
 
 
 @router.get("/devices/{device_id}/alerts", response_model=list[AlertOut])

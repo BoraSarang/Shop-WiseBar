@@ -50,6 +50,9 @@ class WatchIn(BaseModel):
 
 class WatchOut(BaseModel):
     product_id: str
+    product_name: str | None = None
+    url: str | None = None
+    last_price: int | None = None
     target_price: int | None
     created_at: datetime
 
