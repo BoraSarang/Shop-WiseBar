@@ -583,6 +583,16 @@ const SWB_UI = (() => {
     // 로딩 인디케이터 — 서버 조회 동안 차트 자리 표시
     const chartWrap = panel.querySelector(".swb-chart-wrap");
     chartWrap.innerHTML = `<div class="swb-loading"><span class="swb-spinner"></span>가격 이력 불러오는 중…</div>`;
+    // v0.8.25: 로딩 중 이전 상품의 가격/통계/기간이 남아 보이는 것 방지 —
+    //          로딩 완료 후 값이 바뀌는 것과 이전 값이 먼저 보이는 것이 애매하므로
+    //          서버 조회 시작 시 표시 요소 전부 초기화
+    panel.querySelector(".swb-now").textContent = "—";
+    panel.querySelector(".swb-delta").textContent = "";
+    panel.querySelector(".st-min").textContent = "";
+    panel.querySelector(".st-max").textContent = "";
+    panel.querySelector(".st-count").textContent = "";
+    panel.querySelector(".x-start").textContent = "";
+    panel.querySelector(".x-end").textContent = "";
     let serverError = false;
     currentWatched = false;
     updateWatchBtn();
