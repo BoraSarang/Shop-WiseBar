@@ -29,7 +29,9 @@ def save_relations(payload: RelationBatchIn, db: Session = Depends(get_db)) -> d
     """상품 페이지 방문 시 연관 카드 목록을 관계로 저장 — 기존 쌍은 weight += 1
     (관계는 부모/자식 성격이 없으므로 source-target 쌍으로만 저장, 역방향은 조회 시 OR)"""
     source = payload.source
-    targets = [t for t in payload.targets if t and t != source][:10]
+    # v0.9.1 — 중복 target 제거: 같은 상품이 여러 연관 섹션에 노출될 수 있어
+    # 중복 쌍이 uq_rel_pair unique 제약을 위반해 500이 나던 문제 수정
+    targets = list(dict.fromkeys(t for t in payload.targets if t and t != source))[:10]
     if not targets:
         return {"product_id": source, "saved": 0}
 
