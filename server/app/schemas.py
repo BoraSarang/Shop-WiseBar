@@ -42,6 +42,7 @@ class ProductOut(BaseModel):
     last_checked_at: datetime | None
     sold_out: bool = False  # v0.9.1 — 품절 상태 (sold_out_at 유무)
     is_watched: bool = False
+    target_price: int | None = None  # v0.9.1 — device_id 조회 시 내 목표가
     # v0.4 — 가격 통계 (전체 기록 기준, 클라이언트는 '지금 사도 돼' 배지 등에 사용)
     min_price: int | None = None
     avg_price: int | None = None

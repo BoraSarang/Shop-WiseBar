@@ -50,12 +50,14 @@ def _product_out(
     product: Product, db: Session, device_id: str | None = None, variant: str | None = None
 ) -> ProductOut:
     is_watched = False
+    target_price: int | None = None
     if device_id:
         watch = db.scalar(
             select(Watch).where(Watch.device_id == device_id, Watch.product_id == product.id)
         )
         if watch:
             is_watched = True
+            target_price = watch.target_price  # v0.9.1 — 팝업 목표가 입력창 초기값
     min_price, avg_price, price_count, watch_count = _product_stats(db, product.id, variant)
     last_price = _variant_last_price(db, product.id, variant) or product.last_price
     return ProductOut(
@@ -68,6 +70,7 @@ def _product_out(
         last_checked_at=product.last_checked_at,
         sold_out=product.sold_out_at is not None,
         is_watched=is_watched,
+        target_price=target_price,
         min_price=min_price,
         avg_price=avg_price,
         price_count=price_count,
