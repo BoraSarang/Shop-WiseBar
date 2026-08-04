@@ -127,6 +127,7 @@ const Extractor = {
       title: this.normalizeTitle(mall, liveTitle || ogTitle),
       image: this.ogMeta("og:image"),
       variant: this.extractVariant(mall, url),
+      soldOut: mall === "coupang" && isSoldOut, // v0.9.1 — 품절 상태 보고 (재판매 시 가격 캡처가 자동 해제)
     };
   },
 

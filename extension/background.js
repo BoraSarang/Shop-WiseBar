@@ -76,7 +76,8 @@ async function captureProduct(tab) {
 
   const { parsed: target, data } = response;
   const price = Number(data.price);
-  if (!price || price <= 0) return;
+  const soldOut = Boolean(data.soldOut);
+  if (!price && !soldOut) return;
 
   try {
     await api("/products", {
@@ -90,14 +91,23 @@ async function captureProduct(tab) {
         source: "detail",
       }),
     });
-    await api(`/products/${encodeURIComponent(target.productID)}/prices`, {
-      method: "POST",
-      body: JSON.stringify({ price, source: "extension", variant }),
-    });
+    if (price && price > 0) {
+      await api(`/products/${encodeURIComponent(target.productID)}/prices`, {
+        method: "POST",
+        body: JSON.stringify({ price, source: "extension", variant }),
+      });
+    }
+    // v0.9.1 — 품절 상태 보고 (가격 없이 품절만 감지된 페이지) — 재판매 시 가격 캡처가 자동 해제
+    if (soldOut) {
+      await api(`/products/${encodeURIComponent(target.productID)}/sold-out`, {
+        method: "POST",
+        body: JSON.stringify({ sold_out: true }),
+      });
+    }
     await chrome.storage.local.set({
       lastCapture: { key: captureKey, at: Date.now() },
     });
-    console.log(`[똑바] 수집 완료 ${target.productID}${variant ? " (" + variant + ")" : ""} ${price.toLocaleString()}원`);
+    console.log(`[똑바] 수집 완료 ${target.productID}${variant ? " (" + variant + ")" : ""}${price ? " " + price.toLocaleString() + "원" : " (품절)"}`);
   } catch (e) {
     console.warn("[똑바] 업로드 실패 (다음 방문 시 재시도)", e);
     return;

@@ -165,6 +165,9 @@ const SWB_UI = (() => {
     .swb-alert-li { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; background: #fff8f6; margin-bottom: 6px; cursor: pointer; }
     .swb-alert-li:hover { background: #fdeeea; }
     .swb-alert-badge { font-size: 10px; font-weight: 800; color: #fff; background: #2d4ae0; padding: 2px 6px; border-radius: 5px; flex-shrink: 0; }
+    .swb-alert-badge.t-target { background: #6741d9; }
+    .swb-alert-badge.t-soldout { background: #e5484d; }
+    .swb-alert-badge.t-drop { background: #2d4ae0; }
     .swb-alert-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
     .swb-alert-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .swb-alert-meta { font-size: 11px; color: #e5484d; font-weight: 600; }
@@ -201,6 +204,11 @@ const SWB_UI = (() => {
       align-self: flex-start; color: #e5484d; background: #fff3f2;
       border-radius: 8px; padding: 1px 8px; font-weight: 700;
     }
+    .swb-li-check.sold-out {
+      align-self: flex-start; color: #e5484d; background: #fff3f2;
+      border-radius: 8px; padding: 1px 8px; font-weight: 800;
+    }
+    .swb-li-check.target { color: #2d4ae0; font-weight: 600; }
     .swb-li-del { background: none; border: none; color: #ccc; font-size: 14px; cursor: pointer; padding: 4px; }
     .swb-li-del:hover { color: #e5484d; }
     .swb-confirm {
@@ -915,11 +923,17 @@ const SWB_UI = (() => {
       const ts = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
       const img = a.image ? ` style="background-image:url('${String(a.image).replace(/'/g, "\\'")}')"` : "";
       const badge = m ? `<em class="swb-li-badge ${m.cls}"><img src="${m.icon}" alt="${m.label}"></em>` : "";
+      // v0.9.1 — 알림 타입별 배지 (price_dropped | target_reached | sold_out)
+      const typeMeta = {
+        target_reached: { label: "목표 도달", cls: "t-target" },
+        sold_out: { label: "품절", cls: "t-soldout" },
+        price_dropped: { label: "▼ 하락", cls: "t-drop" },
+      }[a.alert_type] || { label: "▼ 하락", cls: "t-drop" };
       const row = document.createElement("div");
       row.className = "swb-alert-li";
       row.innerHTML = `
         <span class="swb-li-thumb"${img}>${a.image ? "" : (m ? "" : "?")}${badge}</span>
-        <span class="swb-alert-badge">▼ 하락</span>
+        <span class="swb-alert-badge ${typeMeta.cls}">${typeMeta.label}</span>
         <span class="swb-alert-body">
           <span class="swb-alert-name"></span>
           <span class="swb-alert-meta"></span>
@@ -932,7 +946,11 @@ const SWB_UI = (() => {
         });
       }
       row.querySelector(".swb-alert-name").textContent = a.product_name || a.product_id;
-      row.querySelector(".swb-alert-meta").textContent = `${Number(a.price).toLocaleString()}원 · ${ts}`;
+      const priceText =
+        a.alert_type === "sold_out" ? "재입고 알림 대기" :
+        a.alert_type === "target_reached" && a.previous_price != null ? `${Number(a.previous_price).toLocaleString()}원 → ${Number(a.price).toLocaleString()}원` :
+        `${Number(a.price).toLocaleString()}원`;
+      row.querySelector(".swb-alert-meta").textContent = `${priceText} · ${ts}`;
       row.addEventListener("click", () => {
         if (a.url) chrome.runtime.sendMessage({ type: "OPEN_TAB", url: a.url });
       });
@@ -998,8 +1016,19 @@ const SWB_UI = (() => {
         w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";
       const chk = staleCheckLabel(w.last_checked_at);
       const chkEl = row.querySelector(".swb-li-check");
-      if (chk) {
-        chkEl.textContent = chk.text;
+      // v0.9.1 — 품절/목표가 상태 (품절 우선)
+      if (w.sold_out) {
+        chkEl.textContent = "품절";
+        chkEl.classList.add("sold-out");
+        row.classList.add("sold-out");
+      } else if (w.target_price) {
+        const tp = Number(w.target_price);
+        const cur = w.last_price != null ? Number(w.last_price) : null;
+        chkEl.textContent = `목표 ${tp.toLocaleString()}원${cur != null && cur <= tp ? " · 도달!" : ""}`;
+        chkEl.classList.add("target");
+      }
+      if (chk && !w.sold_out) {
+        chkEl.textContent += chkEl.textContent ? ` · ${chk.text}` : chk.text;
         chkEl.classList.add("stale");
       }
       row.querySelector(".swb-li-del").addEventListener("click", (e) => {

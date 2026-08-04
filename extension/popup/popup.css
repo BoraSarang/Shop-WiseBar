@@ -254,6 +254,28 @@ header h1 { font-size: 15px; font-weight: 700; }
 .watch-item.stale-row { background: #fffdfd; }
 .watch-item.stale-row:hover { background: #f7f8fa; }
 
+/* v0.9.1 — 품절/목표가 상태 */
+.watch-check.sold-out {
+  color: #e5484d; background: #fff3f2;
+  border-radius: 8px; padding: 1px 8px; font-weight: 700;
+  align-self: flex-start;
+}
+.watch-check.target-set { color: #2d4ae0; font-weight: 600; }
+.watch-item.target-hit { background: #f3f7ff; }
+.watch-item.target-hit .watch-name { color: #2d4ae0; }
+
+.target-row {
+  display: flex; gap: 6px; align-items: center;
+  margin-top: 8px; padding: 8px 10px;
+  background: #f7f8fa; border-radius: 8px;
+}
+.target-input {
+  width: 110px; padding: 5px 8px;
+  border: 1px solid #dde1e6; border-radius: 6px;
+  font-size: 12px; text-align: right;
+}
+.target-input:focus { outline: none; border-color: #2d4ae0; }
+
 .watch-unwatch {
   border: none; background: none;
   color: #bbb; font-size: 14px; cursor: pointer; padding: 4px;

@@ -92,6 +92,7 @@ document.querySelectorAll(".deal-day-btn").forEach((btn) => {
 // ── 현재 상품 섹션 ──────────────────────────────────────
 let current = null; // { parsed, product }
 let currentWatched = false;
+let currentTargetPrice = null;
 
 async function loadCurrent() {
   const { tab, parsed } = await currentTabProduct();
@@ -105,6 +106,7 @@ async function loadCurrent() {
   }
   current = parsed;
   currentWatched = false;
+  currentTargetPrice = null;
   $("currentStats").innerHTML = `<span class="spinner"></span>`;
 
   // 현재 탭에서 직접 추출 (og:title 등) — v0.8.19: url 전달로 variant(vendorItemId) 확보,
@@ -127,6 +129,7 @@ async function loadCurrent() {
     );
     if (product) {
       currentWatched = product.is_watched;
+      currentTargetPrice = product.target_price || null;
       if (product.last_price != null) {
         $("currentPrice").textContent = `${Number(product.last_price).toLocaleString()}원`;
       }
@@ -221,6 +224,13 @@ function updateWatchBtn() {
     btn.textContent = "찜하기";
     btn.classList.remove("active");
   }
+  // v0.9.1 — 목표가 입력 행: 찜 상태에서만 표시, 기존 목표가 초기값
+  const row = $("targetRow");
+  row.classList.toggle("hidden", !currentWatched);
+  if (currentWatched) {
+    $("targetInput").value = currentTargetPrice ? String(currentTargetPrice) : "";
+    $("targetInput").placeholder = currentTargetPrice ? `현재 목표가 ${Number(currentTargetPrice).toLocaleString()}원` : "목표가 (원)";
+  }
 }
 
 $("watchBtn").addEventListener("click", async () => {
@@ -232,16 +242,43 @@ $("watchBtn").addEventListener("click", async () => {
         method: "DELETE",
       });
       currentWatched = false;
+      currentTargetPrice = null;
     } else {
+      const target = parseTargetPrice($("targetInput").value);
       await api(`/devices/${deviceId}/watches/${encodeURIComponent(current.productID)}`, {
         method: "PUT",
-        body: JSON.stringify({}),
+        body: JSON.stringify(target ? { target_price: target } : {}),
       });
       currentWatched = true;
+      currentTargetPrice = target;
     }
     updateWatchBtn();
     loadList();
     chrome.runtime.sendMessage({ type: "WATCHES_INVALIDATE" }).catch(() => {}); // 목록 배지 캐시 무효화 (v0.8.5)
+  } catch (e) {
+    setStatus("저장 실패 — 서버 연결 확인");
+  }
+});
+
+// 목표가 저장/삭제 (v0.9.1) — 빈 값이면 목표가 해제
+function parseTargetPrice(value) {
+  const v = parseInt(String(value || "").replace(/[^0-9]/g, ""), 10);
+  if (!v || v < 1000 || v > 100000000) return null;
+  return v;
+}
+
+$("targetSave").addEventListener("click", async () => {
+  const deviceId = await getDeviceId();
+  if (!deviceId || !current || !currentWatched) return;
+  const target = parseTargetPrice($("targetInput").value);
+  try {
+    await api(`/devices/${deviceId}/watches/${encodeURIComponent(current.productID)}`, {
+      method: "PUT",
+      body: JSON.stringify(target ? { target_price: target } : {}),
+    });
+    currentTargetPrice = target;
+    updateWatchBtn();
+    setStatus(target ? `목표가 ${Number(target).toLocaleString()}원 저장` : "목표가 해제");
   } catch (e) {
     setStatus("저장 실패 — 서버 연결 확인");
   }
@@ -316,9 +353,21 @@ function renderList() {
     li.querySelector(".watch-price").textContent =
       w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";
     const checkEl = li.querySelector(".watch-check");
+    // v0.9.1 — 품절/목표가 상태 표시 (품절 우선)
+    if (w.sold_out) {
+      checkEl.textContent = "품절";
+      checkEl.classList.add("sold-out");
+      li.classList.add("sold-out-row");
+    } else if (w.target_price) {
+      const tp = Number(w.target_price);
+      const cur = w.last_price != null ? Number(w.last_price) : null;
+      checkEl.textContent = `목표 ${tp.toLocaleString()}원${cur != null && cur <= tp ? " · 도달!" : ""}`;
+      checkEl.classList.add("target-set");
+      if (cur != null && cur <= tp) li.classList.add("target-hit");
+    }
     const stale = staleCheckLabel(w.last_checked_at);
-    if (stale) {
-      checkEl.textContent = stale.text;
+    if (stale && !w.sold_out) {
+      checkEl.textContent += stale.text ? ` · ${stale.text}` : "";
       checkEl.classList.add("stale");
       li.classList.add("stale-row");
     }
