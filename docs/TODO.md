@@ -2,6 +2,19 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-74 — 목표가 알림 + 품절 감지 + 추천/추이 UX (v0.9.1 — 완료, 2026-08-04)
+- [x] **목표가 알림 (서버)**: Watch.target_price 컬럼 + PUT /watches가 목표가 저장, GET /alerts에 `target_reached` 감지 (직전 가격이 목표가 이상일 때만 1회 — 목표가 이하 유지 중 재캡처는 반복 방지, 목표가 이상 회복 후 재하락 시 재알림)
+- [x] **품절 감지 (서버)**: Product.sold_out_at 컬럼 + POST /products/{id}/sold-out (품절 시작/재판매), 가격 캡처 시 품절 자동 해제, GET /alerts에 `sold_out` 알림 (since 이후 품절 시작 시 1회, 품절 상품은 하락/목표가 검사 생략 — 무한 반복 방지)
+- [x] **컬럼 마이그레이션**: startup에서 `_ensure_columns` — PostgreSQL `ADD COLUMN IF NOT EXISTS`, SQLite PRAGMA 체크 후 ALTER (create_all은 기존 테이블에 컬럼 추가 안 함)
+- [x] **since 경계 버그 수정**: 캡처 시각 초 절단으로 since와 동일하면 재감지 → `<=` 비교로 수정
+- [x] **목표가 알림 UI (확장)**: 팝업 현재 상품 섹션 목표가 입력/저장/해제 + 찜 목록/플로팅에 목표가·도달·품절 배지
+- [x] **품절 보고 (확장)**: content.js 쿠팡 품절 감지 soldOut 플래그 → background가 sold-out API 호출 (가격 없어도 수집)
+- [x] **알림 뷰 타입별 배지**: 목표 도달(보라)/품절(빨강)/하락(파랑)
+- [x] **관계 기반 추천 확장**: 팝업 '함께 본 상품' 섹션 (GET /related 재사용, 5개)
+- [x] **추이 그래프 UX**: 최저가 점선 표시선 + 하락 구간 파란 굵은 선/상승 회색 + 최저·최고점 마커
+- [x] 로컬 E2E: 미달 무알림 → 목표가 도달 target_reached → 이하 유지 반복 방지 → 회복 후 재도달 → 품절 sold_out → since 갱신 재폴링 무반복 → 재판매 자동 해제 → 연속 하락 PASS
+- [x] 실서버 E2E: 목표가 9999 저장 + 품절 true/false + 찜 조회 반영 확인 (배포 51d3270/4b63f26 + 확장 8b47533/a2971cc)
+
 ## T-73 — Phase 2: 목록/검색 페이지 캡처 (v0.8.0~v0.8.4 — 완료)
 - [x] 원인: MallParser.parse가 상품 페이지만 인식 → 검색/목록 페이지는 수집 자체가 안 됨
 - [x] common.js: MallParser.detectMall (product/listing 판별, 쿠팡 검색·네이버 쇼핑·스마트스토어·브랜드·올리브영)
