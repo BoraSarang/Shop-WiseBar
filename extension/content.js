@@ -22,6 +22,8 @@ const Extractor = {
   extract(mall, url) {
     const bodyText = document.body ? document.body.innerText : "";
     let price = null;
+    // v0.9.1: 쿠팡 품절 감지 — 블록 스코프 밖(return)에서 참조하므로 함수 레벨로 선언
+    let isSoldOut = false;
 
     if (mall === "naver") {
       // 스마트스토어/브랜드: "상품 가격" 라벨 뒤 금액 / 카탈로그: body 첫 금액
@@ -67,7 +69,7 @@ const Extractor = {
       //        v0.8.7: total-price(판매가 요소)로 한정 — 정가(예: 21,600원)도 data-price를
       //        가지는 요소가 있어 일반 [data-price] 폴백이 정가를 잡던 문제 해결
       //        v0.8.8/v0.8.9: 품절 상품은 판매가 요소가 사라지고 잔존값(14,900) 불신 — 스킵
-      const isSoldOut = /(일시\s?)?품절|재입고\s?알림/.test(bodyText);
+      isSoldOut = /(일시\s?)?품절|재입고\s?알림/.test(bodyText);
       const pcEl = document.querySelector(".price-container");
       // v0.8.27: 품절이면 .price-container도 불신 — 품절 상품은 판매가 요소가 사라지고
       //          잔존값(예: 오리온 9,880원)이 남아 variant=None으로 저장되어
@@ -127,7 +129,7 @@ const Extractor = {
       title: this.normalizeTitle(mall, liveTitle || ogTitle),
       image: this.ogMeta("og:image"),
       variant: this.extractVariant(mall, url),
-      soldOut: mall === "coupang" && isSoldOut, // v0.9.1 — 품절 상태 보고 (재판매 시 가격 캡처가 자동 해제)
+      soldOut: isSoldOut, // v0.9.1 — 품절 상태 보고 (현재 쿠팡만 감지, 재판매 시 가격 캡처가 자동 해제)
     };
   },
 
