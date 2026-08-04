@@ -32,6 +32,9 @@ def add_watch(device_id: str, product_id: str, payload: WatchIn, db: Session = D
         db.add(watch)
     if payload.target_price is not None:
         watch.target_price = payload.target_price
+    else:
+        # v0.9.2 — 목표가 해제 (PUT {} / {target_price: null}) — 기존 값 유지가 아니라 명시적 해제
+        watch.target_price = None
     db.commit()
     db.refresh(watch)
     return WatchOut(product_id=watch.product_id, target_price=watch.target_price, created_at=watch.created_at)
