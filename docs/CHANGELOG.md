@@ -1,5 +1,14 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.8.24 (2026-08-04) — [extension] 추이 패널 크래시 수정 (extract url 인자 방어)
+
+- **버그**: v0.8.23에서 `Extractor.extract`가 `url.match()`를 사용하도록 바뀌었는데, **플로팅 추이 패널(swb-ui.js)은 url 인자 없이 `extract(parsed.mall)`로 호출** → `undefined.match` 크래시 → `loadTrend`가 로딩 표시(가격 이력 불러오는 중…)를 띄우기 전에 중단 (사용자: "웨일에선 로딩중도 안뜸", 브랜드 스토어 NUPHY AIR60 11106441044 사례 — 크롬은 아직 구버전이라 정상 동작)
+- **수정**:
+  - `content.js`: `url || window.location.href` 기본값 방어 (어떤 경로에서 호출돼도 안전)
+  - `swb-ui.js`: 추이 패널에서 `extract(parsed.mall, location.href)`로 현재 URL 명시 전달 (쿠팡 variant 추출 정확도도 함께 확보)
+- CDP 재현: url 미전달 시 `Cannot read properties of undefined (reading 'match')` 크래시 확정 → 수정 후 기본값 경로 검증
+- 성능 영향 없음
+
 ## v0.8.23 (2026-08-04) — [extension] 스마트스토어 SPA 전환 가격 오염 방지 (JSON-LD 검증)
 
 - **원인 규명 (CDP 실측)**: 독거미 L99 키보드 `12270743644`(화이트 투명블루 102,020원)와 `12270743646`(화이트그레이 109,520원)은 **같은 제품의 색상별 개별 상품** — 색상/옵션 클릭이 `history.pushState`로 다른 상품 페이지로 이동 (사용자: "주소가 바뀌네")

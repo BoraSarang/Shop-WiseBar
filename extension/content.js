@@ -33,7 +33,8 @@ const Extractor = {
       //          (독거미 L99: 44↔46 전환 시 102,020/109,520 양방향 오염 사례).
       //          head의 JSON-LD(mpn/productID)와 URL 상품번호가 일치할 때만 수집.
       //          렌더 완료 후에는 JSON-LD offers.price(현재 상품의 정확한 판매가) 우선.
-      const urlNum = (url.match(/products\/(\d+)/) || [])[1] || null;
+      // v0.8.24: url 인자 없이 호출되는 경로(swb-ui 추이 패널) 대비 기본값 방어
+      const urlNum = ((url || window.location.href).match(/products\/(\d+)/) || [])[1] || null;
       let ldMpn = null;
       let ldPrice = null;
       const ldScript = document.querySelector('script[type="application/ld+json"]');

@@ -566,7 +566,9 @@ const SWB_UI = (() => {
     const brandEl = panel.querySelector(".swb-brand");
 
     // 1) 상품명/현재 가격은 페이지에서 즉시 추출 (서버 대기 없음)
-    const live = Extractor.extract(parsed.mall);
+    // v0.8.24: 현재 URL 명시 전달 — extract가 url 인자 없이 호출되면
+    //          v0.8.23의 JSON-LD 검증(url.match)에서 크래시 → 추이 패널 로딩 중단
+    const live = Extractor.extract(parsed.mall, location.href);
     nowPriceCache = Number(live.price) || null;
     const { title, brand } = splitTitle(live.title);
     titleEl.textContent = title || parsed.productID;
