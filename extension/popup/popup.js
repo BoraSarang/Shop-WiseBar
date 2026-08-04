@@ -280,22 +280,29 @@ function updateWatchBtn() {
     btn.textContent = "찜하기";
     btn.classList.remove("active");
   }
-  // v0.9.1 — 목표가 입력 행: 찜 상태에서만 표시, 기존 목표가 초기값,
-  // 목표가 없으면 현재가(마지막 수집 가격)를 기본값으로 채움
+  // v0.9.1 — 목표가 입력 행: 찜 상태에서만 표시, 목표가 없으면 현재가 기본값,
+  // 설정 해제 버튼은 목표가가 있으면 활성화
   const row = $("targetRow");
+  const clearBtn = $("targetClear");
+  const status = $("targetStatus");
   row.classList.toggle("hidden", !currentWatched);
+  clearBtn.disabled = !currentTargetPrice;
   if (currentWatched) {
     const input = $("targetInput");
     if (currentTargetPrice) {
       input.value = String(currentTargetPrice);
-      input.placeholder = `현재 목표가 ${Number(currentTargetPrice).toLocaleString()}원`;
+      status.textContent = `${Number(currentTargetPrice).toLocaleString()}원 이하 알림 중`;
+      status.classList.add("on");
     } else if (currentPrice) {
       input.value = String(currentPrice);
-      input.placeholder = "목표가 (원) — 현재가 기준";
+      status.textContent = "목표가 미설정";
+      status.classList.remove("on");
     } else {
       input.value = "";
-      input.placeholder = "목표가 (원)";
+      status.textContent = "목표가 미설정";
+      status.classList.remove("on");
     }
+    input.placeholder = "목표가 (원)"; // 고정 (문구 잘리지 않게 짧게 유지)
   }
 }
 
@@ -345,6 +352,24 @@ $("targetSave").addEventListener("click", async () => {
     currentTargetPrice = target;
     updateWatchBtn();
     setStatus(target ? `목표가 ${Number(target).toLocaleString()}원 저장` : "목표가 해제");
+  } catch (e) {
+    setStatus("저장 실패 — 서버 연결 확인");
+  }
+});
+
+// 목표가 설정 해제 (v0.9.1)
+$("targetClear").addEventListener("click", async () => {
+  const deviceId = await getDeviceId();
+  if (!deviceId || !current || !currentWatched || !currentTargetPrice) return;
+  try {
+    await api(`/devices/${deviceId}/watches/${encodeURIComponent(current.productID)}`, {
+      method: "PUT",
+      body: JSON.stringify({}),
+    });
+    currentTargetPrice = null;
+    updateWatchBtn();
+    loadList();
+    setStatus("목표가 해제");
   } catch (e) {
     setStatus("저장 실패 — 서버 연결 확인");
   }
@@ -404,8 +429,10 @@ function renderList() {
       <span class="watch-thumb"${w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : ""}>${w.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
       <span class="watch-body">
         <span class="watch-name"></span>
-        <span class="watch-price"></span>
-        <span class="watch-check"></span>
+        <span class="watch-price-row">
+          <span class="watch-price"></span>
+          <span class="watch-check"></span>
+        </span>
       </span>
       <button class="watch-unwatch" title="찜 삭제">✕</button>`;
     const badgeImg = m ? li.querySelector(".watch-badge img") : null;
@@ -473,6 +500,12 @@ document.querySelectorAll(".mall-filter-btn").forEach((btn) => {
 $("listToggle").addEventListener("click", () => {
   const collapsed = $("listSection").classList.toggle("collapsed");
   $("listToggle").textContent = collapsed ? "▸" : "▾";
+});
+
+// 함께 본 상품 접이식 (v0.9.2)
+$("relatedToggle").addEventListener("click", () => {
+  const collapsed = $("related").classList.toggle("collapsed");
+  $("relatedToggle").textContent = collapsed ? "▸" : "▾";
 });
 
 // ── 컨펌 다이얼로그 (플로팅 찜 목록과 동일 동작) ──────────

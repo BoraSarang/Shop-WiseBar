@@ -31,9 +31,12 @@
         <span class="current-hint">가격이 내려가면 알림으로 알려 드려요~</span>
         <button id="watchBtn" class="btn btn-primary">찜하기</button>
         <div id="targetRow" class="target-row hidden">
-          <input id="targetInput" class="target-input" type="number" min="1000" step="100" placeholder="목표가 (원)">
-          <button id="targetSave" class="btn btn-ghost">목표가 저장</button>
-          <span class="target-hint">현재 가격이 기본으로 채워져요<br>비우고 저장하면 목표가가 해제됩니다</span>
+          <span id="targetStatus" class="target-status">목표가 미설정</span>
+          <div class="target-controls">
+            <input id="targetInput" class="target-input" type="number" min="1000" step="100" placeholder="목표가 (원)">
+            <button id="targetSave" class="btn target-save">목표가 저장</button>
+            <button id="targetClear" class="btn target-clear" disabled>설정 해제</button>
+          </div>
         </div>
       </div>
     </div>
@@ -42,7 +45,8 @@
   <section id="related" class="related hidden">
     <div class="related-head">
       <h2>함께 본 상품</h2>
-      <span class="related-hint">비슷한 상품이 다른 쇼핑몰에 더 쌀 수 있어요</span>
+      <span class="related-hint">이 상품을 본 분들이 함께 본 상품</span>
+      <button id="relatedToggle" class="list-toggle" title="펼치기/접기">▾</button>
     </div>
     <ul id="relatedList" class="related-list"></ul>
   </section>

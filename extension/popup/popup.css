@@ -259,6 +259,12 @@ header h1 { font-size: 15px; font-weight: 700; }
 
 .watch-price { font-size: 13px; font-weight: 700; margin-top: 2px; }
 
+/* v0.9.2 — 가격 + 상태(품절/목표가 알림) 한 줄: 가격 왼쪽, 상태 오른쪽 */
+.watch-price-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+}
+.watch-price-row .watch-check { margin-left: auto; text-align: right; white-space: nowrap; }
+
 .watch-check { font-size: 11px; color: #aaa; }
 .watch-check.stale {
   color: #e5484d; background: #fff3f2;
@@ -267,6 +273,10 @@ header h1 { font-size: 15px; font-weight: 700; }
 }
 .watch-item.stale-row { background: #fffdfd; }
 .watch-item.stale-row:hover { background: #f7f8fa; }
+
+/* v0.9.2 — 품절 행 배경 */
+.watch-item.sold-out-row { background: #fff8f6; }
+.watch-item.sold-out-row:hover { background: #fdf1ee; }
 
 /* v0.9.1 — 품절/목표가 상태 */
 .watch-check.sold-out {
@@ -280,17 +290,31 @@ header h1 { font-size: 15px; font-weight: 700; }
 
 .target-row {
   flex-basis: 100%; /* 찜 버튼 아래 두 번째 줄로 (v0.9.1) */
-  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  display: flex; flex-wrap: wrap; flex-direction: column; align-items: stretch;
+  justify-content: center; /* v0.9.2 — 중앙 정렬 */
   margin-top: 8px; padding: 8px 10px;
   background: #f7f8fa; border-radius: 8px;
 }
-.target-hint { width: 100%; font-size: 11px; color: #999; text-align: center; }
+.target-status {
+  font-size: 11px; color: #999; text-align: right; /* v0.9.2 — 오른쪽 정렬 */
+  margin-bottom: 4px;
+}
+.target-status.on { color: #2d4ae0; font-weight: 600; }
+.target-controls {
+  display: flex; justify-content: flex-end; /* v0.9.2 — 오른쪽 정렬 */
+  align-items: center; gap: 5px;
+}
 .target-input {
-  width: 110px; padding: 5px 8px;
+  width: 100px; padding: 5px 6px;
   border: 1px solid #dde1e6; border-radius: 6px;
   font-size: 12px; text-align: right;
+  flex-shrink: 1; min-width: 0;
 }
 .target-input:focus { outline: none; border-color: #2d4ae0; }
+.target-save { background: #2d4ae0; color: #fff; }
+.target-clear { background: #eceff4; color: #555; }
+.target-clear:disabled { opacity: .45; cursor: default; }
+.target-row .btn { padding: 5px 7px; font-size: 11px; flex-shrink: 0; }
 
 .watch-unwatch {
   border: none; background: none;
@@ -313,9 +337,14 @@ header h1 { font-size: 15px; font-weight: 700; }
 
 /* v0.9.1 — 연관 상품 추천 */
 .related { border-bottom: 1px solid #eee; }
-.related-head { padding: 12px 14px 4px; }
+.related-head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 12px 14px 4px;
+}
 .related-head h2 { font-size: 13px; color: #333; }
-.related-hint { font-size: 11px; color: #999; margin-left: 6px; }
+.related-hint { font-size: 11px; color: #999; margin-left: auto; white-space: nowrap; }
+.related.collapsed .related-list,
+.related.collapsed .related-loading { display: none; }
 .related-list { padding: 4px 14px 10px; }
 .related-item {
   display: flex; align-items: center; gap: 10px;

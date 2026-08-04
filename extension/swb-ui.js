@@ -8,6 +8,7 @@ const SWB_UI = (() => {
   let currentParsed = null;
   let menuOpen = false;
   let currentWatched = false;
+  let currentTargetPrice = null; // v0.9.2 — 목표가 (찜 상태일 때)
   let menuWatchBtn = null;
   let rangeDays = 7;
   let pointsCache = [];
@@ -119,6 +120,34 @@ const SWB_UI = (() => {
       box-shadow: 0 2px 8px rgba(0,0,0,0.14); opacity: 0;
       transition: opacity 0.12s ease, transform 0.12s ease; pointer-events: none;
     }
+    /* v0.9.2 — 가격 추이 목표가 행 (팝업과 동일 디자인) */
+    .swb-target-row {
+      display: flex; flex-direction: column; align-items: stretch;
+      margin: 6px 0; padding: 8px 10px;
+      background: #f7f8fa; border-radius: 8px;
+    }
+    .swb-target-status {
+      font-size: 11px; color: #999; text-align: right; margin-bottom: 4px;
+    }
+    .swb-target-status.on { color: #2d4ae0; font-weight: 600; }
+    .swb-target-controls {
+      display: flex; justify-content: flex-end; align-items: center; gap: 5px;
+    }
+    .swb-target-input {
+      width: 100px; padding: 5px 6px; flex-shrink: 1; min-width: 0;
+      border: 1px solid #dde1e6; border-radius: 6px;
+      font-size: 12px; text-align: right; background: #fff;
+    }
+    .swb-target-input:focus { outline: none; border-color: #2d4ae0; }
+    .swb-target-save {
+      border: none; border-radius: 6px; padding: 5px 7px; font-size: 11px;
+      cursor: pointer; background: #2d4ae0; color: #fff; flex-shrink: 0;
+    }
+    .swb-target-clear {
+      border: none; border-radius: 6px; padding: 5px 7px; font-size: 11px;
+      cursor: pointer; background: #eceff4; color: #555; flex-shrink: 0;
+    }
+    .swb-target-clear:disabled { opacity: .45; cursor: default; }
     .swb-watch:hover .swb-watch-label { opacity: 1; transform: translate(0, -50%); }
     .swb-chart-wrap { position: relative; }
     canvas.swb-chart { width: 100%; height: 140px; display: block; }
@@ -199,8 +228,11 @@ const SWB_UI = (() => {
     .swb-li-badge.b-fallback.b-oliveyoung { background: #56a99c; }
     .swb-li-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .swb-li-name { font-size: 12px; color: #333; line-height: 1.35; max-height: 2.6em; overflow: hidden; }
+    .swb-li-price-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px; /* v0.9.2 */
+    }
     .swb-li-price { font-size: 12px; font-weight: 700; color: #2d4ae0; }
-    .swb-li-check { font-size: 10px; color: #aaa; }
+    .swb-li-check { font-size: 10px; color: #aaa; margin-left: auto; text-align: right; white-space: nowrap; }
     .swb-li-check.stale {
       align-self: flex-start; color: #e5484d; background: #fff3f2;
       border-radius: 8px; padding: 1px 8px; font-weight: 700;
@@ -210,6 +242,11 @@ const SWB_UI = (() => {
       border-radius: 8px; padding: 1px 8px; font-weight: 800;
     }
     .swb-li-check.target { color: #2d4ae0; font-weight: 600; }
+    /* v0.9.2 — 품절/확인필요 행 배경 */
+    .swb-li.sold-out { background: #fff8f6; }
+    .swb-li.sold-out:hover { background: #fdf1ee; }
+    .swb-li.stale { background: #fffdfd; }
+    .swb-li.stale:hover { background: #f7f8fa; }
     .swb-li-del { background: none; border: none; color: #ccc; font-size: 14px; cursor: pointer; padding: 4px; }
     .swb-li-del:hover { color: #e5484d; }
     .swb-confirm {
@@ -317,6 +354,14 @@ const SWB_UI = (() => {
             <span class="swb-delta"></span>
             <button class="swb-watch" title="찜 하기">${ICON.watch}<span class="swb-watch-label">찜 하기</span></button>
           </div>
+          <div class="swb-target-row hidden">
+            <span class="swb-target-status">목표가 미설정</span>
+            <div class="swb-target-controls">
+              <input class="swb-target-input" type="number" min="1000" step="100" placeholder="목표가 (원)">
+              <button class="swb-target-save">목표가 저장</button>
+              <button class="swb-target-clear" disabled>설정 해제</button>
+            </div>
+          </div>
           <div class="swb-chart-wrap"><canvas class="swb-chart" width="292" height="140"></canvas></div>
           <div class="swb-xaxis"><span class="x-start"></span><span class="x-end"></span></div>
           <div class="swb-stats">
@@ -368,6 +413,14 @@ const SWB_UI = (() => {
     panel.querySelector(".swb-watch").addEventListener("click", (e) => {
       e.stopPropagation();
       toggleWatch();
+    });
+    panel.querySelector(".swb-target-save").addEventListener("click", (e) => {
+      e.stopPropagation();
+      saveTargetPrice();
+    });
+    panel.querySelector(".swb-target-clear").addEventListener("click", (e) => {
+      e.stopPropagation();
+      clearTargetPrice();
     });
     panel.querySelectorAll(".swb-range-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
@@ -536,6 +589,29 @@ const SWB_UI = (() => {
     const label = btn.querySelector(".swb-watch-label");
     if (label) label.textContent = text;
     if (menuWatchBtn) menuWatchBtn.classList.toggle("active", currentWatched);
+    updateTargetRow(); // v0.9.2
+  }
+
+  // v0.9.2 — 가격 추이 목표가 행 갱신 (찜 상태일 때 보임, 목표가 없으면 현재가 기본값)
+  function updateTargetRow() {
+    const row = shadow.querySelector(".swb-target-row");
+    if (!row) return;
+    const input = row.querySelector(".swb-target-input");
+    const clear = row.querySelector(".swb-target-clear");
+    const status = row.querySelector(".swb-target-status");
+    row.classList.toggle("hidden", !currentWatched);
+    clear.disabled = !currentTargetPrice;
+    if (currentWatched) {
+      if (currentTargetPrice) {
+        input.value = String(currentTargetPrice);
+        status.textContent = `${Number(currentTargetPrice).toLocaleString()}원 이하 알림 중`;
+        status.classList.add("on");
+      } else {
+        input.value = nowPriceCache ? String(nowPriceCache) : "";
+        status.textContent = "목표가 미설정";
+        status.classList.remove("on");
+      }
+    }
   }
 
   async function refreshWatchState() {
@@ -545,6 +621,7 @@ const SWB_UI = (() => {
       if (!deviceId) return;
       const p = await SWB_API(`/products/${encodeURIComponent(currentParsed.productID)}?device_id=${encodeURIComponent(deviceId)}`);
       currentWatched = !!p.is_watched;
+      currentTargetPrice = p.target_price ? Number(p.target_price) : null; // v0.9.2
       updateWatchBtn();
     } catch {
       // E-EXT-NET-1001 — 메뉴 아이콘은 기존 상태 유지
@@ -564,6 +641,7 @@ const SWB_UI = (() => {
       if (currentWatched) {
         await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, { method: "DELETE" });
         currentWatched = false;
+        currentTargetPrice = null; // v0.9.2
       } else {
         await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, {
           method: "PUT",
@@ -578,6 +656,49 @@ const SWB_UI = (() => {
       const btn = shadow.querySelector(".swb-watch");
       if (btn) btn.title = "서버 연결 실패 (E-EXT-NET-1001)";
       setTimeout(updateWatchBtn, 2000);
+    }
+  }
+
+  // v0.9.2 — 가격 추이 목표가 저장/해제
+  function parseTargetPrice(value) {
+    const v = parseInt(String(value || "").replace(/[^0-9]/g, ""), 10);
+    if (!v || v < 1000 || v > 100000000) return null;
+    return v;
+  }
+
+  async function saveTargetPrice() {
+    const deviceId = await getDeviceId();
+    const pid = encodeURIComponent(currentParsed.productID);
+    const input = shadow.querySelector(".swb-target-input");
+    const target = parseTargetPrice(input ? input.value : "");
+    if (!deviceId || !pid || !currentWatched) return;
+    try {
+      await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(target ? { target_price: target } : {}),
+      });
+      currentTargetPrice = target;
+      updateWatchBtn();
+    } catch {
+      // E-EXT-NET-1001
+    }
+  }
+
+  async function clearTargetPrice() {
+    if (!currentTargetPrice) return;
+    const deviceId = await getDeviceId();
+    const pid = encodeURIComponent(currentParsed.productID);
+    try {
+      await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches/${pid}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      currentTargetPrice = null;
+      updateWatchBtn();
+    } catch {
+      // E-EXT-NET-1001
     }
   }
 
@@ -618,6 +739,7 @@ const SWB_UI = (() => {
     panel.querySelector(".x-end").textContent = "";
     let serverError = false;
     currentWatched = false;
+    currentTargetPrice = null; // v0.9.2
     updateWatchBtn();
     try {
       const deviceId = await getDeviceId();
@@ -629,6 +751,7 @@ const SWB_UI = (() => {
       if (product) {
         if (!nowPriceCache && product.last_price) nowPriceCache = Number(product.last_price);
         if (product.is_watched) currentWatched = true;
+        currentTargetPrice = product.target_price ? Number(product.target_price) : null; // v0.9.2
         serverStatsCache = {
           min_price: product.min_price,
           avg_price: product.avg_price,
@@ -1007,8 +1130,10 @@ const SWB_UI = (() => {
         <span class="swb-li-thumb"${img}>${w.image ? "" : (m ? "" : "?")}${badge}</span>
         <span class="swb-li-body">
           <span class="swb-li-name"></span>
-          <span class="swb-li-price"></span>
-          <span class="swb-li-check"></span>
+          <span class="swb-li-price-row">
+            <span class="swb-li-price"></span>
+            <span class="swb-li-check"></span>
+          </span>
         </span>
         <button class="swb-li-del" title="삭제">✕</button>`;
       const badgeImg = m ? row.querySelector(".swb-li-badge img") : null;
@@ -1037,6 +1162,7 @@ const SWB_UI = (() => {
       if (chk && !w.sold_out) {
         chkEl.textContent += chkEl.textContent ? ` · ${chk.text}` : chk.text;
         chkEl.classList.add("stale");
+        row.classList.add("stale"); // v0.9.2 — 행 배경
       }
       row.querySelector(".swb-li-del").addEventListener("click", (e) => {
         e.stopPropagation();
