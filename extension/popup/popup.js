@@ -152,8 +152,10 @@ async function loadCurrent() {
   $("dealBadge").classList.add("hidden");
   $("currentStats").textContent = "";
   $("mallLinks").classList.add("hidden");
+  $("currentName").classList.remove("center");
   if (!parsed) {
     $("currentName").textContent = "쇼핑몰의 상품 페이지를 열어주세요";
+    $("currentName").classList.add("center");
     $("mallLinks").classList.remove("hidden");
     return;
   }

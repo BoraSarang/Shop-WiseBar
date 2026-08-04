@@ -108,7 +108,7 @@ header h1 { font-size: 15px; font-weight: 700; }
 .current-head { display: flex; flex-direction: column; gap: 8px; }
 
 .current-info {
-  display: flex; align-items: baseline; gap: 8px; min-width: 0;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; min-width: 0;
 }
 
 .current-name {
@@ -118,6 +118,9 @@ header h1 { font-size: 15px; font-weight: 700; }
 }
 
 .current-price { font-size: 12px; font-weight: 800; color: #2d4ae0; flex-shrink: 0; }
+
+/* v0.9.1 — 비지원 페이지 안내: 문구는 좌측, 링크는 아래 줄 중앙 정렬 */
+.current-name.center { text-align: center; flex-basis: 100%; }
 
 .current-stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
@@ -141,8 +144,10 @@ header h1 { font-size: 15px; font-weight: 700; }
   white-space: nowrap;
 }
 
-/* v0.9.1 — 지원 쇼핑몰 바로가기 (지원 몰 외 페이지에서 표시) */
-.mall-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+/* v0.9.1 — 지원 쇼핑몰 바로가기 (지원 몰 외 페이지에서 표시, 두 번째 줄 중앙 정렬) */
+.mall-links {
+  flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 6px;
+}
 .mall-links a {
   font-size: 11px; font-weight: 700; color: #2d4ae0; text-decoration: none;
   background: #eef1ff; border-radius: 12px; padding: 3px 10px;
