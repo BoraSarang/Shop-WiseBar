@@ -151,8 +151,10 @@ async function loadCurrent() {
   $("currentPrice").textContent = "";
   $("dealBadge").classList.add("hidden");
   $("currentStats").textContent = "";
+  $("mallLinks").classList.add("hidden");
   if (!parsed) {
-    $("currentName").textContent = "지원 몰(네이버·쿠팡·올리브영)의 상품 페이지를 열어주세요";
+    $("currentName").textContent = "쇼핑몰의 상품 페이지를 열어주세요";
+    $("mallLinks").classList.remove("hidden");
     return;
   }
   current = parsed;
