@@ -141,6 +141,7 @@ const SWB_UI = (() => {
     .swb-rel-li:hover { background: #f2f5ff; }
     .swb-rel-name { flex: 1; font-size: 11px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .swb-rel-price { font-size: 11px; font-weight: 700; color: #2d4ae0; }
+    .swb-rel-loading { font-size: 11px; color: #aaa; padding: 4px 6px; }
     .swb-rel-empty { font-size: 11px; color: #aaa; padding: 4px 6px; }
     .swb-foot { padding: 8px 14px 12px; font-size: 11px; color: #aaa; }
     .swb-list { padding: 6px 14px 12px; max-height: 340px; overflow-y: auto; }
@@ -640,14 +641,20 @@ const SWB_UI = (() => {
     }
     updateWatchBtn();
     renderTrend(serverError);
-    // Phase 3 (v0.9.0): 함께 본 상품 — 관계 그래프 조회 (실패/없음이면 숨김 유지)
+    // Phase 3 (v0.9.0): 함께 본 상품 — 관계 그래프 조회 (조회 중 로딩 표시, 없으면 숨김)
     const relBox = panel.querySelector(".swb-related");
-    relBox.classList.add("hidden");
+    const relList = relBox.querySelector(".swb-rel-list");
+    relBox.classList.remove("hidden");
+    relList.innerHTML = `<div class="swb-rel-loading">로딩중…</div>`;
     try {
       const related = await SWB_API(`/products/${pid}/related?limit=5`).catch(() => []);
-      if (Array.isArray(related) && related.length) renderRelated(related);
+      if (Array.isArray(related) && related.length) {
+        renderRelated(related);
+      } else {
+        relBox.classList.add("hidden"); // 관계 데이터 없음 — 섹션 숨김
+      }
     } catch {
-      // 관계 조회 실패 — 조용히 숨김
+      relBox.classList.add("hidden"); // 관계 조회 실패 — 조용히 숨김
     }
   }
 
