@@ -221,14 +221,16 @@ def get_prices(
 
 
 @router.delete("/products/{product_id}/prices/{price}")
-def delete_price_points(product_id: str, price: int, db: Session = Depends(get_db)) -> dict:
-    """관리용: 이상값/오탐 가격 포인트 일괄 삭제 (동일 가격 전체)"""
-    result = db.execute(
-        delete(PricePoint).where(
-            PricePoint.product_id == product_id,
-            PricePoint.price == price,
-        )
-    )
+def delete_price_points(
+    product_id: str, price: int, variant: str | None = None, db: Session = Depends(get_db)
+) -> dict:
+    """관리용: 이상값/오탐 가격 포인트 삭제.
+    variant 생략 = 해당 가격 전체 / variant 지정 = 해당 variant만 (__none__ = NULL variant)
+    v0.8.27: variant=None 품절 잔존값(오리온 9,880원)만 지우고 실제 딜 variant는 보존"""
+    cond = [PricePoint.product_id == product_id, PricePoint.price == price]
+    if variant is not None:
+        cond.append(PricePoint.variant == (None if variant == "__none__" else variant))
+    result = db.execute(delete(PricePoint).where(*cond))
     # v0.8.16: 삭제된 값이 last_price였다면 최근 남은 포인트로 복구 —
     #          오염 포인트 삭제 후에도 팝업(서버 last_price 표시)이 삭제값을
     #          계속 보여주던 문제 (오리온 24,200원 사례) 방지
