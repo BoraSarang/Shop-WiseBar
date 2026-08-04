@@ -27,11 +27,36 @@ const Extractor = {
       // 스마트스토어/브랜드: "상품 가격" 라벨 뒤 금액 / 카탈로그: body 첫 금액
       // v0.8.7: 정가 요소(취소선/deal-before)를 clone에서 제거 후 추출 —
       //        판매가(9,000)와 정가(40,000)가 함께 렌더되어 번갈아 잡히던 진동 해결
-      const clone = document.body.cloneNode(true);
-      clone.querySelectorAll("del, s, strike, [class*='deal-before'], [class*='original-price']").forEach((el) => el.remove());
-      const clean = clone.innerText || "";
-      const m1 = clean.match(/상품 가격[\s\S]{0,30}?([0-9,]+)원/);
-      price = m1 ? parseInt(m1[1].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(clean);
+      // v0.8.23: 스마트스토어 SPA 전환 레이스 방지 — 색상/옵션 클릭은 개별 상품
+      //          페이지 이동(pushState)이라 URL이 먼저 바뀌고 DOM이 늦게 교체된다.
+      //          전환 중 캡처가 옛 상품 가격을 새 product_id로 저장하는 문제
+      //          (독거미 L99: 44↔46 전환 시 102,020/109,520 양방향 오염 사례).
+      //          head의 JSON-LD(mpn/productID)와 URL 상품번호가 일치할 때만 수집.
+      //          렌더 완료 후에는 JSON-LD offers.price(현재 상품의 정확한 판매가) 우선.
+      const urlNum = (url.match(/products\/(\d+)/) || [])[1] || null;
+      let ldMpn = null;
+      let ldPrice = null;
+      const ldScript = document.querySelector('script[type="application/ld+json"]');
+      if (ldScript) {
+        try {
+          const ld = JSON.parse(ldScript.textContent);
+          if (ld.mpn || ld.productID) ldMpn = String(ld.mpn || ld.productID);
+          if (ld.offers && ld.offers.price) ldPrice = Number(ld.offers.price);
+        } catch {
+          // JSON-LD 파싱 실패 — 검증 생략 (기존 로직 폴백)
+        }
+      }
+      if (ldMpn && urlNum && ldMpn !== urlNum) {
+        price = null; // 전환 중 — background가 캡처 스킵 (E-EXT-VALID-3001 범주)
+      } else if (ldPrice && ldPrice >= 1000 && ldPrice <= 50000000) {
+        price = ldPrice;
+      } else {
+        const clone = document.body.cloneNode(true);
+        clone.querySelectorAll("del, s, strike, [class*='deal-before'], [class*='original-price']").forEach((el) => el.remove());
+        const clean = clone.innerText || "";
+        const m1 = clean.match(/상품 가격[\s\S]{0,30}?([0-9,]+)원/);
+        price = m1 ? parseInt(m1[1].replace(/[^0-9]/g, ""), 10) : this.firstPriceFromText(clean);
+      }
     } else if (mall === "coupang") {
       // 쿠팡: ① .price-container(판매가 영역) 우선 — v0.8.15 CDP 실측으로 확정
       //        (10,980/20,530/27,530원 모두 .price-container 1개 존재, 항상 정확)
