@@ -1,5 +1,13 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.9.0 (2026-08-04) — [server+extension] Phase 3: 상품 관계 그래프 (함께 본 상품)
+
+- **연관 상품을 관계로 저장**: 상품 페이지 방문 시 연관/추천 섹션의 카드를 부모 상품과 연결 (`product_relations` 테이블, 신규) — 같은 쌍이 반복 노출되면 weight(강도) 증가, 무방향 그래프 (A→B 2회 + B→A 1회 = 강도 3으로 합산)
+- **API**: `POST /products/relations` (bulk upsert, weight += 1) / `GET /products/{id}/related?limit=` (양방향 합산, weight 내림차순, 상품 정보 포함)
+- **확장**: background.js `captureRelated`가 parentId를 전달해 관계 업로드 (목록 페이지는 관계 저장 안 함), 플로팅 추이 패널에 **"함께 본 상품"** 섹션 — 연관 5개, 이름+현재가, 클릭 시 새 탭 오픈
+- 로컬 E2E: 관계 저장(중복 weight 증가) → 양방향 합산 조회 PASS (2+1=3, 2)
+- 성능: 관계 저장은 상품 페이지 1회 호출(최대 10쌍), 조회는 인덱스(PK 유니크) 사용
+
 ## v0.8.28 (2026-08-04) — [extension] 핫딜 최저가 배지 표시 (reason=low)
 
 - 서버 v0.8.26이 하락 상품 부족 시 **역대 최저가 갱신 상품**(reason=low)으로 채우는데, 팝업/플로팅 핫딜 목록이 `▼ 0%`로 표시해 어색

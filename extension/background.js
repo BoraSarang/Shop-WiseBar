@@ -103,7 +103,8 @@ async function captureProduct(tab) {
     return;
   }
   // 연관 상품 캡처 (v0.5) — 카탈로그 확장: 가격 없어도 상품 등록, 가격 있으면 함께 저장
-  await captureRelated(tab.id, captureKey);
+  // Phase 3 (v0.9.0): parentId 전달 — 연관 카드와의 관계 그래프 저장
+  await captureRelated(tab.id, captureKey, parsed.productID);
 }
 
 // ── 연관 상품 수집 (v0.5) ───────────────────────────────
@@ -112,8 +113,9 @@ async function captureProduct(tab) {
 // 수집 시점: ①페이지 로드 직후 1회(현재 보이는 카드) ②사용자 스크롤로 새 카드 로드 시 (content.js가 감지)
 const relatedUploadedIds = new Set(); // 세션 내 중복 업로드 방지 (content.js Set과 이중 안전망)
 
-async function uploadRelatedItems(items, label) {
+async function uploadRelatedItems(items, label, parentId) {
   let upserted = 0;
+  const relatedIds = [];
   for (const item of items) {
     if (relatedUploadedIds.has(item.productID)) continue; // 같은 세션 중복 skip
     try {
@@ -135,16 +137,28 @@ async function uploadRelatedItems(items, label) {
         });
       }
       relatedUploadedIds.add(item.productID);
+      relatedIds.push(item.productID);
       upserted++;
     } catch (e) {
       console.warn(`[똑바] 연관 상품 업로드 실패 ${item.productID}`, e);
+    }
+  }
+  // Phase 3 (v0.9.0): 상품 페이지 연관 카드 → 관계 그래프 저장 (목록 페이지는 parentId 없음)
+  if (parentId && relatedIds.length) {
+    try {
+      await api("/products/relations", {
+        method: "POST",
+        body: JSON.stringify({ source: parentId, targets: relatedIds.slice(0, 10) }),
+      });
+    } catch (e) {
+      console.warn("[똑바] 관계 저장 실패", e);
     }
   }
   if (upserted > 0) console.log(`[똑바] 연관 상품 ${upserted}개 수집 — ${label}`);
   return upserted;
 }
 
-async function captureRelated(tabId, captureKey) {
+async function captureRelated(tabId, captureKey, parentId) {
   let res;
   try {
     res = await chrome.tabs.sendMessage(tabId, { type: "EXTRACT_RELATED" });
@@ -158,7 +172,7 @@ async function captureRelated(tabId, captureKey) {
     return;
   }
 
-  await uploadRelatedItems(res.items, captureKey);
+  await uploadRelatedItems(res.items, captureKey, parentId);
   await chrome.storage.local.set({ lastRelated: { key: captureKey, at: Date.now() } });
 }
 

@@ -6,7 +6,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import devices, products, recommendations, watches
+from app.routers import devices, products, recommendations, relations, watches
 from app.routers.recommendations import INDEX_SQLS
 
 app = FastAPI(
@@ -26,6 +26,7 @@ app.include_router(devices.router, prefix="/api/v1")
 app.include_router(products.router, prefix="/api/v1")
 app.include_router(watches.router, prefix="/api/v1")
 app.include_router(recommendations.router, prefix="/api/v1")
+app.include_router(relations.router, prefix="/api/v1")
 
 
 @app.on_event("startup")

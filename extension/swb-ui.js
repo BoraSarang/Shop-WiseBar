@@ -132,6 +132,16 @@ const SWB_UI = (() => {
     .swb-deal.hot { background: #e5484d; }
     .swb-deal.warn { background: #8a8f98; }
     .swb-deal.hidden { display: none; }
+    .swb-related { margin-top: 10px; border-top: 1px solid #eef0f4; padding-top: 8px; }
+    .swb-rel-title { font-size: 11px; font-weight: 700; color: #444; margin-bottom: 6px; }
+    .swb-rel-li {
+      display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 8px;
+      cursor: pointer; transition: background 0.12s ease;
+    }
+    .swb-rel-li:hover { background: #f2f5ff; }
+    .swb-rel-name { flex: 1; font-size: 11px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .swb-rel-price { font-size: 11px; font-weight: 700; color: #2d4ae0; }
+    .swb-rel-empty { font-size: 11px; color: #aaa; padding: 4px 6px; }
     .swb-foot { padding: 8px 14px 12px; font-size: 11px; color: #aaa; }
     .swb-list { padding: 6px 14px 12px; max-height: 340px; overflow-y: auto; }
     .swb-list-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px 0; }
@@ -306,6 +316,10 @@ const SWB_UI = (() => {
             <span>기록 <b class="st-count">—</b>일</span>
           </div>
           <span class="swb-deal hidden"></span>
+          <div class="swb-related hidden">
+            <div class="swb-rel-title">함께 본 상품</div>
+            <div class="swb-rel-list"></div>
+          </div>
         </div>
         <div class="swb-foot">똑바 · 최저가를 놓치지 마세요</div>
       </div>
@@ -618,6 +632,36 @@ const SWB_UI = (() => {
     }
     updateWatchBtn();
     renderTrend(serverError);
+    // Phase 3 (v0.9.0): 함께 본 상품 — 관계 그래프 조회 (실패/없음이면 숨김 유지)
+    const relBox = panel.querySelector(".swb-related");
+    relBox.classList.add("hidden");
+    try {
+      const related = await SWB_API(`/products/${pid}/related?limit=5`).catch(() => []);
+      if (Array.isArray(related) && related.length) renderRelated(related);
+    } catch {
+      // 관계 조회 실패 — 조용히 숨김
+    }
+  }
+
+  // Phase 3 (v0.9.0): 함께 본 상품 목록 렌더 — 클릭 시 새 탭 오픈
+  function renderRelated(items) {
+    const relBox = shadow.querySelector(".swb-related");
+    const relList = shadow.querySelector(".swb-rel-list");
+    relList.innerHTML = "";
+    for (const r of items) {
+      if (!r.url) continue;
+      const row = document.createElement("div");
+      row.className = "swb-rel-li";
+      row.innerHTML = `<span class="swb-rel-name"></span><span class="swb-rel-price"></span>`;
+      row.querySelector(".swb-rel-name").textContent = r.name || r.product_id;
+      row.querySelector(".swb-rel-price").textContent =
+        r.last_price != null ? `${Number(r.last_price).toLocaleString()}원` : "";
+      row.addEventListener("click", () => {
+        if (r.url) chrome.runtime.sendMessage({ type: "OPEN_TAB", url: r.url });
+      });
+      relList.appendChild(row);
+    }
+    relBox.classList.remove("hidden");
   }
 
   // 일별 시리즈: 기간(일) 동안 날짜별 가격, 결측일은 직전 가격 유지,

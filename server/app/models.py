@@ -102,3 +102,19 @@ class Alert(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     device: Mapped[Device] = relationship()
+
+
+class ProductRelation(Base):
+    """상품 간 연관 관계 (Phase 3, v0.9.0) — 상품 페이지의 연관/추천 섹션에서 함께 노출된
+    상품을 기록. 같은 쌍이 반복 등장하면 weight 증가 (연관 강도). 무방향 그래프로 취급:
+    조회 시 source OR target 양방향 매칭"""
+
+    __tablename__ = "product_relations"
+    __table_args__ = (UniqueConstraint("source_product_id", "target_product_id", "kind", name="uq_rel_pair"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+    target_product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(16), default="related")
+    weight: Mapped[int] = mapped_column(Integer, default=1)  # 함께 등장한 횟수
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
