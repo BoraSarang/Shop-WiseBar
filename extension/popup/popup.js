@@ -66,9 +66,13 @@ async function loadDeals() {
       });
     }
     li.querySelector(".watch-name").textContent = d.name || d.product_id;
-    li.querySelector(".deal-price").textContent =
-      `${Number(d.last_price).toLocaleString()}원` +
-      (d.previous_price ? ` <span class="deal-before">${Number(d.previous_price).toLocaleString()}원</span>` : "");
+    li.querySelector(".deal-price").textContent = `${Number(d.last_price).toLocaleString()}원`;
+    if (d.previous_price) {
+      const before = document.createElement("span");
+      before.className = "deal-before";
+      before.textContent = `${Number(d.previous_price).toLocaleString()}원`;
+      li.querySelector(".deal-price").appendChild(before);
+    }
     li.addEventListener("click", () => {
       if (d.url) chrome.tabs.create({ url: d.url });
     });
