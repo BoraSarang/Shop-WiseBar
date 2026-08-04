@@ -44,8 +44,22 @@ const Extractor = {
       const isSoldOut = /(일시\s?)?품절|재입고\s?알림/.test(bodyText);
       const pcEl = document.querySelector(".price-container");
       if (pcEl) {
-        const m = pcEl.innerText.match(/[0-9][0-9,]*\s*원/);
-        if (m) price = parseInt(m[0].replace(/[^0-9]/g, ""), 10);
+        // v0.8.22: 할인 상품은 정가가 첫 금액으로 오는 구조 — 실제 구매가(일반할인가) 우선
+        // CDP 실측: "와우할인가 44% 22,500원 12,380원 / 일반할인가 44% 22,500원 12,510원"
+        //   → 기존 첫 금액 규칙이 정가(22,500)를 잡던 문제. "일반할인가" 뒤 금액이 구매가.
+        //   일반 상품(라벨 없음)은 기존대로 첫 금액(오리온 "21,920원 (10g당 428원)")
+        const text = pcEl.innerText;
+        // "일반할인가 44% 22,500원 12,510원" — 라벨 뒤 첫 금액(22,500)도 정가이므로
+        // "일반할인가" 섹션의 마지막 금액(12,510)이 실제 구매가
+        const genIdx = text.lastIndexOf("일반할인가");
+        if (genIdx >= 0) {
+          const all = [...text.slice(genIdx).matchAll(/([0-9][0-9,]*)\s*원/g)];
+          if (all.length) price = parseInt(all[all.length - 1][1].replace(/[^0-9]/g, ""), 10);
+        }
+        if (!price) {
+          const m = text.match(/[0-9][0-9,]*\s*원/);
+          if (m) price = parseInt(m[0].replace(/[^0-9]/g, ""), 10);
+        }
       }
       if (!price && !isSoldOut) {
         const attrEl = document.querySelector("span.total-price[data-price], strong.total-price[data-price], .total-price[data-price]");
