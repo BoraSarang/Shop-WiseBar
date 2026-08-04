@@ -5,7 +5,8 @@
 - **목표가 알림**: 찜에 목표가 설정 가능 (`Watch.target_price` + 팝업 입력 UI) — 가격이 목표가 이하로 내려가면 `target_reached` 알림 (직전 가격이 목표가 이상일 때만 1회, 회복 후 재하락 시 재알림)
 - **품절 감지**: 상품 페이지 품절 시 확장이 자동 보고 (`Product.sold_out_at` + `POST /products/{id}/sold-out`) → 찜 목록 '품절' 배지 + `sold_out` 알림 (재판매 시 가격 캡처가 자동 해제)
 - **컬럼 마이그레이션**: startup `_ensure_columns` — PostgreSQL `ADD COLUMN IF NOT EXISTS` / SQLite PRAGMA+ALTER (create_all 한계 보완)
-- **버그 수정**: ① 품절 상품이 목표가 검사를 재수행해 알림 무한 반복 → 품절이면 하락/목표가 검사 생략 ② since와 캡처 시각이 동일(초 절단)하면 재감지 → `<=` 비교
+- **버그 수정**: ① 품절 상품이 목표가 검사를 재수행해 알림 무한 반복 → 품절이면 하락/목표가 검사 생략 ② since와 캡처 시각이 동일(초 절단)하면 재감지 → `<=` 비교 ③ `content.js` isSoldOut이 쿠팡 if 블록 안 `const`로 선언돼 블록 밖 return에서 ReferenceError → 쿠팡 추이 패널 로딩 중단 (함수 레벨 `let`로 수정, 883e187)
+- **관계 저장 500 수정**: `POST /products/relations`가 targets 중복(같은 상품이 여러 연관 섹션에 노출)을 제거하지 않아 `uq_rel_pair` unique 제약 위반 → 500 — 확장 captureRelated(40개 카드)의 관계 저장이 항상 실패해 '함께 본 상품'이 비어 있었음. `dict.fromkeys`로 중복 제거 (0ffca63) — 로컬/실서버 중복 target 200 확인, 미레오 9590025132 연관 3건 weight 3 수집 확인
 - **관계 기반 추천 확장**: 팝업 '함께 본 상품' 섹션 (GET /related 재사용, 5개, 클릭 시 새 탭)
 - **추이 그래프 UX**: 최저가 점선 표시선 + 하락 구간 파란 굵은 선/상승·평탄 회색 + 최저/최고점 마커
 - **알림 뷰 배지**: 목표 도달(보라)/품절(빨강)/하락(파랑) 타입별 표시
