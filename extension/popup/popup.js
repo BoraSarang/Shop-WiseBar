@@ -143,6 +143,7 @@ document.querySelectorAll(".deal-day-btn").forEach((btn) => {
 let current = null; // { parsed, product }
 let currentWatched = false;
 let currentTargetPrice = null;
+let currentPrice = null; // v0.9.1 — 목표가 입력 기본값용 (마지막 수집 가격)
 
 async function loadCurrent() {
   const { tab, parsed } = await currentTabProduct();
@@ -180,8 +181,9 @@ async function loadCurrent() {
     if (product) {
       currentWatched = product.is_watched;
       currentTargetPrice = product.target_price || null;
-      if (product.last_price != null) {
-        $("currentPrice").textContent = `${Number(product.last_price).toLocaleString()}원`;
+      currentPrice = product.last_price != null ? Number(product.last_price) : null;
+      if (currentPrice != null) {
+        $("currentPrice").textContent = `${currentPrice.toLocaleString()}원`;
       }
       renderStats(product);
     } else {
@@ -274,12 +276,22 @@ function updateWatchBtn() {
     btn.textContent = "찜하기";
     btn.classList.remove("active");
   }
-  // v0.9.1 — 목표가 입력 행: 찜 상태에서만 표시, 기존 목표가 초기값
+  // v0.9.1 — 목표가 입력 행: 찜 상태에서만 표시, 기존 목표가 초기값,
+  // 목표가 없으면 현재가(마지막 수집 가격)를 기본값으로 채움
   const row = $("targetRow");
   row.classList.toggle("hidden", !currentWatched);
   if (currentWatched) {
-    $("targetInput").value = currentTargetPrice ? String(currentTargetPrice) : "";
-    $("targetInput").placeholder = currentTargetPrice ? `현재 목표가 ${Number(currentTargetPrice).toLocaleString()}원` : "목표가 (원)";
+    const input = $("targetInput");
+    if (currentTargetPrice) {
+      input.value = String(currentTargetPrice);
+      input.placeholder = `현재 목표가 ${Number(currentTargetPrice).toLocaleString()}원`;
+    } else if (currentPrice) {
+      input.value = String(currentPrice);
+      input.placeholder = "목표가 (원) — 현재가 기준";
+    } else {
+      input.value = "";
+      input.placeholder = "목표가 (원)";
+    }
   }
 }
 
@@ -411,7 +423,7 @@ function renderList() {
     } else if (w.target_price) {
       const tp = Number(w.target_price);
       const cur = w.last_price != null ? Number(w.last_price) : null;
-      checkEl.textContent = `목표 ${tp.toLocaleString()}원${cur != null && cur <= tp ? " · 도달!" : ""}`;
+      checkEl.textContent = `${tp.toLocaleString()}원 이하 알림${cur != null && cur <= tp ? " · 도달!" : ""}`;
       checkEl.classList.add("target-set");
       if (cur != null && cur <= tp) li.classList.add("target-hit");
     }

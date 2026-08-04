@@ -1031,7 +1031,7 @@ const SWB_UI = (() => {
       } else if (w.target_price) {
         const tp = Number(w.target_price);
         const cur = w.last_price != null ? Number(w.last_price) : null;
-        chkEl.textContent = `목표 ${tp.toLocaleString()}원${cur != null && cur <= tp ? " · 도달!" : ""}`;
+        chkEl.textContent = `${tp.toLocaleString()}원 이하 알림${cur != null && cur <= tp ? " · 도달!" : ""}`;
         chkEl.classList.add("target");
       }
       if (chk && !w.sold_out) {
