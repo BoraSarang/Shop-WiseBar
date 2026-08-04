@@ -34,6 +34,7 @@ class Product(Base):
     image: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     last_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sold_out_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # v0.9.1 — 품절 시작 시각 (None=판매중)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     price_points: Mapped[list["PricePoint"]] = relationship(back_populates="product", cascade="all, delete-orphan")
@@ -81,6 +82,7 @@ class Watch(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     device_id: Mapped[str] = mapped_column(ForeignKey("devices.id"), index=True)
     product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+    target_price: Mapped[int | None] = mapped_column(Integer, nullable=True)  # v0.9.1 — 목표가 (이하 도달 시 target_reached 알림)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     device: Mapped[Device] = relationship(back_populates="watches")

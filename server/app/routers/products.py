@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Device, PriceDailyStat, PricePoint, Product, Watch
-from app.schemas import PricePointOut, PriceUploadIn, ProductOut, ProductUpsertIn
+from app.schemas import PricePointOut, PriceUploadIn, ProductOut, ProductUpsertIn, SoldOutIn
 
 router = APIRouter(tags=["products"])
 
@@ -66,6 +66,7 @@ def _product_out(
         image=product.image,
         last_price=last_price,
         last_checked_at=product.last_checked_at,
+        sold_out=product.sold_out_at is not None,
         is_watched=is_watched,
         min_price=min_price,
         avg_price=avg_price,
@@ -171,6 +172,8 @@ def upload_price(product_id: str, payload: PriceUploadIn, db: Session = Depends(
 
     product.last_price = payload.price
     product.last_checked_at = now
+    if product.sold_out_at is not None:
+        product.sold_out_at = None  # v0.9.1 — 가격 캡처 = 판매 중 → 품절 자동 해제
 
     # 일별 통계 upsert
     stat = db.scalar(
@@ -197,6 +200,24 @@ def upload_price(product_id: str, payload: PriceUploadIn, db: Session = Depends(
         return PricePointOut(price=payload.price, source=payload.source, variant=payload.variant, captured_at=now)
     db.refresh(point)
     return PricePointOut(price=point.price, source=point.source, variant=point.variant, captured_at=point.captured_at)
+
+
+@router.post("/products/{product_id}/sold-out")
+def update_sold_out(product_id: str, payload: SoldOutIn, db: Session = Depends(get_db)) -> dict:
+    """품절 상태 갱신 (v0.9.1) — 확장이 품절/재판매 감지 시 호출.
+    품절이면 sold_out_at 시작 시각 기록, 재판매면 해제 (가격 업로드 시에도 자동 해제)"""
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1001", "message": "상품을 찾을 수 없습니다"})
+    now = datetime.now(timezone.utc)
+    if payload.sold_out:
+        if product.sold_out_at is None:
+            product.sold_out_at = now
+    else:
+        product.sold_out_at = None
+    product.last_checked_at = now
+    db.commit()
+    return {"product_id": product_id, "sold_out": product.sold_out_at is not None, "sold_out_at": product.sold_out_at}
 
 
 @router.get("/products/{product_id}/prices", response_model=list[PricePointOut])

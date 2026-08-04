@@ -22,7 +22,7 @@ def _get_device_or_404(db: Session, device_id: str) -> Device:
 
 @router.put("/devices/{device_id}/watches/{product_id}", response_model=WatchOut)
 def add_watch(device_id: str, product_id: str, payload: WatchIn, db: Session = Depends(get_db)) -> WatchOut:
-    """관심 상품 등록 — 추적 제안 배너의 '추적 시작'"""
+    """관심 상품 등록 — 추적 제안 배너의 '추적 시작' + 목표가 설정 (v0.9.1)"""
     _get_device_or_404(db, device_id)
     if db.get(Product, product_id) is None:
         raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1001", "message": "상품을 찾을 수 없습니다"})
@@ -30,9 +30,11 @@ def add_watch(device_id: str, product_id: str, payload: WatchIn, db: Session = D
     if watch is None:
         watch = Watch(device_id=device_id, product_id=product_id)
         db.add(watch)
+    if payload.target_price is not None:
+        watch.target_price = payload.target_price
     db.commit()
     db.refresh(watch)
-    return WatchOut(product_id=watch.product_id, created_at=watch.created_at)
+    return WatchOut(product_id=watch.product_id, target_price=watch.target_price, created_at=watch.created_at)
 
 
 @router.delete("/devices/{device_id}/watches/{product_id}", status_code=204)
@@ -67,6 +69,8 @@ def list_watches(device_id: str, db: Session = Depends(get_db)) -> list[WatchOut
                 image=p.image if p else None,
                 last_price=p.last_price if p else None,
                 last_checked_at=p.last_checked_at if p else None,
+                sold_out=p.sold_out_at is not None if p else False,
+                target_price=w.target_price,
                 created_at=w.created_at,
             )
         )
@@ -149,16 +153,32 @@ def delete_alert(device_id: str, alert_id: int, db: Session = Depends(get_db)) -
 
 @router.get("/devices/{device_id}/alerts", response_model=list[AlertOut])
 def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depends(get_db)) -> list[AlertOut]:
-    """폴링 알림 — 같은 옵션(variant)끼리만 최신/이전 가격 비교해 하락 감지
-    쿠팡 itemId 등 옵션별 가격이 다른 경우, 옵션 간 가격 차이를 하락으로 오탐하지 않도록 variant 단위로 분리
+    """폴링 알림 — ①가격 하락(같은 variant끼리만) ②목표가 도달(v0.9.1) ③품절(v0.9.1)
     since는 '신규 보고 캡처' 필터로만 사용 — 직전 가격은 since 이전이어도 비교 기준으로 삼아,
-    찜 이후 첫 하락(모든 캡처가 since 이후)도 감지되도록 한다"""
+    찜 이후 첫 하락(모든 캡처가 since 이후)도 감지되도록 한다.
+    목표가 도달이면 하락 알림 대신 target_reached만 반환 (중복 알림 방지)"""
     _get_device_or_404(db, device_id)
     if since is not None:
         since = since.replace(tzinfo=None)
     watches = db.scalars(select(Watch).where(Watch.device_id == device_id)).all()
     alerts: list[AlertOut] = []
     for w in watches:
+        # 품절 감지 (v0.9.1) — since 이후 품절 시작 시 1회 (확장 폴링이 since를 갱신하므로 반복 없음)
+        # since=None(최초 폴링)이면 품절 상태 자체를 알림으로 전달
+        # 품절 상품은 하락/목표가 검사 자체를 생략 (이전에 알림을 받았어도 재검사 무한 반복 방지)
+        if w.product is not None and w.product.sold_out_at is not None:
+            sold_out_at = w.product.sold_out_at
+            if since is None or sold_out_at.replace(tzinfo=None) > since:
+                alerts.append(
+                    AlertOut(
+                        product_id=w.product_id,
+                        alert_type="sold_out",
+                        price=0,
+                        previous_price=None,
+                        captured_at=sold_out_at,
+                    )
+                )
+            continue
         points = list(
             db.scalars(
                 select(PricePoint)
@@ -172,9 +192,22 @@ def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depe
             by_variant.setdefault(pt.variant, []).append(pt)
         for variant, group in by_variant.items():
             latest = group[0]
-            if since is not None and latest.captured_at < since:
+            # since는 확장이 갱신한 '이미 본 시각' — 캡처가 같거나 이전이면 스킵 (초 절단 동일 시각 재감지 방지)
+            if since is not None and latest.captured_at <= since:
                 continue
             previous = group[1] if len(group) > 1 else None
+            # 목표가 도달 (v0.9.1) — 직전이 이미 목표가 이하(이전 알림 받음)면 반복 방지
+            if w.target_price and latest.price <= w.target_price and (previous is None or previous.price > w.target_price):
+                alerts.append(
+                    AlertOut(
+                        product_id=latest.product_id,
+                        alert_type="target_reached",
+                        price=latest.price,
+                        previous_price=previous.price if previous else None,
+                        captured_at=latest.captured_at,
+                    )
+                )
+                continue
             if previous is not None and latest.price < previous.price:
                 alerts.append(_alert_out(latest, previous))
     return alerts

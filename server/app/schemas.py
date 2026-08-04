@@ -28,6 +28,10 @@ class PriceUploadIn(BaseModel):
     variant: str | None = Field(None, max_length=128)  # 쿠팡 옵션(itemId) — 옵션별 가격 분리용
 
 
+class SoldOutIn(BaseModel):
+    sold_out: bool  # v0.9.1 — 품절 상태 (true=품절 시작, false=재판매)
+
+
 class ProductOut(BaseModel):
     product_id: str
     mall: str
@@ -36,6 +40,7 @@ class ProductOut(BaseModel):
     image: str | None
     last_price: int | None
     last_checked_at: datetime | None
+    sold_out: bool = False  # v0.9.1 — 품절 상태 (sold_out_at 유무)
     is_watched: bool = False
     # v0.4 — 가격 통계 (전체 기록 기준, 클라이언트는 '지금 사도 돼' 배지 등에 사용)
     min_price: int | None = None
@@ -52,7 +57,7 @@ class PricePointOut(BaseModel):
 
 
 class WatchIn(BaseModel):
-    pass
+    target_price: int | None = Field(None, gt=0, description="목표가 — 이 가격 이하 도달 시 target_reached 알림 (v0.9.1)")
 
 
 class WatchOut(BaseModel):
@@ -63,6 +68,8 @@ class WatchOut(BaseModel):
     image: str | None = None
     last_price: int | None = None
     last_checked_at: datetime | None = None  # 마지막 캡처 시각 — 방문 유도 배지용 (v0.4)
+    sold_out: bool = False  # v0.9.1 — 품절 상태 (sold_out_at 유무)
+    target_price: int | None = None  # v0.9.1 — 목표가
     created_at: datetime
 
 
@@ -76,8 +83,8 @@ class AlertOut(BaseModel):
 
 class AlertRecordIn(BaseModel):
     product_id: str
-    alert_type: str  # price_dropped
-    price: int = Field(..., gt=0)
+    alert_type: str  # price_dropped | target_reached | sold_out
+    price: int = Field(..., ge=0)  # sold_out은 0
     previous_price: int | None = None
 
 

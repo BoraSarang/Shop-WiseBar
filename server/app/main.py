@@ -37,6 +37,24 @@ def on_startup() -> None:
     with engine.begin() as conn:
         for sql in INDEX_SQLS:
             conn.execute(text(sql))
+    # v0.9.1 — 신규 컬럼 마이그레이션 (create_all은 기존 테이블에 컬럼을 추가하지 않음)
+    _ensure_columns(engine)
+
+
+def _ensure_columns(engine) -> None:
+    """v0.9.1: products.sold_out_at + watches.target_price 추가 — Neon(PostgreSQL)은
+    IF NOT EXISTS 네이티브, SQLite는 PRAGMA 체크 후 ALTER"""
+    with engine.begin() as conn:
+        if engine.dialect.name == "sqlite":
+            cols = {r[1] for r in conn.execute(text("PRAGMA table_info(products)"))}
+            if "sold_out_at" not in cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN sold_out_at TIMESTAMP"))
+            cols = {r[1] for r in conn.execute(text("PRAGMA table_info(watches)"))}
+            if "target_price" not in cols:
+                conn.execute(text("ALTER TABLE watches ADD COLUMN target_price INTEGER"))
+        else:
+            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS sold_out_at TIMESTAMPTZ"))
+            conn.execute(text("ALTER TABLE watches ADD COLUMN IF NOT EXISTS target_price INTEGER"))
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])
