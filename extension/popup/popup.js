@@ -19,6 +19,56 @@ async function currentTabProduct() {
   return { tab, parsed: tab ? MallParser.parse(tab.url || "") : null };
 }
 
+// ── 연관 상품 추천 (v0.9.1 — 관계 그래프 확장) ──────────
+// v0.9.0 관계 그래프 API 재사용: GET /products/{id}/related (양방향 weight 합산)
+async function loadRelated() {
+  const sec = $("related");
+  const listEl = $("relatedList");
+  if (!current) {
+    sec.classList.add("hidden");
+    return;
+  }
+  let items = null;
+  try {
+    const r = await api(`/products/${encodeURIComponent(current.productID)}/related?limit=5`);
+    items = Array.isArray(r) ? r : [];
+  } catch {
+    sec.classList.add("hidden");
+    return;
+  }
+  if (!items.length) {
+    sec.classList.add("hidden");
+    return;
+  }
+  sec.classList.remove("hidden");
+  listEl.innerHTML = "";
+  for (const it of items) {
+    const m = mallMeta[it.mall] || null;
+    const li = document.createElement("li");
+    li.className = "related-item";
+    li.innerHTML = `
+      <span class="watch-thumb"${it.image ? ` style="background-image:url('${String(it.image).replace(/'/g, "\\'")}')"` : ""}>${it.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
+      <span class="related-body">
+        <span class="related-name"></span>
+        <span class="related-price"></span>
+      </span>`;
+    const badgeImg = m ? li.querySelector(".watch-badge img") : null;
+    if (badgeImg) {
+      badgeImg.addEventListener("error", () => {
+        badgeImg.replaceWith(document.createTextNode(m.label));
+        badgeImg.parentElement.classList.add("b-fallback");
+      });
+    }
+    li.querySelector(".related-name").textContent = it.name || it.product_id;
+    li.querySelector(".related-price").textContent =
+      it.last_price != null ? `${Number(it.last_price).toLocaleString()}원` : "";
+    li.addEventListener("click", () => {
+      if (it.url) chrome.tabs.create({ url: it.url });
+    });
+    listEl.appendChild(li);
+  }
+}
+
 // ── 로딩 인디케이터 (v0.7.3) ───────────────────────────
 function loadingRow(text = "불러오는 중…") {
   return `<li class="row-loading"><span class="spinner"></span>${text}</li>`;
@@ -443,6 +493,7 @@ function setStatus(text) {
   try {
     await loadCurrent();
   } catch {}
+  await loadRelated();
   await loadDeals();
   await loadList();
   clearTimeout(slowTimer);

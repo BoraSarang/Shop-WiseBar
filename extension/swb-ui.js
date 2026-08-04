@@ -1095,6 +1095,25 @@ const SWB_UI = (() => {
     const max = Math.max(...prices);
     const range = max - min || 1;
     const pad = 8;
+    const xOf = (i) => pad + (i / (prices.length - 1)) * (w - pad * 2);
+    const yOf = (p) => h - pad - ((p - min) / range) * (h - pad * 2);
+
+    // v0.9.1 — 최저가 표시선 (점선 + 라벨)
+    if (prices.length > 1 && min !== max) {
+      const yMin = yOf(min);
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = "#4dabf7";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad, yMin);
+      ctx.lineTo(w - pad, yMin);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#4dabf7";
+      ctx.font = "10px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(`최저 ${min.toLocaleString()}원`, pad, Math.max(10, yMin - 3));
+    }
 
     if (prices.length === 1) {
       ctx.beginPath();
@@ -1102,15 +1121,27 @@ const SWB_UI = (() => {
       ctx.fillStyle = "#2d4ae0";
       ctx.fill();
     } else {
-      ctx.strokeStyle = "#2d4ae0";
-      ctx.lineWidth = 2;
+      // v0.9.1 — 하락 구간 파란 굵은 선, 상승/평탄 구간 회색 얇은 선
+      for (let i = 1; i < prices.length; i++) {
+        const down = prices[i] < prices[i - 1];
+        ctx.strokeStyle = down ? "#2d4ae0" : "#c8cdd5";
+        ctx.lineWidth = down ? 2.2 : 1.4;
+        ctx.beginPath();
+        ctx.moveTo(xOf(i - 1), yOf(prices[i - 1]));
+        ctx.lineTo(xOf(i), yOf(prices[i]));
+        ctx.stroke();
+      }
+      // 최저점/최고점 마커 (v0.9.1)
+      const minIdx = prices.indexOf(min);
+      const maxIdx = prices.indexOf(max);
+      ctx.fillStyle = "#4dabf7";
       ctx.beginPath();
-      prices.forEach((price, i) => {
-        const x = pad + (i / (prices.length - 1)) * (w - pad * 2);
-        const y = h - pad - ((price - min) / range) * (h - pad * 2);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      });
-      ctx.stroke();
+      ctx.arc(xOf(minIdx), yOf(min), 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#e5484d";
+      ctx.beginPath();
+      ctx.arc(xOf(maxIdx), yOf(max), 3.5, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     const last = prices[prices.length - 1];
