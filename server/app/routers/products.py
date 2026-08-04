@@ -215,7 +215,7 @@ def get_prices(
         .limit(limit)
     ).all()
     return [
-        PricePointOut(price=p.price, source=p.source, captured_at=p.captured_at)
+        PricePointOut(price=p.price, source=p.source, variant=p.variant, captured_at=p.captured_at)
         for p in reversed(points)
     ]
 

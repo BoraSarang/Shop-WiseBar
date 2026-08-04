@@ -47,7 +47,7 @@ def get_recommendations(limit: int = 10, days: int = 7, db: Session = Depends(ge
             ranked AS (
               -- v0.8.19: variant(쿠팡 수량 묶음/딜)별 분리 — variant A의 하락을
               -- variant B 가격과 비교해 오탐/누락이 나지 않도록 PARTITION을 variant 포함
-              SELECT product_id, price,
+              SELECT product_id, variant, price,
                      ROW_NUMBER() OVER (PARTITION BY product_id, COALESCE(variant, '')
                                         ORDER BY captured_at DESC) AS rn,
                      LEAD(price) OVER (PARTITION BY product_id, COALESCE(variant, '')
@@ -60,6 +60,10 @@ def get_recommendations(limit: int = 10, days: int = 7, db: Session = Depends(ge
             JOIN products p ON p.id = r.product_id
             WHERE r.rn = 1 AND r.prev_price IS NOT NULL AND r.price < r.prev_price
               AND (r.prev_price - r.price) * 100.0 / r.prev_price >= :min_drop
+              -- v0.8.20: 쿠팡은 variant(수량 묶음/딜) 미지정 포인트가 서로 다른 옵션
+              -- 가격을 섞어 하락 오탐을 만듦 → 쿠팡은 variant 지정 포인트만 신뢰
+              -- (네이버/올리브영은 variant 개념이 없어 None 그대로 유효)
+              AND (p.mall <> 'coupang' OR r.variant IS NOT NULL)
             ORDER BY (r.prev_price - r.price) * 100.0 / r.prev_price DESC
             LIMIT :limit
             """
