@@ -57,7 +57,7 @@ async function loadDeals() {
         <span class="watch-name"></span>
         <span class="deal-price"></span>
       </span>
-      <span class="deal-pct">▼ ${d.drop_percent}%</span>`;
+      <span class="deal-pct">${d.reason === "low" ? "최저가" : `▼ ${d.drop_percent}%`}</span>`;
     const badgeImg = m ? li.querySelector(".watch-badge img") : null;
     if (badgeImg) {
       badgeImg.addEventListener("error", () => {

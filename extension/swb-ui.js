@@ -817,7 +817,7 @@ const SWB_UI = (() => {
           <span class="swb-deal-name"></span>
           <span class="swb-deal-price"></span>
         </span>
-        <span class="swb-deal-pct">▼ ${d.drop_percent}%</span>`;
+        <span class="swb-deal-pct">${d.reason === "low" ? "최저가" : `▼ ${d.drop_percent}%`}</span>`;
       const badgeImg = m ? row.querySelector(".swb-li-badge img") : null;
       if (badgeImg) {
         badgeImg.addEventListener("error", () => {
