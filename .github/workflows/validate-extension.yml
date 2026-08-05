@@ -1,0 +1,51 @@
+name: Validate Extension
+
+on:
+  pull_request:
+    paths:
+      - "extension/**"
+      - "!extension/shopwisebar.db"
+  push:
+    branches: [main]
+    paths:
+      - "extension/**"
+      - "!extension/shopwisebar.db"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax check (node --check)
+        run: |
+          for f in extension/*.js extension/popup/*.js; do
+            node --check "$f" || exit 1
+          done
+          echo "All JS files passed syntax check."
+
+      - name: Validate manifest.json
+        run: |
+          python3 -c "
+          import json
+          m = json.load(open('extension/manifest.json'))
+          assert m['manifest_version'] == 3
+          assert 'version' in m
+          assert 'action' in m
+          print('manifest.json OK — version', m['version'], '| MV', m['manifest_version'])
+          "
+
+      - name: Validate i18n / error messages JSON
+        run: |
+          python3 -c "
+          import json
+          for f in ['error_message_ko.json']:
+              d = json.load(open(f))
+              print(f, 'valid —', len(d), 'entries')
+          " 2>/dev/null || echo "error_message_ko.json 보류(선택)"

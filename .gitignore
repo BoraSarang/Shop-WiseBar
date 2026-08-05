@@ -26,3 +26,6 @@ __pycache__/
 *.pyc
 server/*.db
 server/*.sqlite3
+
+# Landing (로컬 미리보기용 아이콘 사본 — Pages 배포는 Actions가 extension/icons 복사)
+landing/icons/
