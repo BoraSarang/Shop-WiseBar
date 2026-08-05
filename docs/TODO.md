@@ -2,6 +2,13 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-87 — README 재작성 + GitHub Pages 랜딩 + GitHub Actions CI/CD (v0.9.9) — ✅ 완료 (2026-08-05)
+- [x] **README.md 재작성**: 제품 소개/설치/기능/아키텍처/개발 규약 (기존 2줄 → 확장)
+- [x] **GitHub Pages 랜딩 페이지** `landing/`: index.html + style.css (히어로/기능 6/지원 몰/CTA). 아이콘은 Actions 배포 시 extension/icons 복사
+- [x] **Actions**: `deploy-pages.yml`(Pages 배포) + `validate-extension.yml`(node --check + manifest 검증)
+- [x] **Pages 활성화**: REST로 Pages 생성 → `build_type: workflow` 전환 (configure-pages 실패 원인 해결)
+- [x] 검증: Deploy Landing Page success + pages-build-deployment success + Validate Extension success + https://borasarang.github.io/Shop-WiseBar/ HTTP 200 + icon48 HTTP 200
+
 ## T-86 — 옵션 페이지 서버 장애 안내 + GitHub 릴리즈 링크 + Edge 로드 확인 (v0.9.8) — ✅ 완료 (2026-08-05)
 - [x] **서버 주소 변경 불가 유지**: `common.js` SWB_CONFIG 단일 관리. 업데이트 시 자동 반영되므로 사용자에게 주소 변경 요청 없음
 - [x] **서버 접속 실패 안내**: 옵션 페이지 `/health` 실패 시 "서버에 접속할 수 없습니다. 문제가 있는지 확인해 보세요." err-box + **새 버전 확인(GitHub 릴리즈)**·**GitHub 저장소** 링크 (options.html err-box/btn-link, options.js loadServerStatus)

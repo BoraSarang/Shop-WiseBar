@@ -1,5 +1,21 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.9.9 (2026-08-05) — [repo] README 재작성 + GitHub Pages 랜딩 페이지 + GitHub Actions CI/CD
+
+### README.md 재작성
+- 2줄 → 제품 소개·설치 방법·기능·아키텍처·개발/커밋 규약 포함으로 확장
+- 지원 쇼핑몰 표(productID 규약), 설치(개발자 모드), 다이어그램(익스텐션↔서버), 문의 정보
+
+### GitHub Pages 랜딩 페이지 (`landing/`)
+- `landing/index.html` + `landing/assets/style.css` — 히어로/기능 6종/지원 몰/CTA/푸터
+- 아이콘은 로컬 사본(`landing/icons/`, gitignore) 대신 Actions 배포 시 `extension/icons`를 `_site/icons`로 복사
+- 검증: 로컬 http.server 렌더링(제목/카드6/배지5) + 배포 후 HTTP 200 + icon48 HTTP 200
+
+### GitHub Actions (2개)
+- **`deploy-pages.yml`** — main push(`landing/**`, `extension/icons/**`) 시 Pages 배포 (configure-pages/upload-pages-artifact/deploy-pages). Pages 소스를 `build_type: workflow`로 전환 필요(configure-pages 실패 원인 해결)
+- **`validate-extension.yml`** — PR/push 시 `extension/*.js`·`extension/popup/*.js` `node --check` + manifest.json MV3/version/action 검증 + error_message_ko.json 검증
+- 배포 URL: https://borasarang.github.io/Shop-WiseBar/ (HTTP 200 확인)
+
 ## v0.9.8 (2026-08-05) — [extension] 옵션 페이지 서버 장애 안내 + GitHub 릴리즈 링크 추가 + [확인] Edge 로드
 
 ### 옵션 페이지 — 서버 접속 실패 시 안내 문구 + GitHub 링크
