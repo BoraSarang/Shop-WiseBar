@@ -332,7 +332,7 @@ watchScrollForRelated();
 // 검색/목록 화면에서 내 찜 상품 카드에 "★ 찜 N원" 배지 오버레이
 // v0.8.6: viewport 고정(fixed) 오버레이 — 이미지가 컨테이너 위로 삐져나오거나
 // overflow:hidden인 카드 구조에서도 잘리지 않고 스크롤에도 따라붙음
-console.log("[똑바] content.js v0.8.6 — badge top 12px");
+DebugLogger.info("[똑바] content.js v0.8.6 — badge top 12px");
 let watchedSet = new Set();
 let watchedMap = new Map();
 let badgeOverlays = []; // {card, el}
@@ -456,6 +456,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type !== "EXTRACT") return;
   // v0.8.14: 캡처 시점 URL 전달 — 쿠팡이 SPA 로드 후 vendorItemId를 URL에서 제거해서
   //          window.location에는 없는 옵션 정보를 background가 보유한 tab.url로 추출
+  const t0 = performance.now();
   const data = Extractor.extract(parsed.mall, msg.url || window.location.href);
+  const dt = performance.now() - t0;
+  DebugLogger.perf("[똑바] EXTRACT", dt);
+  if (dt > 100) DebugLogger.warn("[똑바] 추출 100ms 초과", `${dt.toFixed(1)}ms`);
   sendResponse({ ok: true, parsed, data });
 });

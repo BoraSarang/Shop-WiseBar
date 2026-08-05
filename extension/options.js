@@ -35,5 +35,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("helpBtn").addEventListener("click", () => {
     chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") });
   });
+
+  // 디버그 패널 표시 토글 (v0.9.3) — chrome.storage.local `debugEnabled` 공용
+  $("debugEnabled").checked = !!(await chrome.storage.local.get("debugEnabled")).debugEnabled;
+  $("debugEnabled").addEventListener("change", (e) => {
+    DebugLogger.setEnabled(e.target.checked);
+  });
+
   loadServerStatus();
 });

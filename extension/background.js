@@ -1,7 +1,7 @@
 // background.js — 기기ID 관리 + 탭 감시 수집 + 알림 폴링 (Chrome MV3 서비스 워커)
 // PLATFORM: extension
 // 수집 우선순위: 서버 크롤러(올리브영) → 익스텐션(전 몰) ← 본 파일
-importScripts("common.js");
+importScripts("common.js", "debug.js");
 
 const CONFIG = {
   ...SWB_CONFIG,
@@ -12,6 +12,72 @@ const CONFIG = {
 async function api(path, options = {}) {
   return SWB_API(path, options);
 }
+
+// ── 디버그 로그 (v0.9.3 디버그 창 + 중앙 storage) ─────────
+const DEBUG_LOG_KEY = "debugLog";
+const DEBUG_MAX = 2000; // 서비스 워커는 디바운스 없이 즉시 기록 (비동기 1회/로그)
+
+// content script가 위임한 로그에 sender.tab(탭ID/url/몰) 태깅 후 중앙 storage에 추가
+function persistDebugLog(entry, tab) {
+  if (!entry || !entry.text) return;
+  const e = Object.assign({}, entry, { scope: entry.scope || "content" });
+  if (tab) {
+    e.tabId = tab.id;
+    if (!e.url) e.url = tab.url || undefined;
+    if (!e.mall) {
+      const pr = MallParser.parse(tab.url || "");
+      e.mall = pr ? pr.mall : undefined;
+    }
+  }
+  chrome.storage.local.get(DEBUG_LOG_KEY, (v) => {
+    let arr = Array.isArray(v && v[DEBUG_LOG_KEY]) ? v[DEBUG_LOG_KEY] : [];
+    arr = arr.concat([e]);
+    arr = arr.slice(-DEBUG_MAX);
+    chrome.storage.local.set({ [DEBUG_LOG_KEY]: arr });
+  });
+}
+
+// 디버그 창 열기/토글 — chrome.windows.create popup 타입 (단축키/팝업 버튼 공용)
+// 창이 이미 있으면 포커스만, 없으면 우상단 popup 창 생성
+let _debugWinId = null;
+function openDebugWindow() {
+  const url = chrome.runtime.getURL("debug-view.html");
+  // 이미 연 창이 있으면 포커스
+  if (_debugWinId != null) {
+    chrome.windows.update(_debugWinId, { focused: true }, () => {
+      if (chrome.runtime.lastError) _debugWinId = null; // 창 닫힘
+    });
+    return;
+  }
+  const w = 780; // v0.9.3 — 로그 가독성 위해 1.5배(520→780)
+  const h = 640;
+  // 서비스 워커에는 screen 객체가 없음 — 화면 폭은 기본값 사용 (우상단 배치는 가장 가까운 창 기준)
+  const availW = typeof screen !== "undefined" && screen.availWidth ? screen.availWidth : 1280;
+  chrome.windows.create(
+    {
+      url,
+      type: "popup",
+      width: w,
+      height: h,
+      // 화면 기준 우상단 배치 (기본값 폭 기준 — 해상도 다르면 브라우저가 조정)
+      left: availW - w - 24,
+      top: 24,
+      focused: true,
+    },
+    (win) => {
+      if (win) _debugWinId = win.id;
+      // 창 닫힘 감지 → id 초기화 (다음 토글에 새 창)
+      chrome.windows.onRemoved.addListener((removedId) => {
+        if (removedId === _debugWinId) _debugWinId = null;
+      });
+    }
+  );
+}
+
+// 단축키 (manifest commands) — 디버그 창 열기/토글
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "toggle-debug") openDebugWindow();
+});
 
 // ── 기기ID ──────────────────────────────────────────────
 async function getDeviceId() {
@@ -31,7 +97,7 @@ async function ensureDeviceRegistered() {
     });
     if (device && device.device_id) await chrome.storage.local.set({ deviceId: device.device_id });
   } catch (e) {
-    console.warn("[똑바] 기기 등록 실패", e);
+    DebugLogger.warn("[똑바] 기기 등록 실패", e);
   }
   return deviceId;
 }
@@ -107,9 +173,9 @@ async function captureProduct(tab) {
     await chrome.storage.local.set({
       lastCapture: { key: captureKey, at: Date.now() },
     });
-    console.log(`[똑바] 수집 완료 ${target.productID}${variant ? " (" + variant + ")" : ""}${price ? " " + price.toLocaleString() + "원" : " (품절)"}`);
+    DebugLogger.info(`[똑바] 수집 완료 ${target.productID}${variant ? " (" + variant + ")" : ""}${price ? " " + price.toLocaleString() + "원" : " (품절)"}`);
   } catch (e) {
-    console.warn("[똑바] 업로드 실패 (다음 방문 시 재시도)", e);
+    DebugLogger.warn("[똑바] 업로드 실패 (다음 방문 시 재시도)", e);
     return;
   }
   // 연관 상품 캡처 (v0.5) — 카탈로그 확장: 가격 없어도 상품 등록, 가격 있으면 함께 저장
@@ -150,7 +216,7 @@ async function uploadRelatedItems(items, label, parentId) {
       relatedIds.push(item.productID);
       upserted++;
     } catch (e) {
-      console.warn(`[똑바] 연관 상품 업로드 실패 ${item.productID}`, e);
+      DebugLogger.warn(`[똑바] 연관 상품 업로드 실패 ${item.productID}`, e);
     }
   }
   // Phase 3 (v0.9.0): 상품 페이지 연관 카드 → 관계 그래프 저장 (목록 페이지는 parentId 없음)
@@ -161,10 +227,10 @@ async function uploadRelatedItems(items, label, parentId) {
         body: JSON.stringify({ source: parentId, targets: relatedIds.slice(0, 10) }),
       });
     } catch (e) {
-      console.warn("[똑바] 관계 저장 실패", e);
+      DebugLogger.warn("[똑바] 관계 저장 실패", e);
     }
   }
-  if (upserted > 0) console.log(`[똑바] 연관 상품 ${upserted}개 수집 — ${label}`);
+  if (upserted > 0) DebugLogger.info(`[똑바] 연관 상품 ${upserted}개 수집 — ${label}`);
   return upserted;
 }
 
@@ -238,7 +304,7 @@ async function pollAlerts() {
       ),
     });
   } catch (e) {
-    console.warn("[똑바] 알림 히스토리 저장 실패", e);
+    DebugLogger.warn("[똑바] 알림 히스토리 저장 실패", e);
   }
 
   for (const alert of alerts) {
@@ -323,6 +389,25 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg && msg.type === "WATCHES_INVALIDATE") {
     watchCache = null;
+    sendResponse({ ok: true });
+    return true;
+  }
+  // 디버그 로그 요청 (팝업/옵션 → background 링 버퍼, v0.9.3)
+  if (msg && msg.type === "DEBUG_RECENT") {
+    DebugLogger.recent(Number(msg.n) || 30).then((entries) =>
+      sendResponse({ ok: true, lines: entries.map((e) => DebugLogger.format(e)) })
+    );
+    return true;
+  }
+  // content script 로그 위임 (v0.9.3) — sender.tab로 탭/url/몰 태깅 후 중앙 storage 기록
+  if (msg && msg.type === "DEBUG_LOG" && msg.entry) {
+    persistDebugLog(msg.entry, sender.tab || null);
+    sendResponse({ ok: true });
+    return true;
+  }
+  // 디버그 창 열기 (팝업 버튼) — 단축키와 동일 동작 (v0.9.3)
+  if (msg && msg.type === "OPEN_DEBUG") {
+    openDebugWindow();
     sendResponse({ ok: true });
     return true;
   }

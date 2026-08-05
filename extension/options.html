@@ -24,6 +24,20 @@
   }
   .btn:hover { background: #e2e7ff; }
   .foot { font-size: 11px; color: #aaa; text-align: center; padding: 8px 0 20px; }
+  .label-sub { display: block; font-size: 11px; color: #aaa; font-weight: 400; margin-top: 2px; }
+  /* 토글 스위치 */
+  .switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #ccc; border-radius: 24px; transition: .2s;
+  }
+  .slider::before {
+    content: ""; position: absolute; height: 18px; width: 18px;
+    left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s;
+  }
+  .switch input:checked + .slider { background: #2d4ae0; }
+  .switch input:checked + .slider::before { transform: translateX(18px); }
 </style>
 </head>
 <body>
@@ -63,9 +77,20 @@
     </div>
   </div>
 
+  <div class="card">
+    <div class="row">
+      <span class="label">디버그 패널 표시<small class="label-sub">팝업 상단에 로그 패널을 보여줍니다</small></span>
+      <label class="switch">
+        <input type="checkbox" id="debugEnabled">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
   <div class="foot">똑바 · 최저가를 놓치지 마세요</div>
 </div>
 <script src="common.js"></script>
+<script src="../debug.js"></script>
 <script src="options.js"></script>
 </body>
 </html>

@@ -6,7 +6,15 @@ const CONFIG = SWB_CONFIG; // common.js 공용 (서버 주소 단일 관리)
 const $ = (id) => document.getElementById(id);
 
 async function api(path, options = {}) {
-  return SWB_API(path, options);
+  const t0 = performance.now();
+  try {
+    const r = await SWB_API(path, options);
+    DebugLogger.perf(`API ${path}`, performance.now() - t0);
+    return r;
+  } catch (e) {
+    DebugLogger.warn(`API 실패 ${path}`, e);
+    throw e;
+  }
 }
 
 async function getDeviceId() {
@@ -533,6 +541,13 @@ function setStatus(text) {
   $("status").textContent = text;
   setTimeout(() => ($("status").textContent = ""), 2500);
 }
+
+// ── 디버그 창 열기 (v0.9.3) ─────────────────────────────
+// 전용 디버그 창(chrome.windows.create popup)은 background가 관리(단축키와 동일).
+// 팝업 버튼은 background로 OPEN_DEBUG 메시지를 보내 창을 열거나 포커스한다.
+$("debugBtn").addEventListener("click", () => {
+  chrome.runtime.sendMessage({ type: "OPEN_DEBUG" }).catch(() => {});
+});
 
 (async function init() {
   $("status").textContent = "불러오는 중…";

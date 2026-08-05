@@ -357,3 +357,12 @@ header h1 { font-size: 15px; font-weight: 700; }
   max-height: 2.6em; overflow: hidden;
 }
 .related-price { font-size: 12px; font-weight: 700; color: #2d4ae0; }
+
+/* v0.9.3 — 디버그 창 열기 버튼 (팝업 헤더) */
+.debug-open {
+  border: none; background: rgba(255,255,255,.18);
+  color: #fff; font-size: 14px; line-height: 1;
+  padding: 4px 7px; border-radius: 6px; cursor: pointer;
+  margin-left: 8px; flex-shrink: 0;
+}
+.debug-open:hover { background: rgba(255,255,255,.32); }
