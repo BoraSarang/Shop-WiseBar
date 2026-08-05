@@ -1,12 +1,40 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.9.4 (2026-08-05) — [extension] 플로팅 메뉴 직각 배치 + 페이지 정보(제작자/버전) + [server] alerts 500 수정
+
+### 플로팅 메뉴 재배치 (ext) — 직각 배치
+- **배치 변경**: 기존 FAB 왼쪽 세로 6개 나열 → **FAB 중심 직각 배치**. **메뉴 원점을 FAB 중심(`right:calc(20px+23px); bottom:25vh`)으로 이동**해 좌표가 FAB 세로축과 어긋나던 문제(왼쪽 치우침) 해결. 최종 배치: **위=핫딜·알림, 왼쪽=가격추이·찜목록(FAB에 가깝게 x=-60), 아래=설정·사용법·디버그** — 핵심 기능은 왼쪽, 나머지는 위/아래로 분산
+- **라벨 겹침 수정**: 위/아래 아이콘 간격 48px → **72px** (라벨 높이 20px+마진이 이웃 아이콘과 겹치던 문제). **위 그룹(핫딜·알림) 라벨 방향 left로** — 아이템 위로 나가며 위쪽 이웃(알림) 아이콘과 겹치던 것을 왼쪽 배치로 해결(왼쪽 열과 y 범위 상이해 충돌 없음). 아래 그룹은 아이템 아래 표시 유지
+- **애니메이션**: 메뉴 열림 시 order 순서(위→왼쪽→아래) 스태거 펼침, 닫힘 시 딜레이 리셋. FAB 180도 회전 유지
+- **디버그 아이콘 실시간 반영**: `debugEnabled` 토글 시 `chrome.storage.onChanged`로 **새로고침 없이** 메뉴에 디버그(버그 아이콘) 즉시 추가/제거
+- **버그 아이콘 추가 (ext)**: `ICON.bug` SVG 신규
+
+### 확장 — 가격/관계 3회 중복 업로드 방지 (동시 실행 잠금)
+- **원인**: `tabs.onUpdated(complete)` + `tabs.onActivated` + `webNavigation.onHistoryStateUpdated`가 탭 전환 직후 거의 동시에 `captureProduct`를 호출. `lastCapture` 쿨다운은 **비동기 `chrome.storage.local.get` 경합**으로 막지 못해 같은 상품이 **정확히 3회** `/products`+`/prices` 업로드 → 서버에서 같은 초 UNIQUE(product_id, captured_at) 충돌로 **prices 500**, 관계 저장도 동시 POST로 **uq_rel_pair 충돌 500** 유발
+- **수정**: `background.js` — `withCaptureLock()` 인메모리 Map으로 **동일 탭의 captureProduct를 직렬화** (captureProductInner 리팩터링)
+- **연관 상품 업로드 병렬화**: 순차 `await` 루프(상품당 ~3.5s)가 40개면 2분 넘게 걸려 스크롤 직후 대기 시간이 길었다 → **`mapLimit(items, 5)` 동시성 제한 병렬 처리**로 단축 (서버 부하 억제)
+
+### 서버 — alerts 500 수정 (PostgreSQL naive/aware 비교)
+- **원인**: `GET /devices/{did}/alerts`가 실서버(PostgreSQL)에서만 HTTP 500. `DateTime(timezone=True)` 컬럼이 PG에선 **aware datetime**으로 반환되는데 `since`는 `replace(tzinfo=None)`으로 **naive** 처리 → `latest.captured_at <= since` 비교 시 `TypeError: can't compare offset-naive and offset-aware datetimes`. SQLite는 naive라 로컬 재현 불가였음
+- **수정**: `watches.py` — `_naive()` 헬퍼로 비교 시 항상 naive 통일 (sold_out_at/captured_at)
+- **가격 중복 업로드 500 수정**: `products.py` — 같은 초 중복 POST 시 `UNIQUE(product_id, captured_at)` `IntegrityError` 발생 → PG 세션이 requires-rollback 상태가 되어 commit 시 500. **IntegrityError 시 즉시 rollback 후 성공 응답** 반환 (중복 요청이므로 직전 요청이 갱신 완료). 로컬 동시 3회 POST → 3건 모두 201 확인
+- **관계 저장 동시성 500 수정**: `relations.py` — 같은 source로 동시 POST 시 existing 조회 시점에 없던 쌍이 먼저 INSERT돼 `uq_rel_pair` 충돌 → **IntegrityError 시 rollback 후 기존 행 weight 증가만 수행**하고 성공 처리. 로컬 동시 3회 POST → 3건 모두 200 확인(수정 전 500 재현)
+- **추가 성능 최적화**: POST `/products`는 확장이 응답 body를 쓰지 않는데 통계 쿼리 5개(_product_out)를 실행 → **기본 필드만 반환**으로 변경 — 연관 카드 N개 순차 업로드의 쿼리 × N 지연 제거 (로컬 31ms 확인)
+
+### 페이지 정보 표시 (ext)
+- **옵션 페이지**: "확장 버전" 행 추가 (`chrome.runtime.getManifest().version`) + 하단에 제작자(BoRaSaRang)·문의(이메일)·GitHub 링크 카드
+- **사용법(onboarding) 페이지**: 하단에 제작자·문의 이메일·GitHub 소스 코드 카드 추가
+- **팝업 헤더 정리**: `.header-desc`/`.status` ellipsis 처리 + 로딩 안내 문구 단축 — 320px 폭에서 줄바꿈 방지
+- 성능 영향 없음 (순수 렌더링/CSS, storage 이벤트 1회만)
+
 ## v0.9.3 (2026-08-05) — [extension+server] 전용 디버그 창 + 중앙 로그 + 연관 업로드 500 수정 (T-82→T-83)
 
 ### 확장 — 전용 디버그 창 & 중앙 로그 (T-83)
 - **중앙 로그 스토리지 (ext)**: `debug.js` 전면 개편 — 모든 로그가 `chrome.storage.local["debugLog"]`에 **중앙 누적**(최대 2000줄 FIFO). **SW 종료/팝업 닫기/탭 이동과 무관하게 지우기 전까지 유지** (기존 메모리 링 버퍼는 휘발 문제 — T-82 옵션 A 대체)
-- **전용 디버그 창 (ext)**: `debug-view.html/.css/.js` 신규 — `chrome.windows.create({type:"popup"})` OS 레벨 분리 창(우상단 고정, 520×640). **어느 탭을 봐도 항상 떠 있고** 닫기 전까지 계속 누적/2초 자동 갱신. **단축키 `Ctrl+Shift+D`** 토글(manifest commands). 로그 뷰어: 색상(ERROR/WARN/PERF/DEBUG) + 자동스크롤 + 레벨·몰·탭 필터 + 검색 + 전체 복사 + 지우기 + 일시정지
+- **전용 디버그 창 (ext)**: `debug-view.html/.css/.js` 신규 — `chrome.windows.create({type:"popup"})` OS 레벨 분리 창(우상단 고정, 1.5배 폭). **어느 탭을 봐도 항상 떠 있고** 닫기 전까지 계속 누적/2초 자동 갱신. **단축키 mac `Command+D` / 그 외 `Ctrl+Shift+Y`** 토글(manifest commands, 웨일 확인 완료). 로그 뷰어: 색상(ERROR/WARN/PERF/DEBUG) + 자동스크롤 + 레벨·몰·탭 필터 + 검색 + 전체 복사 + 지우기 + 일시정지
 - **다중 탭 로그 통일 (ext)**: content script는 storage를 직접 쓰지 않고 `DEBUG_LOG` 메시지로 background에 위임 → background가 `sender.tab`로 **탭ID/url/몰 태깅** 후 중앙 기록 → **쇼핑탭 여러 개를 오가도 로그가 하나로 모임** (탭 필터로 구분)
-- **팝업 정리 (ext)**: 내장 `debugPanel`·토글·복사/숨기기 제거 → 헤더 🛠 "디버그 창 열기" 버튼(`OPEN_DEBUG` 메시지). `options.js`의 `debugEnabled` 스위치는 유지(로그 on/off)
+- **팝업 정리 (ext)**: 내장 `debugPanel`·토글·복사/숨기기 제거 → 헤더 🛠 "디버그 창 열기" 버튼(`OPEN_DEBUG` 메시지). **`debugEnabled`(설정 '디버그 패널 표시')가 켜져 있을 때만 🛠 버튼 노출**, 해제 시 숨김. `options.js` 스위치 유지(로그 on/off)
+- **설정에 단축키 표기 (ext)**: 옵션 페이지 디버그 카드에 단축키(⌘D / Ctrl+Shift+Y) 표시 + kbd 스타일 — `chrome://extensions/shortcuts`에서 변경 안내
 - **전처리 성능 (ext)**: content 위임은 즉시(비동기), ext(background/popup/창)는 디바운스(300ms) 배치 저장 — 로그마다 storage set 없음
 
 ### 서버 — 연관 상품 업로드 HTTP 500 수정

@@ -550,9 +550,15 @@ $("debugBtn").addEventListener("click", () => {
 });
 
 (async function init() {
+  // 디버그 패널 표시(debugEnabled)가 켜져 있을 때만 디버그 버튼 노출 (v0.9.3)
+  const { debugEnabled } = await chrome.storage.local.get("debugEnabled");
+  if (!debugEnabled) $("debugBtn").classList.add("hidden");
+  const shortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? "Command+D" : "Ctrl+Shift+Y";
+  $("debugBtn").title = `디버그 창 열기 (${shortcut})`;
+
   $("status").textContent = "불러오는 중…";
   const slowTimer = setTimeout(() => {
-    if ($("status").textContent === "불러오는 중…") $("status").textContent = "서버 연결 중… (최대 45초)";
+    if ($("status").textContent === "불러오는 중…") $("status").textContent = "서버 연결 중…";
   }, 8000);
   try {
     await loadCurrent();

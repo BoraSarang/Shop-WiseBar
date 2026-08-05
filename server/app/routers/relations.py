@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import case, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -57,7 +58,19 @@ def save_relations(payload: RelationBatchIn, db: Session = Depends(get_db)) -> d
     ]
     if new_pairs:
         db.add_all(new_pairs)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # v0.9.4 — 동시 관계 저장(같은 source에 대해 여러 탭/여러 번 POST)이 발생하면
+        # existing 조회 시점에 없던 쌍이 다른 요청에 먼저 INSERT돼 uq_rel_pair 충돌로 500.
+        # rollback 후 기존 행 weight만 증가시키고 성공으로 끝낸다 (신규 쌍은 다음 요청에 저장).
+        db.rollback()
+        db.execute(
+            update(ProductRelation)
+            .where(ProductRelation.source_product_id == source, ProductRelation.target_product_id.in_(targets))
+            .values(weight=ProductRelation.weight + 1, updated_at=_utcnow())
+        )
+        db.commit()
     return {"product_id": source, "saved": len(new_pairs), "incremented": len(existing)}
 
 

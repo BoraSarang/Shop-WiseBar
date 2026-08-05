@@ -137,7 +137,18 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
             product.mall = payload.mall
     db.commit()
     db.refresh(product)
-    return _product_out(product, db, device_id)
+    # v0.9.4 — POST /products는 확장이 응답 body를 쓰지 않으므로 무거운 통계 쿼리(_product_out)를
+    #          생략하고 기본 필드만 반환 — 연관 카드 N개 순차 업로드 시 5개 쿼리 × N 지연 제거
+    return ProductOut(
+        product_id=product.id,
+        mall=product.mall,
+        url=product.url,
+        name=product.name,
+        image=product.image,
+        last_price=product.last_price,
+        last_checked_at=product.last_checked_at,
+        sold_out=product.sold_out_at is not None,
+    )
 
 
 @router.post("/products/{product_id}/prices", response_model=PricePointOut, status_code=201)
@@ -175,8 +186,12 @@ def upload_price(product_id: str, payload: PriceUploadIn, db: Session = Depends(
             db.flush()
             inserted = True
         except IntegrityError:
-            # 같은 초에 이미 저장된 동시 캡처(중복 POST) — 기존 행 유지, 통계만 갱신
+            # 같은 초에 이미 저장된 동시 캡처(중복 POST) — 직전 요청이 로우/통계/last_price를
+            # 이미 갱신했으므로 여기선 아무것도 하지 않고 성공으로 끝낸다.
+            # v0.9.4 — PostgreSQL은 flush 실패 후 세션이 requires-rollback 상태가 되므로
+            #          rollback 없이 commit을 이어가면 500. 즉시 rollback 후 종료가 안전.
             db.rollback()
+            return PricePointOut(price=payload.price, source=payload.source, variant=payload.variant, captured_at=now)
 
     product.last_price = payload.price
     product.last_checked_at = now

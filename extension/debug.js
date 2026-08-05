@@ -101,12 +101,15 @@ const DebugLogger = (() => {
       /* 콘솔 미존재 환경 무해 */
     }
 
-    if (!enabled) return;
-
+    // content는 enabled 캐시와 무관하게 무조건 background로 위임.
+    // 실제 기록 여부는 background가 저장 시점에 debugEnabled로 판단 →
+    // 설정 on/off가 이미 열린 모든 탭에 즉시 반영됨 (SW 종료해도 최신).
     if (isContent) {
-      sendDelegated(entry); // content는 즉시 background 위임 (배치 불필요, 비동기)
+      sendDelegated(entry); // 즉시 위임 (배치 불필요, 비동기)
       return;
     }
+
+    if (!enabled) return;
     // ext(background/popup/debug 창) → 디바운스 배치 저장
     pending.push(entry);
     if (flushTimer) clearTimeout(flushTimer);

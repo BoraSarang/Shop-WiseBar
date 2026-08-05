@@ -13,6 +13,12 @@ from app.schemas import AlertHistoryOut, AlertOut, AlertRecordIn, WatchIn, Watch
 router = APIRouter(tags=["watches"])
 
 
+def _naive(dt: datetime | None) -> datetime | None:
+    """PostgreSQL(aware) / SQLite(naive) 혼용 대응 — 비교 시 항상 naive로 통일 (v0.9.4)
+    실서버 DateTime(timezone=True) 컬럼이 aware로 반환돼 naive since와 비교 시 TypeError로 500"""
+    return dt.replace(tzinfo=None) if dt is not None and dt.tzinfo is not None else dt
+
+
 def _get_device_or_404(db: Session, device_id: str) -> Device:
     device = db.get(Device, device_id)
     if device is None:
@@ -162,7 +168,7 @@ def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depe
     목표가 도달이면 하락 알림 대신 target_reached만 반환 (중복 알림 방지)"""
     _get_device_or_404(db, device_id)
     if since is not None:
-        since = since.replace(tzinfo=None)
+        since = _naive(since)
     watches = db.scalars(select(Watch).where(Watch.device_id == device_id)).all()
     alerts: list[AlertOut] = []
     for w in watches:
@@ -171,7 +177,7 @@ def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depe
         # 품절 상품은 하락/목표가 검사 자체를 생략 (이전에 알림을 받았어도 재검사 무한 반복 방지)
         if w.product is not None and w.product.sold_out_at is not None:
             sold_out_at = w.product.sold_out_at
-            if since is None or sold_out_at.replace(tzinfo=None) > since:
+            if since is None or _naive(sold_out_at) > since:
                 alerts.append(
                     AlertOut(
                         product_id=w.product_id,
@@ -196,7 +202,7 @@ def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depe
         for variant, group in by_variant.items():
             latest = group[0]
             # since는 확장이 갱신한 '이미 본 시각' — 캡처가 같거나 이전이면 스킵 (초 절단 동일 시각 재감지 방지)
-            if since is not None and latest.captured_at <= since:
+            if since is not None and _naive(latest.captured_at) <= since:
                 continue
             previous = group[1] if len(group) > 1 else None
             # 목표가 도달 (v0.9.1) — 직전이 이미 목표가 이하(이전 알림 받음)면 반복 방지

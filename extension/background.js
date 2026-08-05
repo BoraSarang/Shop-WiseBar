@@ -10,7 +10,15 @@ const CONFIG = {
 };
 
 async function api(path, options = {}) {
-  return SWB_API(path, options);
+  const t0 = performance.now();
+  try {
+    const r = await SWB_API(path, options);
+    DebugLogger.perf(`API ${path}`, performance.now() - t0);
+    return r;
+  } catch (e) {
+    DebugLogger.warn(`API 실패 ${path}`, e);
+    throw e;
+  }
 }
 
 // ── 디버그 로그 (v0.9.3 디버그 창 + 중앙 storage) ─────────
@@ -18,6 +26,7 @@ const DEBUG_LOG_KEY = "debugLog";
 const DEBUG_MAX = 2000; // 서비스 워커는 디바운스 없이 즉시 기록 (비동기 1회/로그)
 
 // content script가 위임한 로그에 sender.tab(탭ID/url/몰) 태깅 후 중앙 storage에 추가
+// debugEnabled는 저장 시점에 실제로 확인 → on/off가 모든 탭에 즉시 반영 (content 캐시 불필요)
 function persistDebugLog(entry, tab) {
   if (!entry || !entry.text) return;
   const e = Object.assign({}, entry, { scope: entry.scope || "content" });
@@ -29,7 +38,8 @@ function persistDebugLog(entry, tab) {
       e.mall = pr ? pr.mall : undefined;
     }
   }
-  chrome.storage.local.get(DEBUG_LOG_KEY, (v) => {
+  chrome.storage.local.get([DEBUG_LOG_KEY, "debugEnabled"], (v) => {
+    if (!(v && v.debugEnabled)) return; // 로그 off면 위임분 폐기 (총 저장 비용 최소화)
     let arr = Array.isArray(v && v[DEBUG_LOG_KEY]) ? v[DEBUG_LOG_KEY] : [];
     arr = arr.concat([e]);
     arr = arr.slice(-DEBUG_MAX);
@@ -103,7 +113,35 @@ async function ensureDeviceRegistered() {
 }
 
 // ── 수집 파이프라인 ─────────────────────────────────────
+// v0.9.4 — captureProduct 동시 실행 잠금: tabs.onUpdated(complete)/onActivated/
+// onHistoryStateUpdated가 거의 동시에 발생해 captureProduct가 중복 실행되면
+// lastCapture 쿨다운이 비동기 storage get 경합으로 막지 못해 prices 3회 중복
+// 업로드 → UNIQUE(product_id, captured_at) 500, relations 동시 POST → 500 유발.
+// 인메모리 Map으로 동일 탭의 captureProduct 실행을 직렬화한다.
+const _captureLocks = new Map();
+async function withCaptureLock(tabId, fn) {
+  if (_captureLocks.has(tabId)) return;
+  const prev = _captureLocks.get(tabId) || Promise.resolve();
+  let release;
+  const gate = new Promise((res) => (release = res));
+  _captureLocks.set(tabId, prev.then(() => gate));
+  await prev;
+  try {
+    await fn();
+  } finally {
+    release();
+    if (_captureLocks.get(tabId) === prev.then(() => gate)) _captureLocks.delete(tabId);
+  }
+}
+
 async function captureProduct(tab) {
+  if (!tab || !tab.url || !tab.id) return;
+  await withCaptureLock(tab.id, async () => {
+    await captureProductInner(tab);
+  });
+}
+
+async function captureProductInner(tab) {
   if (!tab || !tab.url || !tab.id) return;
   const parsed = MallParser.parse(tab.url);
   if (!parsed) {
@@ -189,11 +227,27 @@ async function captureProduct(tab) {
 // 수집 시점: ①페이지 로드 직후 1회(현재 보이는 카드) ②사용자 스크롤로 새 카드 로드 시 (content.js가 감지)
 const relatedUploadedIds = new Set(); // 세션 내 중복 업로드 방지 (content.js Set과 이중 안전망)
 
+// v0.9.4 — 연관 상품 N개 업로드를 동시성 제한 병렬로: 순차 await 루프는 상품당
+// /products(1.7~2.3s) + /prices(1.4~2.8s) ≈ 3.5s × 40개 = 2분 넘게 걸려 스크롤
+// 직후 대기 시간이 길다. concurrency 5로 제한해 서버 부하를 억제하면서 병렬 처리.
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let idx = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (idx < items.length) {
+      const i = idx++;
+      results[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 async function uploadRelatedItems(items, label, parentId) {
   let upserted = 0;
   const relatedIds = [];
-  for (const item of items) {
-    if (relatedUploadedIds.has(item.productID)) continue; // 같은 세션 중복 skip
+  await mapLimit(items, 5, async (item) => {
+    if (relatedUploadedIds.has(item.productID)) return; // 같은 세션 중복 skip
     try {
       await api("/products", {
         method: "POST",
@@ -218,7 +272,7 @@ async function uploadRelatedItems(items, label, parentId) {
     } catch (e) {
       DebugLogger.warn(`[똑바] 연관 상품 업로드 실패 ${item.productID}`, e);
     }
-  }
+  });
   // Phase 3 (v0.9.0): 상품 페이지 연관 카드 → 관계 그래프 저장 (목록 페이지는 parentId 없음)
   if (parentId && relatedIds.length) {
     try {
@@ -401,7 +455,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   // content script 로그 위임 (v0.9.3) — sender.tab로 탭/url/몰 태깅 후 중앙 storage 기록
   if (msg && msg.type === "DEBUG_LOG" && msg.entry) {
-    persistDebugLog(msg.entry, sender.tab || null);
+    persistDebugLog(msg.entry, _sender.tab || null);
     sendResponse({ ok: true });
     return true;
   }

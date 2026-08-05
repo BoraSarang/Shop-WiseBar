@@ -20,7 +20,8 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  gap: 6px;
+  padding: 12px 10px;
   background: #2d4ae0;
   color: #fff;
   position: sticky;  /* v0.7.3 — 스크롤해도 항상 최상단 고정 */
@@ -51,11 +52,11 @@ header {
 
 .row-error { color: #e5484d; }
 
-header h1 { font-size: 15px; font-weight: 700; }
+header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
 
-.header-desc { font-size: 11px; opacity: 0.85; margin-left: 8px; }
+.header-desc { font-size: 11px; opacity: 0.85; margin-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; }
 
-.status { font-size: 11px; opacity: 0.85; margin-left: auto; }
+.status { font-size: 11px; opacity: 0.85; margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 110px; }
 
 .alerts { padding: 10px 14px 12px; background: #fff8f6; border-bottom: 1px solid #fbe3dd; flex-shrink: 0; }
 

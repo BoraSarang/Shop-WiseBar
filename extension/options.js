@@ -24,6 +24,7 @@ async function loadServerStatus() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   $("server").textContent = `${CONFIG.server}${CONFIG.api}`;
+  $("extVersion").textContent = chrome.runtime.getManifest().version || "—";
   const stored = await chrome.storage.local.get("deviceId");
   $("deviceId").textContent = stored.deviceId || "등록 전 (상품 페이지에서 똑바 버튼을 누르면 생성됩니다)";
   $("copyBtn").addEventListener("click", async () => {
@@ -41,6 +42,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("debugEnabled").addEventListener("change", (e) => {
     DebugLogger.setEnabled(e.target.checked);
   });
+
+  // 디버그 창 단축키 표시 (mac은 Command+D, 그 외 Ctrl+Shift+Y)
+  const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+  $("debugShortcut").innerHTML = isMac
+    ? "<kbd>Command</kbd>+<kbd>D</kbd>"
+    : "<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Y</kbd>";
 
   loadServerStatus();
 });

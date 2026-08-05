@@ -38,22 +38,24 @@ const SWB_UI = (() => {
     }
     .swb-tooltip.show { opacity: 1; transform: translateX(0); }
     .swb-menu {
-      position: fixed; z-index: 2147483647;
-      right: calc(20px + 46px + 14px); bottom: calc(25vh - 23px);
-      display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 10px;
-      opacity: 0; pointer-events: none; transform: translateX(-8px);
-      transition: opacity 0.18s ease, transform 0.18s ease;
+      position: fixed; z-index: 2147483647; width: 0; height: 0;
+      right: calc(20px + 23px); bottom: 25vh; /* FAB 중심을 원점(0,0)으로 */
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.18s ease;
     }
-    .swb-menu.open { opacity: 1; pointer-events: auto; transform: translateX(0); }
+    .swb-menu.open { opacity: 1; pointer-events: auto; }
     .swb-mi {
-      position: relative; display: flex; align-items: center; justify-content: center;
+      position: absolute; left: 0; top: 0; margin-left: -20px; margin-top: -20px;
+      display: flex; align-items: center; justify-content: center;
       width: 40px; height: 40px; border-radius: 50%;
       background: #fff; color: #2d4ae0; border: none; cursor: pointer;
       box-shadow: 0 4px 12px rgba(0,0,0,0.18);
-      transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+      transition: transform 0.22s ease, background 0.15s ease, color 0.15s ease, opacity 0.18s ease;
+      opacity: 0; transform: translate(var(--mx, 0px), var(--my, 0px)) scale(0.4);
     }
+    .swb-menu.open .swb-mi { opacity: 1; transform: translate(var(--mx, 0px), var(--my, 0px)) scale(1); }
     .swb-mibadge { position: absolute; top: 0; right: 0; min-width: 15px; height: 15px; border-radius: 8px; background: #e5484d; color: #fff; font-size: 9px; font-weight: 800; align-items: center; justify-content: center; padding: 0 3px; }
-    .swb-mi:hover { transform: translateX(-4px); background: #2d4ae0; color: #fff; }
+    .swb-mi:hover { background: #2d4ae0; color: #fff; }
     .swb-mi.active { background: #e5484d; color: #fff; }
     .swb-mi.active:hover { background: #e5484d; }
     .swb-mi svg { width: 18px; height: 18px; }
@@ -63,8 +65,12 @@ const SWB_UI = (() => {
       background: #fff; padding: 3px 8px; border-radius: 6px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.14); opacity: 0; transform: translateX(4px);
       transition: opacity 0.12s ease, transform 0.12s ease; pointer-events: none;
+      top: 50%; margin-top: -12px;
     }
+    .swb-mi-label.l-above { right: auto; left: 50%; transform: translateX(-50%) translateY(-4px); top: calc(100% + 6px); margin-top: 0; }
+    .swb-mi-label.l-below { right: auto; left: 50%; transform: translateX(-50%) translateY(4px); bottom: calc(100% + 6px); margin-top: 0; }
     .swb-mi:hover .swb-mi-label { opacity: 1; transform: translateX(0); }
+    .swb-mi:hover .swb-mi-label.l-above, .swb-mi:hover .swb-mi-label.l-below { opacity: 1; transform: translateX(-50%) translateY(0); }
     .swb-panel {
       position: fixed; right: calc(20px + 46px + 12px); top: 75vh; z-index: 2147483647;
       width: 320px; max-height: calc(100vh - 24px);
@@ -281,6 +287,7 @@ const SWB_UI = (() => {
     info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
     deal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h18l-2 8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2l-2-8z"></path><path d="M12 2a4 4 0 0 1 4 4v5h-8V6a4 4 0 0 1 4-4z"></path></svg>`,
     bell: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`,
+    bug: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="14" rx="4"></rect><path d="M8 10h8"></path><path d="M12 6V4a2 2 0 0 1 4-2"></path><path d="M8.5 3L6 4.5"></path><path d="M4 12a4 4 0 0 0 16 0"></path></svg>`,
   };
 
   function ensureRoot() {
@@ -452,30 +459,80 @@ const SWB_UI = (() => {
   }
 
   function buildMenu(menu) {
+    // v0.9.4 — FAB 중심(원점=0,0) 기준 직각 배치: 위=핫딜·알림, 왼쪽=가격추이·찜목록, 아래=설정·사용법 (+디버그)
+    // 위/아래는 x=0(FAB 세로축), 왼쪽만 x=-60 열. 위/아래 아이콘 간격 72px = 라벨(아이템 아래/위 표시)이
+    // 이웃 아이콘과 겹치지 않을 공간 확보 (48px이면 라벨 높이 20px+마진 때문에 겹침)
+    // dir=라벨 방향 (above=아이템 아래, below=아이템 위, left=아이템 왼쪽)
+    // v0.9.4 — 위 그룹(핫딜/알림) 라벨은 left로: 아이템 위로 나가면 위쪽 이웃 아이콘과 겹침
+    // (알림 위로 나가던 핫딜 라벨이 알림 아이콘과 겹침). 왼쪽 배치는 왼쪽 열(trend/list)과
+    // y 범위가 달라 충돌 없음
     const items = [
-      { key: "trend", label: "가격 추이", icon: ICON.trend },
-      { key: "deals", label: "오늘의 핫딜", icon: ICON.deal },
-      { key: "list", label: "찜 목록", icon: ICON.watch },
-      { key: "alerts", label: "알림", icon: ICON.bell },
-      { key: "set", label: "설정", icon: ICON.settings },
-      { key: "help", label: "사용법", icon: ICON.info },
+      { key: "deals", label: "오늘의 핫딜", icon: ICON.deal, x: 0, y: -60, dir: "left" },
+      { key: "alerts", label: "알림", icon: ICON.bell, x: 0, y: -132, dir: "left" },
+      { key: "trend", label: "가격 추이", icon: ICON.trend, x: -60, y: -24, dir: "left" },
+      { key: "list", label: "찜 목록", icon: ICON.watch, x: -60, y: 24, dir: "left" },
+      { key: "set", label: "설정", icon: ICON.settings, x: 0, y: 60, dir: "above" },
+      { key: "help", label: "사용법", icon: ICON.info, x: 0, y: 132, dir: "above" },
     ];
-    items.forEach((it) => {
+    // v0.9.3 — 디버그 패널 표시(debugEnabled)가 켜져 있을 때만 디버그 메뉴 노출 (추가는 syncDebugMenu가 처리)
+    renderMenuItems();
+    function renderMenuItems() {
+      items.forEach((it, i) => {
+        if (menu.querySelector(`[data-key="${it.key}"]`)) return; // 재호출 방지
+        const btn = document.createElement("button");
+        btn.className = "swb-mi";
+        btn.dataset.key = it.key;
+        btn.dataset.order = i;
+        btn.innerHTML = `${it.icon}<span class="swb-mi-label">${it.label}</span>`;
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onMenuItem(it.key);
+        });
+        if (it.key === "list") menuWatchBtn = btn;
+        if (it.key === "alerts") {
+          btn.classList.add("has-badge");
+          alertBadgeEl = btn.appendChild(document.createElement("span"));
+          alertBadgeEl.className = "swb-mibadge";
+          alertBadgeEl.style.display = "none";
+        }
+        placeMenuItem(btn, it.x, it.y, it.dir);
+        menu.appendChild(btn);
+      });
+    }
+  }
+
+  function placeMenuItem(btn, x, y, dir) {
+    btn.style.setProperty("--mx", `${x}px`);
+    btn.style.setProperty("--my", `${y}px`);
+    const label = btn.querySelector(".swb-mi-label");
+    if (label) {
+      if (dir === "above") label.classList.add("l-above");
+      else if (dir === "below") label.classList.add("l-below");
+    }
+  }
+
+  // v0.9.4 — debugEnabled 토글 시 플로팅 메뉴의 디버그 아이콘을 실시간 추가/제거 (옵션 전환 즉시)
+  function syncDebugMenu() {
+    const menu = shadow && shadow.querySelector(".swb-menu");
+    if (!menu) return;
+    chrome.storage.local.get("debugEnabled", (v) => {
+      const on = !!(v && v.debugEnabled);
+      const existing = menu.querySelector('[data-key="debug"]');
+      if (!on) {
+        if (existing) existing.remove();
+        return;
+      }
+      if (existing) return;
       const btn = document.createElement("button");
       btn.className = "swb-mi";
-      btn.dataset.key = it.key;
-      btn.innerHTML = `${it.icon}<span class="swb-mi-label">${it.label}</span>`;
+      btn.dataset.key = "debug";
+      btn.dataset.order = "99";
+      btn.innerHTML = `${ICON.bug}<span class="swb-mi-label">디버그</span>`;
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        onMenuItem(it.key);
+        onMenuItem("debug");
       });
-      if (it.key === "list") menuWatchBtn = btn;
-      if (it.key === "alerts") {
-        btn.classList.add("has-badge");
-        alertBadgeEl = btn.appendChild(document.createElement("span"));
-        alertBadgeEl.className = "swb-mibadge";
-        alertBadgeEl.style.display = "none";
-      }
+      placeMenuItem(btn, 0, 204, "above"); // FAB 세로축 아래, 사용법(132)보다 아래
       menu.appendChild(btn);
     });
   }
@@ -491,6 +548,11 @@ const SWB_UI = (() => {
     const fab = shadow.querySelector(".swb-fab");
     const menu = shadow.querySelector(".swb-menu");
     fab.classList.add("open");
+    // 직각 배치 스태거 — 위→왼쪽→아래 순으로 순차 펼침 (order 기반)
+    menu.querySelectorAll(".swb-mi").forEach((b) => {
+      const order = parseFloat(b.dataset.order || "0");
+      b.style.transitionDelay = `${(order * 0.04).toFixed(3)}s`;
+    });
     menu.classList.add("open");
     hideTooltip();
     refreshWatchState();
@@ -536,7 +598,10 @@ const SWB_UI = (() => {
     const fab = shadow.querySelector(".swb-fab");
     const menu = shadow.querySelector(".swb-menu");
     if (fab) fab.classList.remove("open");
-    if (menu) menu.classList.remove("open");
+    if (menu) {
+      menu.classList.remove("open");
+      menu.querySelectorAll(".swb-mi").forEach((b) => (b.style.transitionDelay = ""));
+    }
     closePanel();
   }
 
@@ -553,6 +618,11 @@ const SWB_UI = (() => {
   }
 
   async function onMenuItem(key) {
+    if (key === "debug") {
+      closeAll();
+      chrome.runtime.sendMessage({ type: "OPEN_DEBUG" });
+      return;
+    }
     if (key === "set") {
       closeAll();
       chrome.runtime.sendMessage({ type: "OPEN_OPTIONS" }); // openOptionsPage는 content script에서 직접 호출 불가 — background 경유
@@ -1300,9 +1370,16 @@ const SWB_UI = (() => {
       const parsed = MallParser.parse(window.location.href);
       if (parsed) buildUI(parsed);
       else removeUI();
+      syncDebugMenu(); // v0.9.4 — 메뉴 생성 후에도 debug 아이콘 동기화 (onChanged 실시간 반영)
     },
   };
 })();
+
+// v0.9.4 — debugEnabled 토글 시 플로팅 메뉴에 디버그 아이콘 실시간 반영 (옵션 전환 즉시)
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes.debugEnabled) return;
+  if (document.querySelector("#swb-root")) SWB_UI.refresh();
+});
 
 // 페이지 로드 시 + SPA 라우팅 대비 URL 감시 (2초 주기, location 비교만 — 비용 무시 가능)
 SWB_UI.refresh();
@@ -1313,3 +1390,11 @@ setInterval(() => {
     SWB_UI.refresh();
   }
 }, 2000);
+
+// v0.9.4 — debugEnabled 토글 시 플로팅 메뉴에 디버그 아이콘 실시간 반영 (옵션 전환 즉시)
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes.debugEnabled) return;
+  localStorageDebug = !!changes.debugEnabled.newValue;
+  if (!document.querySelector("#swb-root")) return;
+  SWB_UI.refresh();
+});
