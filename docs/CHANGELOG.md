@@ -1,5 +1,23 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.9.6 (2026-08-05) — [extension] 스크롤 연관 관계 저장 + 핫딜 상단 배치 + [data] 테스트 데이터 정리
+
+### 확장 — 스크롤 연관 상품의 관계 그래프 저장 버그 수정
+- **버그**: 연관 상품은 ①페이지 로드 직후(`captureRelated`, parentId 전달)와 ②스크롤로 새 카드 로드 시(`RELATED_FOUND`) 두 경로로 수집된다. 그런데 스크롤 경로는 parentId 없이 `uploadRelatedItems(items, "scroll")`를 호출해 **관계(relations)에 저장되지 않고 products 테이블에만 등록**됐다 — 함께 본 상품 추천 데이터에 구멍
+- **수정**: `content.js` — `RELATED_FOUND` 메시지에 현재 페이지의 `parentId`(상품ID) 포함. `background.js` — `uploadRelatedItems(msg.items, "scroll", msg.parentId || null)`로 전달. 상품 페이지면 스크롤 카드도 관계 그래프에 저장. 검색/목록 페이지는 parentId 없음 유지
+- 성능 영향 없음 (기존에 이미 저장되던 스크롤 카드의 업로드 경로에 parentId만 추가)
+
+### 팝업 — 핫딜 섹션을 함께 본 상품 위로 재배치
+- **이유**: 초기 불만인 "핫딜이 안 보인다"의 근본 해결. 기존 순서 current→related→deals라 함께 본 상품 5개가 로드되면 핫딜이 아래로 밀려 스크롤해야 보였음
+- **수정**: `popup.html` 섹션 순서를 current→**deals(핫딜)**→related(함께 본 상품)로 변경. `deals`는 `flex-shrink:0`이라 항상 상단에 노출, 함께 본 상품은 그 아래에서 스크롤로 접근
+- 렌더링 검증: Whale 팝업에서 sectionOrder `[current, deals, related]` 확인
+
+### 데이터 — 로컬 서버 테스트 데이터 정리 (SQLite shopwisebar.db)
+- **제거 대상**: 모든 명시적 테스트 상품(`rel-src-1`/`rel-tgt-1~5`, `coupang:rel-src`/`rel-tgt`, `local-a`/`local-b`, `coupang:target*` 목표가 테스트, `TESTLONGNAME_0002`) + 테스트 관계 7건 + `test-*` 디바이스 13개와 그 watches/alerts + 테스트 가격 포인트/통계
+- **주의**: `coupang:111/222/333`(키보드A/마우스B/손목받침C)도 이름상 테스트로 판단되어 함께 정리
+- **결과**: products 530→506, relations 10→0, devices 16→3(실제). 실제 디바이스(watches 4건, alerts 3건)는 유지
+- 백업: `/var/folders/3_/.../T/opencode/shopwisebar_backup_*.db` (파괴적 변경 대비)
+
 ## v0.9.5 (2026-08-05) — [extension] 팝업에서 찜 목록 제거 + 메인 스크롤 추가 (함께 본 상품·핫딜 공간 확보)
 
 ### 팝업 — 찜 목록 섹션 제거

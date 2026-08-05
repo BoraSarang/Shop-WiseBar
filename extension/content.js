@@ -315,10 +315,13 @@ function watchScrollForRelated() {
       relatedScrollTimer = setTimeout(() => {
         const items = collectCurrentRelated();
         if (!items || !items.length) return;
+        const mall = MallParser.detectMall(window.location.href);
+        const parsed = mall ? MallParser.parse(window.location.href) : null;
+        const parentId = parsed ? parsed.productID : null; // 상품 페이지면 관계 저장 소스로 사용 (v0.9.6)
         const fresh = items.filter((it) => !relatedSentIds.has(it.productID));
         if (fresh.length) {
           fresh.forEach((it) => relatedSentIds.add(it.productID));
-          chrome.runtime.sendMessage({ type: "RELATED_FOUND", items: fresh });
+          chrome.runtime.sendMessage({ type: "RELATED_FOUND", items: fresh, parentId });
         }
         ensureWatchBadges(); // 새 카드 로드 시 찜 배지 재적용 (v0.8.5)
       }, 600); // 스크롤 멈춘 뒤 600ms — 스크롤 중 반복 전송 방지

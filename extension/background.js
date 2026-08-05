@@ -466,8 +466,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   // 사용자 스크롤 → 새로 로드된 연관 상품 수집 (v0.5)
+  // v0.9.6: parentId 포함 — 상품 페이지면 관계 그래프가 스크롤 카드에도 저장됨
   if (msg && msg.type === "RELATED_FOUND" && Array.isArray(msg.items) && msg.items.length) {
-    uploadRelatedItems(msg.items, "scroll");
+    uploadRelatedItems(msg.items, "scroll", msg.parentId || null);
     sendResponse({ ok: true });
     return true;
   }

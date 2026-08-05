@@ -2,6 +2,12 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-84 — 스크롤 관계 저장 버그 + 핫딜 상단 배치 + 테스트 데이터 정리 (v0.9.6) — ✅ 완료 (2026-08-05)
+- [x] **스크롤 연관 카드 관계 저장 버그 수정**: `RELATED_FOUND`가 parentId 없이 호출되어 relations에 저장 안 되던 문제 → content.js에서 parentId 포함, background.js에서 `msg.parentId || null` 전달 (상품 페이지면 저장, 목록 페이지는 미저장 유지)
+- [x] **핫딜 섹션 재배치**: 팝업 섹션 순서 current→deals→related (함께 본 상품 5개가 로드돼도 핫딜이 상단에서 항상 보임)
+- [x] **로컬 SQLite 테스트 데이터 정리**: rel-*/local-*/coupang:rel-*/coupang:target*/TESTLONGNAME*/coupang:111·222·333 테스트 상품 + 관계 7건 + test-* 디바이스(13)와 watches/alerts/가격제거 → products 530→506, relations 10→0, devices 16→3 (백업 완료, 실제 3개 디바이스 유지)
+- [x] `node --check` 전체 통과 + Whale 팝업 sectionOrder `[current, deals, related]` 확인
+
 ## T-83 — 전용 디버그 창 + 중앙 로그 통일 (v0.9.3) — ✅ 완료 (2026-08-05)
 - [x] `debug.js` 전면 개편 — 모든 로그 `chrome.storage.local["debugLog"]` 중앙 누적 (최대 2000줄 FIFO) + 콘솔 경유
 - [x] content script는 storage 대신 `DEBUG_LOG` 메시지로 background 위임 → `sender.tab`로 탭ID/url/몰 태깅 → **다중 탭 로그 통일 관리**
