@@ -104,8 +104,13 @@ def get_product(
 @router.post("/products", response_model=ProductOut, status_code=201)
 def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: Session = Depends(get_db)) -> ProductOut:
     """클라이언트가 캐치한 상품 등록/정보 업데이트 (name/image 최신화)"""
+    # v0.9.3 — DB 컬럼 최대 길이(Postgres는 초과 시 IntegrityError 500, SQLite는 무시)에
+    #          맞춰 잘라 저장한다. 네이버 연관 카드의 장황한 상품명이 name(512)을 넘는 경우
+    #          '연관 상품 업로드 실패 HTTP 500' + 관계 저장 누락이 발생했었음
+    url = (payload.url or "")[:1024]
+    name = (payload.name or "")[:512]
+    image = (payload.image or "")[:1024]
     # 프로토콜-상대 URL("//cdn...") → https: 정규화 (팝업/확장 페이지에서 로드 가능하도록)
-    image = payload.image
     if image and image.startswith("//"):
         image = f"https:{image}"
     product = db.get(Product, payload.product_id)
@@ -113,8 +118,8 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
         product = Product(
             id=payload.product_id,
             mall=payload.mall,
-            url=payload.url,
-            name=payload.name,
+            url=url,
+            name=name,
             image=image,
         )
         db.add(product)
@@ -124,8 +129,8 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
         #          최초 1회만 저장하면 팝업/추이/찜 목록에 옛 이름("1개")이 남는 문제
         # v0.8.18: 카드 캡처(source=card, 검색/연관 카드의 짧은 이름)는 최초 1회만 —
         #          카드 이름이 상세 페이지 이름을 덮어쓰는 회귀 방지 (네이버/올리브 포함)
-        if payload.name and (payload.source == "detail" or not product.name):
-            product.name = payload.name
+        if name and (payload.source == "detail" or not product.name):
+            product.name = name
         if image:
             product.image = image
         if payload.mall:
