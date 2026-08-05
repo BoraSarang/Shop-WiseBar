@@ -2,6 +2,13 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-88 — 가격 통계·시계열 요약 (v0.10.0) — ✅ 완료 (2026-08-05)
+- [x] **T-88a**: 서버 `GET /products/{id}/stats` 라우터 + schema — 7일/30일 min·avg·min_date + 역대 min/min_date. variant 있으면 price_points, 없으면 price_daily_stats(low_price) 집계. `docs/api/ENDPOINTS.md` 갱신
+- [x] **T-88b**: 팝업 요약 배너 (popup.js/html/css `trendStats`) — "7일 최저/30일 평균/역대 최저(날짜)" 1줄
+- [x] **T-88c**: 플로팅 추이 요약 (swb-ui.js `swb-trend-stats`) — product/prices/stats 3건 병렬
+- [x] **T-88d**: 로컬 서버 통합 테스트 — stats 주입 데이터로 "7일 최저 54,500원 · 30일 평균 57,500원 · 역대 최저 54,500원 (26/08/05)" 렌더 확인 + 404/null 케이스. 테스트 데이터/서버 주소 원복
+- [x] **T-88e**: manifest v0.10.0 + CHANGELOG + API 문서 + 커밋
+
 ## T-87 — README 재작성 + GitHub Pages 랜딩 + GitHub Actions CI/CD (v0.9.9) — ✅ 완료 (2026-08-05)
 - [x] **README.md 재작성**: 제품 소개/설치/기능/아키텍처/개발 규약 (기존 2줄 → 확장)
 - [x] **GitHub Pages 랜딩 페이지** `landing/`: index.html + style.css (히어로/기능 6/지원 몰/CTA). 아이콘은 Actions 배포 시 extension/icons 복사

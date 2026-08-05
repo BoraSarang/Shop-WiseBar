@@ -1,5 +1,17 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.10.0 (2026-08-05) — [extension+server] 가격 통계·시계열 요약 (7일/30일/역대 최저가)
+
+### 서버 — `GET /products/{id}/stats`
+- **신규 라우터**: `price_daily_stats` 기반 7일/30일/역대 `{min, min_date, avg}` 반환 (schema `PriceStatsOut` 추가)
+- **variant 처리**: 쿠팡 수량 옵션 지정 시 `price_points`에서 해당 variant만 집계 (daily_stats에는 variant가 없으므로). variant 없음 → `price_daily_stats.low_price` 기준 (방문 dedup 정책과 일관)
+- 데이터 없음 → null 응답, 404 그대로 (없는 상품 보호)
+
+### 확장 — 요약 배너
+- **팝업** (`popup.js/html/css`): 현재 상품에 `trendStats` 배너 — "7일 최저 / 30일 평균 / 역대 최저(날짜)". 상품 조회와 병렬 fetch
+- **플로팅 추이 패널** (`swb-ui.js`): `swb-trend-stats` 배너 — 기존 최저/최고/기록 통계 아래. product/prices/stats 3건 병렬 조회 (trendStatsCache)
+- E2E 검증: 로컬 서버 주입 데이터로 "7일 최저 54,500원 · 30일 평균 57,500원 · 역대 최저 54,500원 (26/08/05)" 정상 렌더 (차트 + 현재가 병행). 테스트 후 데이터/확장 서버 주소 원복
+
 ## v0.9.9 (2026-08-05) — [repo] README 재작성 + GitHub Pages 랜딩 페이지 + GitHub Actions CI/CD
 
 ### README.md 재작성

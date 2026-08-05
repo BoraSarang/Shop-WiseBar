@@ -172,6 +172,15 @@ async function loadCurrent() {
   currentTargetPrice = null;
   $("currentStats").innerHTML = `<span class="spinner"></span>`;
 
+  // 가격 통계 요약 (v0.10.0) — 7일/30일/역대 최저가·평균 (variant와 병렬)
+  $("trendStats").classList.add("hidden");
+  const statsReq = (variant) => {
+    const base = `/products/${encodeURIComponent(parsed.productID)}/stats`;
+    return api(variant ? `${base}?variant=${encodeURIComponent(variant)}` : base)
+      .then((s) => ({ ok: true, s }))
+      .catch(() => ({ ok: false, s: null }));
+  };
+
   // 현재 탭에서 직접 추출 (og:title 등) — v0.8.19: url 전달로 variant(vendorItemId) 확보,
   // 수량 옵션별 가격/통계를 서버에 variant 조회
   let liveTitle = null;
@@ -185,6 +194,8 @@ async function loadCurrent() {
   } catch {}
 
   const deviceId = await getDeviceId();
+  // 가격 통계 요약 (v0.10.0) — 상품 조회와 병렬로 7일/30일/역대 집계
+  const statsPromise = statsReq(liveVariant);
   try {
     const query = `/products/${encodeURIComponent(parsed.productID)}?device_id=${deviceId}`;
     const product = await api(
@@ -205,10 +216,30 @@ async function loadCurrent() {
     $("currentStats").textContent = "";
     if (e.status !== 404) return;
   }
+  const statsRes = await statsPromise;
+  if (statsRes.ok) renderTrendStats(statsRes.s);
   $("currentName").textContent =
     liveTitle || (await fetchProductName(parsed.productID)) || `${mallLabel(parsed.mall)} 상품`;
   $("currentActions").classList.remove("hidden");
   updateWatchBtn();
+}
+
+// 가격 통계 요약 배너 (v0.10.0) — 7일/30일 최저가·평균 + 역대 최저가(날짜)
+function renderTrendStats(s) {
+  const el = $("trendStats");
+  if (!s) return;
+  const parts = [];
+  const fmt = (v) => (v == null ? null : `${Number(v).toLocaleString()}원`);
+  const fmtDate = (d) => (d ? d.slice(2).replace(/-/g, "/") : null); // YYYY-MM-DD → YY/MM/DD
+  if (s.period7 && s.period7.min != null) parts.push(`7일 최저 ${fmt(s.period7.min)}`);
+  if (s.period30 && s.period30.avg != null) parts.push(`30일 평균 ${fmt(s.period30.avg)}`);
+  if (s.overall && s.overall.min != null) {
+    const d = fmtDate(s.overall.min_date);
+    parts.push(`역대 최저 ${fmt(s.overall.min)}${d ? ` (${d})` : ""}`);
+  }
+  if (!parts.length) return;
+  el.textContent = parts.join(" · ");
+  el.classList.remove("hidden");
 }
 
 // 지금 사도 돼 배지 + 최저가/평균가/추적자 수 (서버 통계 기반, v0.4)

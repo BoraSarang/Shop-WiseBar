@@ -1,6 +1,6 @@
 # 상품 라우터 — 상품 조회/등록(upsert) + 가격 업로드 + 가격 이력
 # PLATFORM: server
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select
@@ -9,7 +9,14 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Device, PriceDailyStat, PricePoint, Product, Watch
-from app.schemas import PricePointOut, PriceUploadIn, ProductOut, ProductUpsertIn, SoldOutIn
+from app.schemas import (
+    PricePointOut,
+    PriceStatsOut,
+    PriceUploadIn,
+    ProductOut,
+    ProductUpsertIn,
+    SoldOutIn,
+)
 
 router = APIRouter(tags=["products"])
 
@@ -99,6 +106,70 @@ def get_product(
     if product is None:
         raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1001", "message": "상품을 찾을 수 없습니다"})
     return _product_out(product, db, device_id, variant)
+
+
+@router.get("/products/{product_id}/stats", response_model=PriceStatsOut)
+def get_product_stats(
+    product_id: str, variant: str | None = None, db: Session = Depends(get_db)
+) -> PriceStatsOut:
+    """가격 통계 요약 (v0.10.0) — price_daily_stats 기반 7일/30일/역대 min·avg·min_date.
+    추이 그래프가 variant 지정 시 해당 variant만 그리므로, stats도 동일하게 variant 조건 지원.
+    variant 없음 = 상품 전체(네이버/올리브영은 variant가 없어 전체가 곧 유일)."""
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1001", "message": "상품을 찾을 수 없습니다"})
+
+    # variant가 price_points에 저장되고 price_daily_stats에는 variant가 없으므로,
+    # variant 지정 시 price_daily_stats로는 variant 분리가 불가능 → price_points에서 집계한다.
+    # (쿠팡 variant 가격이 일별 통계에 뒤섞여 분리 집계가 필요한 경우)
+    today = date.today()
+    cutoff7 = today - timedelta(days=7)
+    cutoff30 = today - timedelta(days=30)
+    epoch = date(1970, 1, 1)
+
+    def period_stats(cutoff: date) -> PriceStatsOut.PeriodStats:
+        """기간(포함) 내 최저가·최저가 날짜·평균. variant 있으면 price_points, 없으면
+        price_daily_stats(low_price) 기준 — 방문 dedup 정책(가격 로우는 변경 시만)과 일관."""
+        if variant is not None:
+            pcond = [
+                PricePoint.product_id == product_id,
+                PricePoint.variant == variant,
+                PricePoint.captured_at >= datetime.combine(cutoff, datetime.min.time(), timezone.utc),
+            ]
+            pmin = db.scalar(select(func.min(PricePoint.price)).where(*pcond))
+            pmin_at = None
+            if pmin is not None:
+                pmin_at = db.scalar(
+                    select(func.min(PricePoint.captured_at))
+                    .where(*pcond, PricePoint.price == pmin)
+                )
+            pavg = db.scalar(select(func.avg(PricePoint.price)).where(*pcond))
+            return PriceStatsOut.PeriodStats(
+                min=int(pmin) if pmin is not None else None,
+                min_date=pmin_at.date() if pmin_at is not None else None,
+                avg=round(float(pavg)) if pavg is not None else None,
+            )
+
+        dcond = [PriceDailyStat.product_id == product_id, PriceDailyStat.stat_date >= cutoff]
+        dmin = db.scalar(select(func.min(PriceDailyStat.low_price)).where(*dcond))
+        dmin_date = None
+        if dmin is not None:
+            dmin_date = db.scalar(
+                select(PriceDailyStat.stat_date)
+                .where(*dcond, PriceDailyStat.low_price == dmin)
+                .order_by(PriceDailyStat.stat_date)
+                .limit(1)
+            )
+        davg = db.scalar(select(func.avg(PriceDailyStat.low_price)).where(*dcond))
+        return PriceStatsOut.PeriodStats(
+            min=int(dmin) if dmin is not None else None,
+            min_date=dmin_date if dmin_date is not None else None,
+            avg=round(float(davg)) if davg is not None else None,
+        )
+
+    return PriceStatsOut(
+        period7=period_stats(cutoff7), period30=period_stats(cutoff30), overall=period_stats(epoch)
+    )
 
 
 @router.post("/products", response_model=ProductOut, status_code=201)

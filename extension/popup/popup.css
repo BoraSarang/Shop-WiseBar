@@ -140,6 +140,11 @@ header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink:
 
 .stats-text { font-size: 11px; color: #888; }
 
+.trend-stats {
+  font-size: 11px; color: #2d4ae0; background: #f2f4ff;
+  border-radius: 8px; padding: 5px 10px; margin-top: 6px; font-weight: 600;
+}
+
 .current-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
 
 .current-hint {

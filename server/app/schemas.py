@@ -1,6 +1,6 @@
 # Pydantic 스키마 — API 요청/응답
 # PLATFORM: server
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -55,6 +55,19 @@ class PricePointOut(BaseModel):
     source: str
     variant: str | None = None
     captured_at: datetime
+
+
+class PriceStatsOut(BaseModel):
+    """가격 통계 요약 (v0.10.0) — price_daily_stats 기반 주간/월간/역대 집계"""
+
+    class PeriodStats(BaseModel):
+        min: int | None = None
+        min_date: date | None = None
+        avg: int | None = None
+
+    period7: PeriodStats = PeriodStats()
+    period30: PeriodStats = PeriodStats()
+    overall: PeriodStats = PeriodStats()
 
 
 class WatchIn(BaseModel):

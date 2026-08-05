@@ -24,6 +24,7 @@
 | POST | `/products` | 상품 upsert — `{product_id, mall, url, name?, image?, source?}`. `source=detail`은 이름 항상 갱신 / `card`는 최초 1회 |
 | POST | `/products/{id}/prices` | 가격 업로드 — `{price, source: extension\|crawler\|client, variant?}`. 같은 가격은 dedup(통계만 집계), 품절 자동 해제 |
 | GET | `/products/{id}/prices?limit=&variant=` | 가격 이력 (그래프용, 최신순) |
+| GET | `/products/{id}/stats?variant=` | 가격 통계 요약 (v0.10.0) — `{period7, period30, overall}` 각각 `{min, min_date, avg}`. variant 지정 시 해당 옵션만 (price_points 기준), 없으면 price_daily_stats(low_price) 기준 |
 | DELETE | `/products/{id}/prices/{price}?variant=` | 관리용 이상값 삭제. variant 생략=전체 / `__none__`=NULL variant |
 | POST | `/products/{id}/sold-out` | 품절 상태 — `{sold_out: bool}` (확장 감지 시) |
 | POST | `/products/relations` | 연관 관계 저장 — `{source, targets[]}` (weight += 1, 중복 제거) |
