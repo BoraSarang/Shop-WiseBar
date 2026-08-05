@@ -150,7 +150,7 @@
 - [x] MallParser JS 포팅 (common.js — content/background 공용)
 - [x] content.js 가격 추출 (네이버 상품 가격 패턴/쿠팡 % 패턴/올리브영 data-qa·tx_num)
 - [x] 탭 이벤트 → 업로드 (쿨다운 10분, source=extension)
-- [ ] 실기기 검증 (Chrome 개발자 모드 로드 + 상품 페이지 방문 → 서버 DB 확인) — 사용자 확인 필요
+- [x] 실기기 검증 (Chrome 개발자 모드 로드 + 상품 페이지 방문 → 서버 DB 확인) — ✅ 완료 (2026-08-05, 사용자 확인)
 - [x] 아이콘 생성 (make_icons.py — 남색 원 + 하락 화살표)
 
 ## T-61 — 팝업 UI (완료)

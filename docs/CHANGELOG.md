@@ -10,6 +10,9 @@
 ### 확인 — Microsoft Edge 확장 로드 확인
 - Edge(151.0.4129.59) Profile 1의 `Secure Preferences`에서 확장 ID `dmdgnfaihmeagfopdabippjnbgngafhj`가 `/Users/lee/Documents/Apps/Shop WiseBar/extension` 경로로 unpacked(개발자 모드) 로드 확인 — 똑바 확장 정상 로드
 
+### 확인 — Google Chrome 실기기 검증 (T-60 마감)
+- 사용자 실기기 확인 (2026-08-05): Chrome 개발자 모드 확장 로드 + 상품 페이지 방문 + 서버 DB 저장 정상 동작 확인. 이로써 Whale/Edge/Chrome 3대 크로미움 브라우저 로드·동작 모두 검증 완료
+
 ## v0.9.7 (2026-08-05) — [extension] 플로팅 찜 목록 삭제 버그 수정 + 가격 추이 찜 해제 시 목표가 행 숨김 수정
 
 ### 플로팅 — 찜 목록 관리에서 삭제 버튼이 동작하지 않던 버그 수정
