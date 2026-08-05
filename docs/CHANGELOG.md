@@ -1,5 +1,21 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.10.1 (2026-08-05) — [server] 서버 테스트 자동화 + 가격 유실 버그 수정 + DB 인덱스
+
+### 테스트 자동화 (T-89)
+- `server/tests/` pytest 스위트 구축 (23건, 0.3초): `conftest.py`가 임시 SQLite + `get_db` override + 테스트 간 테이블 초기화
+- 대상: devices/watches, products(upsert·가격 dedup·stats·sold-out·prices 삭제), relations, recommendations, health
+- CI: `.github/workflows/validate-extension.yml`에 `server-test` job 추가 (Python 3.12 + pytest, `server/**` 변경 시)
+
+### 버그 수정 — 같은 초 다른 가격 유실 (테스트가 발견)
+- `POST /prices`가 같은 초(second)에 도달한 서로 다른 가격을 UNIQUE(product_id, captured_at) 충돌로
+  "동시 캡처(같은 가격 중복)"로 오판해 유실시킴 → IntegrityError 시 1초 뒤로 밀어 재저장
+- (E2E로는 재현이 어렵고 테스트로만 잡히던 데이터 손실 — 테스트 스위트 도입 효과)
+
+### DB 인덱스 점검 (T-89d)
+- `price_daily_stats (product_id, stat_date)` 복합 인덱스 추가 — stats/추이/추천 핵심 조회 키
+- `product_relations (source_product_id, target_product_id)` 복합 인덱스 추가 — 연관 양방향 조회
+
 ## v0.10.0 (2026-08-05) — [extension+server] 가격 통계·시계열 요약 (7일/30일/역대 최저가)
 
 ### 서버 — `GET /products/{id}/stats`

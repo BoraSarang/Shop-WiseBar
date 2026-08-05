@@ -257,12 +257,21 @@ def upload_price(product_id: str, payload: PriceUploadIn, db: Session = Depends(
             db.flush()
             inserted = True
         except IntegrityError:
-            # 같은 초에 이미 저장된 동시 캡처(중복 POST) — 직전 요청이 로우/통계/last_price를
-            # 이미 갱신했으므로 여기선 아무것도 하지 않고 성공으로 끝낸다.
+            # UNIQUE(product_id, variant, captured_at) 충돌 — 같은 초에 다른 가격이 먼저 저장됨.
+            # v0.9.4 이전엔 "동시 캡처(같은 가격 중복 POST)"라고 보고 성공으로 끝내 두 번째
+            #          가격이 유실됐다. (v0.10.1 테스트로 발견 — 같은 초 연속 업로드 시 데이터 손실)
             # v0.9.4 — PostgreSQL은 flush 실패 후 세션이 requires-rollback 상태가 되므로
-            #          rollback 없이 commit을 이어가면 500. 즉시 rollback 후 종료가 안전.
+            #          rollback 없이 commit을 이어가면 500. 즉시 rollback 후 재시도가 안전.
             db.rollback()
-            return PricePointOut(price=payload.price, source=payload.source, variant=payload.variant, captured_at=now)
+            # 같은 가격 dedup은 위(248행)에서 이미 거름 → 여기 도달한 충돌은 "다른 가격"이다.
+            # 같은 초 아래에서 UNIQUE를 통과하려면 1초 뒤로 밀어 저장한다 (가격 유실 방지).
+            point = PricePoint(
+                product_id=product_id, price=payload.price, source=payload.source,
+                variant=payload.variant, captured_at=now + timedelta(seconds=1),
+            )
+            db.add(point)
+            db.flush()
+            inserted = True
 
     product.last_price = payload.price
     product.last_checked_at = now

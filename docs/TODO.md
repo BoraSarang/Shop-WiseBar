@@ -2,6 +2,14 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-89 — 품질 개선: 서버 테스트 자동화 + DB 인덱스 점검 (v0.10.1) — ✅ 완료 (2026-08-05)
+- [x] **T-89a**: pytest + httpx 의존성 (requirements.txt)
+- [x] **T-89b**: `server/tests/conftest.py` — TestClient + 임시 SQLite + get_db override
+- [x] **T-89c**: `server/tests/test_*.py` — devices/products/relations/recommendations/health (23건)
+- [x] **T-89d**: DB 인덱스 점검 + 누락분 INDEX_SQLS 추가 (price_daily_stats 복합, product_relations 복합)
+- [x] **T-89e**: CI 서버 pytest job 추가 (validate-extension.yml server-test)
+- [x] **T-89f**: 실행·검증 + CHANGELOG + 커밋
+
 ## T-88 — 가격 통계·시계열 요약 (v0.10.0) — ✅ 완료 (2026-08-05)
 - [x] **T-88a**: 서버 `GET /products/{id}/stats` 라우터 + schema — 7일/30일 min·avg·min_date + 역대 min/min_date. variant 있으면 price_points, 없으면 price_daily_stats(low_price) 집계. `docs/api/ENDPOINTS.md` 갱신
 - [x] **T-88b**: 팝업 요약 배너 (popup.js/html/css `trendStats`) — "7일 최저/30일 평균/역대 최저(날짜)" 1줄
