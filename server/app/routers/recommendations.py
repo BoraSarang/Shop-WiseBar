@@ -20,8 +20,11 @@ router = APIRouter(tags=["recommendations"])
 # 복합 인덱스 — 기존 테이블엔 create_all이 못 만들므로 시작 시 IF NOT EXISTS로 생성 (main.py on_startup)
 # v0.10.1: stats/추이/추천이 price_daily_stats를 (product_id, stat_date>=) 로 조회하므로
 #          복합 인덱스 추가. product_relations는 source OR target 양방향 조회용 복합 추가.
+# v0.10.3 (T-92b): 추천 하락 쿼리가 captured_at >= cutoff로 기간 스캔하는데 단독 인덱스가 없어
+#          price_points 전체 스캔(EXPLAIN QUERY PLAN 'SCAN price_points') 확인 → captured_at 인덱스 추가
 INDEX_SQLS = [
     "CREATE INDEX IF NOT EXISTS ix_price_points_prod_cap ON price_points (product_id, captured_at)",
+    "CREATE INDEX IF NOT EXISTS ix_price_points_captured ON price_points (captured_at)",
     "CREATE INDEX IF NOT EXISTS ix_price_daily_prod_date ON price_daily_stats (product_id, stat_date)",
     "CREATE INDEX IF NOT EXISTS ix_product_relations_pair ON product_relations (source_product_id, target_product_id)",
 ]

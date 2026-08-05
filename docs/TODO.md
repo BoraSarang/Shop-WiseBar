@@ -2,6 +2,17 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-91 — 서버 운영 개선: 구조적 로깅 + /health 강화 + 운영 문서 (v0.10.3) — ✅ 완료 (2026-08-06)
+- [x] **T-91a**: `app/logging_setup.py` — 로거 + 요청 미들웨어(메서드/경로/상태/ms) + 예외 핸들러(E-SRV-GEN-1001) + main.py 적용
+- [x] **T-91b**: `/health` 강화 — DB SELECT 1 + started_at + version + indexes
+- [x] **T-91c**: `docs/ops/README.md` — Render 배포·로그 보기·모니터링 방법
+- [x] **T-91d**: pytest + CHANGELOG 반영 (test_health 강화, 요청 로그 캡처 테스트 추가)
+
+## T-92 — 성능 백로그: 알림 폴링·추천 쿼리 점검 (v0.10.3) — ✅ 완료 (2026-08-06)
+- [x] **T-92a**: `GET /devices/{id}/alerts` 쿼리 점검 — `ix_price_points_prod_cap` 커버 확인, N+1은 찜 수준상 허용
+- [x] **T-92b**: EXPLAIN QUERY PLAN — 추천 하락 쿼리 price_points 전체 스캔 발견 → `ix_price_points_captured` 추가 (SCAN→SEARCH)
+- [x] **T-92c**: pytest 24건 통과 + CHANGELOG 반영
+
 ## T-90 — Chrome Web Store 배포 준비 + 릴리즈 자동화 (v0.10.2) — ✅ 완료 (2026-08-05)
 - [x] **T-90a**: permission 최소 권한 재검토 + manifest 갱신 — `tabs` 제거 → `activeTab` (쇼핑몰 host_permissions로 URL 커버)
 - [x] **T-90b**: `docs/chrome/PERMISSIONS.md` v0.10.2 대조 갱신

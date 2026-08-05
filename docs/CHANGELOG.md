@@ -1,6 +1,17 @@
 # 똑바(Shop WiseBar) 변경 이력
 
-## v0.10.2 (2026-08-05) — [extension+docs] Chrome Web Store 배포 준비
+## v0.10.3 (2026-08-06) — [server] 서버 운영 개선: 로깅 + /health 강화 + 추천 쿼리 인덱스
+
+### 운영 개선 (T-91)
+- **구조적 로깅 (T-91a)**: `app/logging_setup.py` — 요청 미들웨어(`req method=GET path=/health status=200 elapsed_ms=10.7`) + 전역 예외 핸들러(500 → `E-SRV-GEN-1001`, Python 스택 로그). Render Logs에서 확인
+- **/health 강화 (T-91b)**: DB `SELECT 1`(ok/degraded) + `started_at` + `version` + 적용된 인덱스 목록 노출 — 운영 모니터링용
+- **운영 문서 (T-91c)**: `docs/ops/README.md` — Render 배포·로그 보기·상태 확인·장애 대응 체크리스트
+- `error_message_ko.json`에 `E-SRV-GEN-1001` 추가
+
+### 성능 (T-92)
+- **추천 쿼리 인덱스 (T-92b)**: `EXPLAIN QUERY PLAN`으로 추천 하락 쿼리가 `price_points` 전체 스캔(SCAN) 확인 → `ix_price_points_captured`(captured_at) 인덱스 추가로 SEARCH 전환. alerts/daily_stats/relations는 기존 인덱스 사용 확인
+- **테스트 강화**: test_health에 DB/인덱스 검증 + 요청 로그 캡처 테스트 추가 (23→24건)
+
 
 - **권한 최소화 (T-90a)**: 광범위한 `tabs` 권한 제거 → `activeTab`(팝업/옵션 열기 시 활성 탭 URL 접근)로 축소.
   백그라운드 탭 URL 감지는 쇼핑몰 `host_permissions`로 커버, `tab.url` 없으면 `captureProductInner`가 안전 return — 기능 영향 없음

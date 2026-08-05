@@ -72,4 +72,22 @@ class TestRecommendations:
 def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
-    assert r.json()["status"] == "ok"
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["db"]["ok"] is True
+    assert body["version"]
+    assert body["started_at"]
+    # v0.10.3 (T-91b) — 인덱스가 스타트업에 적용됐는지 노출
+    assert "ix_price_points_captured" in body["indexes"]
+    assert "ix_price_daily_prod_date" in body["indexes"]
+
+
+def test_request_logging_emits(caplog):
+    """v0.10.3 (T-91a) — 요청 로그 미들웨어가 메서드/경로/상태를 남긴다."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    with caplog.at_level("INFO"):
+        TestClient(app).get("/health")
+    assert any("method=GET path=/health status=200" in r.message for r in caplog.records)

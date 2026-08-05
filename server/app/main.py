@@ -6,6 +6,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import Base, engine
+from app.logging_setup import setup_logging, started_at
 from app.routers import devices, products, recommendations, relations, watches
 from app.routers.recommendations import INDEX_SQLS
 
@@ -27,6 +28,11 @@ app.include_router(products.router, prefix="/api/v1")
 app.include_router(watches.router, prefix="/api/v1")
 app.include_router(recommendations.router, prefix="/api/v1")
 app.include_router(relations.router, prefix="/api/v1")
+
+# v0.10.3 (T-91a) — 요청 로그 미들웨어 + 전역 예외 핸들러 (E-SRV-GEN-1001)
+setup_logging(app)
+
+_APP_STARTED_AT = started_at()
 
 
 @app.on_event("startup")
@@ -59,4 +65,33 @@ def _ensure_columns(engine) -> None:
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 def health() -> dict:
-    return {"status": "ok", "version": "0.2.0"}
+    # v0.10.3 (T-91b) — DB 연결 + 시작 시각 + 적용된 인덱스 노출 (운영 모니터링용)
+    db_ok = True
+    db_error = None
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as exc:  # noqa: BLE001
+        db_ok = False
+        db_error = str(exc)
+    indexes = []
+    try:
+        with engine.connect() as conn:
+            if engine.dialect.name == "postgresql":
+                rows = conn.execute(
+                    text("SELECT indexname FROM pg_indexes WHERE schemaname='public'")
+                )
+            else:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='index'")
+                )
+            indexes = [row[0] for row in rows]
+    except Exception:  # noqa: BLE001
+        indexes = []
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "version": app.version,
+        "started_at": _APP_STARTED_AT,
+        "db": {"ok": db_ok, "error": db_error},
+        "indexes": indexes,
+    }
