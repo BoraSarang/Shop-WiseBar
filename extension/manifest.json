@@ -53,7 +53,7 @@
     "toggle-debug": {
       "suggested_key": {
         "default": "Ctrl+Shift+Y",
-        "mac": "Command+Shift+Y"
+        "mac": "Command+D"
       },
       "description": "디버그 창 열기/닫기"
     }
