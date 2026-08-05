@@ -1,5 +1,29 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.9.3 (2026-08-05) — [extension+server] 전용 디버그 창 + 중앙 로그 + 연관 업로드 500 수정 (T-82→T-83)
+
+### 확장 — 전용 디버그 창 & 중앙 로그 (T-83)
+- **중앙 로그 스토리지 (ext)**: `debug.js` 전면 개편 — 모든 로그가 `chrome.storage.local["debugLog"]`에 **중앙 누적**(최대 2000줄 FIFO). **SW 종료/팝업 닫기/탭 이동과 무관하게 지우기 전까지 유지** (기존 메모리 링 버퍼는 휘발 문제 — T-82 옵션 A 대체)
+- **전용 디버그 창 (ext)**: `debug-view.html/.css/.js` 신규 — `chrome.windows.create({type:"popup"})` OS 레벨 분리 창(우상단 고정, 520×640). **어느 탭을 봐도 항상 떠 있고** 닫기 전까지 계속 누적/2초 자동 갱신. **단축키 `Ctrl+Shift+D`** 토글(manifest commands). 로그 뷰어: 색상(ERROR/WARN/PERF/DEBUG) + 자동스크롤 + 레벨·몰·탭 필터 + 검색 + 전체 복사 + 지우기 + 일시정지
+- **다중 탭 로그 통일 (ext)**: content script는 storage를 직접 쓰지 않고 `DEBUG_LOG` 메시지로 background에 위임 → background가 `sender.tab`로 **탭ID/url/몰 태깅** 후 중앙 기록 → **쇼핑탭 여러 개를 오가도 로그가 하나로 모임** (탭 필터로 구분)
+- **팝업 정리 (ext)**: 내장 `debugPanel`·토글·복사/숨기기 제거 → 헤더 🛠 "디버그 창 열기" 버튼(`OPEN_DEBUG` 메시지). `options.js`의 `debugEnabled` 스위치는 유지(로그 on/off)
+- **전처리 성능 (ext)**: content 위임은 즉시(비동기), ext(background/popup/창)는 디바운스(300ms) 배치 저장 — 로그마다 storage set 없음
+
+### 서버 — 연관 상품 업로드 HTTP 500 수정
+- **원인**: `POST /products`에서 `name`/`url`/`image`가 DB 컬럼 최대 길이(`String(512/1024)`)를 넘으면 **Postgres는 오류 → 500**(SQLite는 무시해 로컬 재현 불가). 네이버 연관 카드의 장황한 상품명이 512자 초과해 '연관 상품 업로드 실패 HTTP 500' + 관계 저장 누락 발생
+- **수정**: `server/app/routers/products.py` — 저장 전 `name[:512]`/`url[:1024]`/`image[:1024]` 클램프. 실서버 600자 name 요청 500→201 확인(로컬 + Render 재현)
+- 성능 영향 없음. `node --check`/`py_compile` 통과
+
+## v0.9.2 (2026-08-04) — [server+extension] 목표가 UI 디자인 통일 + 목표가 해제 버그 수정
+
+- **목표가 해제 버그 수정 (server)**: `PUT /devices/{did}/watches/{pid}`에 `target_price`가 없면(해제 요청) **기존 값을 유지**해 해제가 안 되던 문제 → 명시적으로 `None` 초기화 — 팝업/플로팅의 `설정 해제` 버튼·`PUT {}` 요청이 실제로 목표가를 지우도록 (775724a)
+- **팝업 목표가 행 UX (ext)**: "현재 가격이 기본으로 채워져요" 힌트 문구 제거 → **목표가 상태 라벨**(`N원 이하 알림 중` 파랑 강조 / `목표가 미설정`) 우측 정렬 + **설정 해제** 버튼(목표가 있을 때만 활성) + 입력/버튼 우측 정렬
+- **찜 목록 가격+상태 한 줄 정렬 (ext)**: `watch-price-row` flex — 가격 왼쪽, 상태(품절/목표가 알림/확인 필요) 오른쪽 정렬
+- **품절 행 배경 (ext)**: `.sold-out-row` 연분홍 배경 + hover 강조 (팝업 + 플로팅 swb-ui 동일)
+- **함께 본 상품 접기 (ext)**: 힌트 문구 "이 상품을 본 분들이 함께 본 상품"으로 변경 + 헤더에 접이기 토글(▾/▸, `relatedToggle`/`.collapsed`)
+- **아이콘 교체 (ext)**: `scripts/gen_icon.py` 신규 생성기 — 남색 하락 화살표 v2 (icon16/48/128 PNG 리사이즈)
+- 성능 영향 없음 (순수 CSS/JS 렌더 변경, 서버는 PUT 분기 1줄)
+
 ## v0.9.1 (2026-08-04) — [server+extension] 목표가 알림 + 품절 감지 + 추천/추이 UX
 
 - **목표가 알림**: 찜에 목표가 설정 가능 (`Watch.target_price` + 팝업 입력 UI) — 가격이 목표가 이하로 내려가면 `target_reached` 알림 (직전 가격이 목표가 이상일 때만 1회, 회복 후 재하락 시 재알림)

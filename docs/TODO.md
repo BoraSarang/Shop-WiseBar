@@ -2,6 +2,43 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-83 — 전용 디버그 창 + 중앙 로그 통일 (v0.9.3) — ✅ 완료 (2026-08-05)
+- [x] `debug.js` 전면 개편 — 모든 로그 `chrome.storage.local["debugLog"]` 중앙 누적 (최대 2000줄 FIFO) + 콘솔 경유
+- [x] content script는 storage 대신 `DEBUG_LOG` 메시지로 background 위임 → `sender.tab`로 탭ID/url/몰 태깅 → **다중 탭 로그 통일 관리**
+- [x] `debug-view.html/.css/.js` 신규 — 전용 디버그 창(chrome.windows.create popup) 로그 뷰어(색상/자동스크롤/레벨·몰·탭 필터/검색/복사/지우기/일시정지)
+- [x] `manifest.json` commands 단축키 `Ctrl+Shift+D` 토글
+- [x] popup 내장 디버그 패널 제거 → 🛠 "디버그 창 열기" 버튼 (OPEN_DEBUG 메시지)
+- [x] options `debugEnabled` 스위치 유지 (로그 on/off)
+- [x] `docs/chrome/MESSAGING.md` — `DEBUG_LOG`/`OPEN_DEBUG` 규약 + `debugLog` 키 명시
+- [x] `node --check` 전체 통과
+
+## T-82 — Chrome 디버그 모드 (경량, 옵션 A) — ✅ 완료 (2026-08-05, T-83으로 대체)
+- [x] `extension/debug.js` — `DebugLogger` 래퍼 (레벨 [DEBUG]/[INFO]/[WARN]/[ERROR] + [PERF])
+- [x] `background.js`/`content.js` console.* 8곳 → DebugLogger 교체 (동작 영향 없음)
+- [x] 콘텐츠 스크립트 추출 시간 `[PERF]` 로그 (100ms 예산, content.js EXTRACT)
+- [x] 옵션 페이지에 디버그 패널 표시 토글 → `chrome.storage.local` `debugEnabled` + 팝업 화면 로그 덤프 (헤더 토글 버튼은 로딩 깨짐으로 제거)
+- [x] manifest에 `debug.js` 스크립트 로드 (background/content/popup/options 공용)
+- [x] 서비스 워커 콘솔 동일 포맷 출력 확인 (node --check)
+
+## T-76~T-81 — AGENTS.md v2.1 문서·규약 정비 (P0, 완료 2026-08-04)
+> 상위 규칙 v1.9→v2.1 갱신 대응. 모노레포/크로스브라우저(firefox/safari)는 미적용 — chrome+server 단일 유지.
+- [x] T-76: `docs/AI_MODELS.json` v2.1 스키마 갱신 (language_lock/cache_policy/vision_support + 모노레포 제거, cache_policy disabled)
+- [x] T-77: `AGENTS.local.md` 상위 버전 참조 → v2.1.0-common
+- [x] T-78: `.github/pull_request_template.md` → ext/server 전용 템플릿
+- [x] T-79: `docs/chrome/PERMISSIONS.md` 권한 정의서 (manifest 대조 완료)
+- [x] T-80: `docs/chrome/MESSAGING.md` 메시지 규약 (content↔background 7종 + storage 규약)
+- [x] T-81: `docs/api/ENDPOINTS.md` API 명세 (devices/products/watches/alerts/recommendations)
+- [x] `docs/plans/PLAN_v2.1_chrome-server.md` 작성 (문서 우선 원칙)
+
+## T-75 — v0.9.2 UI 다듬기 + 목표가 해제 버그 수정 (완료, 2026-08-04)
+- [x] **목표가 해제 버그 수정 (서버)**: `PUT /watches`에 target_price가 없으면 기존 값을 그대로 유지해 해제가 안 되던 문제 → 명시적으로 `None` 초기화 (775724a)
+- [x] **팝업 목표가 행 디자인 통일**: 힌트 문구 제거 → 상태 라벨(`N원 이하 알림 중`/`목표가 미설정`) + `설정 해제` 버튼(목표가 있을 때 활성) + 컨트롤 우측 정렬 — popup.css/js/html (99cb06a)
+- [x] **찜 목록 가격+상태 한 줄**: `watch-price-row` flex — 가격 왼쪽, 상태(품절/목표가) 오른쪽 정렬
+- [x] **품절 행 배경**: `.sold-out-row` 연분홍 배경 + hover (팝업 + 플로팅 swb-ui 동일)
+- [x] **함께 본 상품 접기**: 힌트 문구 변경 + 헤더 토글(▾/▸) + `.collapsed` — 팝업 + 플로팅
+- [x] **아이콘 v2**: `scripts/gen_icon.py` 신규 생성기 → icon16/48/128 PNG 교체
+- [~] 실기기 확인 (웨일 v0.9.2 리로드 후 목표가 설정/해제·품절 배경·함께 본 상품 접기) — 사용자 확인 대기
+
 ## T-74 — 목표가 알림 + 품절 감지 + 추천/추이 UX (v0.9.1 — 완료, 2026-08-04)
 - [x] **목표가 알림 (서버)**: Watch.target_price 컬럼 + PUT /watches가 목표가 저장, GET /alerts에 `target_reached` 감지 (직전 가격이 목표가 이상일 때만 1회 — 목표가 이하 유지 중 재캡처는 반복 방지, 목표가 이상 회복 후 재하락 시 재알림)
 - [x] **품절 감지 (서버)**: Product.sold_out_at 컬럼 + POST /products/{id}/sold-out (품절 시작/재판매), 가격 캡처 시 품절 자동 해제, GET /alerts에 `sold_out` 알림 (since 이후 품절 시작 시 1회, 품절 상품은 하락/목표가 검사 생략 — 무한 반복 방지)

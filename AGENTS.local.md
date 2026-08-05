@@ -1,6 +1,6 @@
 # AGENTS.local.md — Shop WiseBar (똑바)
 
-프로젝트 공통 특화 규칙. 상위 규칙은 `~/.config/opencode/AGENTS.md`(v1.9.0-common) 참조.
+프로젝트 공통 특화 규칙. 상위 규칙은 `~/.config/opencode/AGENTS.md`(v2.1.0-common) 참조.
 
 ## 프로젝트 개요
 
