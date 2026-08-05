@@ -1,5 +1,17 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.9.7 (2026-08-05) — [extension] 플로팅 찜 목록 삭제 버그 수정 + 가격 추이 찜 해제 시 목표가 행 숨김 수정
+
+### 플로팅 — 찜 목록 관리에서 삭제 버튼이 동작하지 않던 버그 수정
+- **버그**: `swb-ui.js`의 `renderWatchList`에서 `deleteWatch(deviceId, w.product_id)` 호출 — `deviceId`가 해당 스코프에 없어 **ReferenceError 발생 → 삭제 무시**되고 목록이 그대로 남음
+- **수정**: `deleteWatch(productId)`로 시그니처 단순화 + 함수 내부에서 `getDeviceId()` 직접 조회 (라인 1282). 호출부는 `await deleteWatch(w.product_id)` (라인 1244)
+- 서버 측은 정상 — 로컬 서버 `DELETE /devices/{did}/watches/{pid}` 204 응답 확인
+- E2E 환경 한계: Playwright `page.evaluate`는 Main World라 확장 content script(Isolated World)의 `chrome.storage`에 접근 불가 → 목록 조회가 비어보이는 것은 테스트 환경 문제. 실제 확장은 `storage` 권한으로 정상 동작
+
+### 플로팅 — 가격 추이에서 찜 해제 후 목표가 행이 남아있던 버그 수정
+- **버그**: shadow DOM에는 범용 `.hidden { display:none }` 규칙이 없어, 찜 해제 시 목표가 행에 `hidden` 클래스를 추가해도 `display:flex`가 유지되어 **행이 사라지지 않음**
+- **수정**: `.swb-target-row.hidden { display: none; }` 규칙 추가 (라인 136). 같은 원인의 `.swb-related.hidden { display: none; }` 규칙도 함께 추가 (라인 173, v0.9.6에서 사용 중이었으나 규칙 누락)
+
 ## v0.9.6 (2026-08-05) — [extension] 스크롤 연관 관계 저장 + 핫딜 상단 배치 + [data] 테스트 데이터 정리
 
 ### 확장 — 스크롤 연관 상품의 관계 그래프 저장 버그 수정

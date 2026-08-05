@@ -2,6 +2,12 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-85 — 플로팅 찜 목록 삭제 버그 + 가격 추이 목표가 행 숨김 수정 (v0.9.7) — ✅ 완료 (2026-08-05)
+- [x] **찜 목록 관리 삭제 버그 수정**: `renderWatchList`가 스코프 밖 `deviceId`를 참조하는 `deleteWatch(deviceId, ...)` 호출 → ReferenceError → 삭제 무시. `deleteWatch(productId)`로 변경 + 내부에서 `getDeviceId()` 직접 조회 (swb-ui.js:1244,1282)
+- [x] **가격 추이 찜 해제 시 목표가 행 숨김 버그 수정**: shadow DOM 범용 `.hidden{display:none}` 규칙 부재 → `.swb-target-row.hidden{display:none}` (swb-ui.js:136), 함께 쓰이는 `.swb-related.hidden{display:none}` (swb-ui.js:173) 규칙 추가
+- [x] 서버 정상 확인: 로컬 `DELETE /devices/{did}/watches/{pid}` 204. manifest v0.9.7 상승 + `node --check` 전체 통과
+- E2E 메모: Playwright `page.evaluate`는 Main World라 확장 content script(Isolated World)의 `chrome.storage` 접근 불가 → 목록 빈 것으로 나오는 것은 테스트 환경 한계. storage 권한은 manifest에 있으므로 실사용 정상
+
 ## T-84 — 스크롤 관계 저장 버그 + 핫딜 상단 배치 + 테스트 데이터 정리 (v0.9.6) — ✅ 완료 (2026-08-05)
 - [x] **스크롤 연관 카드 관계 저장 버그 수정**: `RELATED_FOUND`가 parentId 없이 호출되어 relations에 저장 안 되던 문제 → content.js에서 parentId 포함, background.js에서 `msg.parentId || null` 전달 (상품 페이지면 저장, 목록 페이지는 미저장 유지)
 - [x] **핫딜 섹션 재배치**: 팝업 섹션 순서 current→deals→related (함께 본 상품 5개가 로드돼도 핫딜이 상단에서 항상 보임)

@@ -132,6 +132,8 @@ const SWB_UI = (() => {
       margin: 6px 0; padding: 8px 10px;
       background: #f7f8fa; border-radius: 8px;
     }
+    /* v0.9.6 — 찜 해제 시 목표가 행 숨김 (hidden 클래스 규칙 누락으로 flex 유지되던 버그) */
+    .swb-target-row.hidden { display: none; }
     .swb-target-status {
       font-size: 11px; color: #999; text-align: right; margin-bottom: 4px;
     }
@@ -168,6 +170,7 @@ const SWB_UI = (() => {
     .swb-deal.warn { background: #8a8f98; }
     .swb-deal.hidden { display: none; }
     .swb-related { margin-top: 10px; border-top: 1px solid #eef0f4; padding-top: 8px; }
+    .swb-related.hidden { display: none; } /* v0.9.6 — 관계 데이터 없을 때 숨김 (규칙 누락 버그) */
     .swb-rel-title { font-size: 11px; font-weight: 700; color: #444; margin-bottom: 6px; }
     .swb-rel-li {
       display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 8px;
@@ -1238,7 +1241,7 @@ const SWB_UI = (() => {
         e.stopPropagation();
         const label = (w.product_name || w.product_id).slice(0, 20);
         confirmDialog(`'${label}…' 찜을 삭제할까요?`, async () => {
-          await deleteWatch(deviceId, w.product_id);
+          await deleteWatch(w.product_id);
           loadWatchList();
         });
       });
@@ -1276,7 +1279,9 @@ const SWB_UI = (() => {
     shadow.appendChild(ov);
   }
 
-  async function deleteWatch(deviceId, productId) {
+  async function deleteWatch(productId) {
+    const deviceId = await getDeviceId();
+    if (!deviceId || !productId) return;
     try {
       await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches/${encodeURIComponent(productId)}`, {
         method: "DELETE",
