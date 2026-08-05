@@ -254,22 +254,6 @@ function mallLabel(mall) {
   return { naver: "네이버", coupang: "쿠팡", oliveyoung: "올리브영" }[mall] || mall;
 }
 
-// 가격 정보 갱신 배지 — 마지막 캡처로부터 오래될수록 확인 권유 (v0.4 방문 유도)
-function staleCheckLabel(lastCheckedAt, opt = {}) {
-  const DAY = 24 * 60 * 60 * 1000;
-  if (!lastCheckedAt) return null;
-  const d = new Date(lastCheckedAt);
-  if (isNaN(d.getTime())) return null;
-  const diff = Date.now() - d.getTime();
-  if (diff < 24 * 60 * 60 * 1000) return null; // 하루 이내는 갱신 표시 생략
-  const days = Math.floor(diff / DAY);
-  const label = days === 0 ? "오늘" : `${days}일 전`;
-  if (days >= (opt.staleDays ?? 3)) {
-    return { text: `확인 필요 · ${label}`, stale: true };
-  }
-  return null;
-}
-
 async function fetchProductName(productId) {
   try {
     const p = await api(`/products/${encodeURIComponent(productId)}`);
@@ -334,7 +318,6 @@ $("watchBtn").addEventListener("click", async () => {
       currentTargetPrice = target;
     }
     updateWatchBtn();
-    loadList();
     chrome.runtime.sendMessage({ type: "WATCHES_INVALIDATE" }).catch(() => {}); // 목록 배지 캐시 무효화 (v0.8.5)
   } catch (e) {
     setStatus("저장 실패 — 서버 연결 확인");
@@ -376,14 +359,13 @@ $("targetClear").addEventListener("click", async () => {
     });
     currentTargetPrice = null;
     updateWatchBtn();
-    loadList();
     setStatus("목표가 해제");
   } catch (e) {
     setStatus("저장 실패 — 서버 연결 확인");
   }
 });
 
-// ── 찜 목록 ─────────────────────────────────────────────
+// ── 쇼핑몰 뱃지 (연관 상품·핫딜 공용) ───────────────────
 const mallMeta = {
   naver: { label: "네이버", cls: "b-naver", icon: "https://www.google.com/s2/favicons?domain=www.naver.com&sz=32" },
   coupang: { label: "쿠팡", cls: "b-coupang", icon: "https://www.google.com/s2/favicons?domain=www.coupang.com&sz=32" },
@@ -394,146 +376,10 @@ function mallBadgeHtml(m) {
   return m ? `<em class="watch-badge ${m.cls}"><img src="${m.icon}" alt="${m.label}"></em>` : "";
 }
 
-let watchCache = []; // v0.7.4 — 전체 찜 목록 캐시 (몰 필터는 로컬 처리)
-let watchMallFilter = "all";
-
-async function loadList() {
-  const deviceId = await getDeviceId();
-  $("watchList").innerHTML = loadingRow();
-  $("emptyMsg").classList.add("hidden");
-  if (!deviceId) {
-    $("emptyMsg").classList.remove("hidden");
-    return;
-  }
-  try {
-    watchCache = await api(`/devices/${deviceId}/watches`);
-  } catch {
-    $("watchList").innerHTML = loadingRow("찜 목록을 불러오지 못했습니다 (E-EXT-NET-1001)").replace("row-loading", "row-loading row-error");
-    return;
-  }
-  renderList();
-}
-
-function renderList() {
-  $("watchCount").textContent = watchCache.length ? `(${watchCache.length})` : "";
-  const filtered =
-    watchMallFilter === "all" ? watchCache : watchCache.filter((w) => w.mall === watchMallFilter);
-  if (!filtered.length) {
-    $("watchList").innerHTML = "";
-    $("emptyMsg").textContent = watchCache.length
-      ? "이 몰에서 찜한 상품이 없습니다."
-      : "찜한 상품이 없습니다.<br>상품 페이지에서 똑바 아이콘을 누르고 찜해 보세요.";
-    $("emptyMsg").classList.remove("hidden");
-    return;
-  }
-  $("emptyMsg").classList.add("hidden");
-  $("watchList").innerHTML = "";
-
-  for (const w of filtered) {
-    const m = mallMeta[w.mall] || null;
-    const li = document.createElement("li");
-    li.className = "watch-item";
-    li.innerHTML = `
-      <span class="watch-thumb"${w.image ? ` style="background-image:url('${String(w.image).replace(/'/g, "\\'")}')"` : ""}>${w.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
-      <span class="watch-body">
-        <span class="watch-name"></span>
-        <span class="watch-price-row">
-          <span class="watch-price"></span>
-          <span class="watch-check"></span>
-        </span>
-      </span>
-      <button class="watch-unwatch" title="찜 삭제">✕</button>`;
-    const badgeImg = m ? li.querySelector(".watch-badge img") : null;
-    if (badgeImg) {
-      badgeImg.addEventListener("error", () => {
-        badgeImg.replaceWith(document.createTextNode(m.label));
-        badgeImg.parentElement.classList.add("b-fallback");
-      });
-    }
-    li.querySelector(".watch-name").textContent = w.product_name || w.product_id;
-    li.querySelector(".watch-price").textContent =
-      w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";
-    const checkEl = li.querySelector(".watch-check");
-    // v0.9.1 — 품절/목표가 상태 표시 (품절 우선)
-    if (w.sold_out) {
-      checkEl.textContent = "품절";
-      checkEl.classList.add("sold-out");
-      li.classList.add("sold-out-row");
-    } else if (w.target_price) {
-      const tp = Number(w.target_price);
-      const cur = w.last_price != null ? Number(w.last_price) : null;
-      checkEl.textContent = `${tp.toLocaleString()}원 이하 알림${cur != null && cur <= tp ? " · 도달!" : ""}`;
-      checkEl.classList.add("target-set");
-      if (cur != null && cur <= tp) li.classList.add("target-hit");
-    }
-    const stale = staleCheckLabel(w.last_checked_at);
-    if (stale && !w.sold_out) {
-      checkEl.textContent += stale.text ? ` · ${stale.text}` : "";
-      checkEl.classList.add("stale");
-      li.classList.add("stale-row");
-    }
-    li.querySelector(".watch-unwatch").addEventListener("click", (e) => {
-      e.stopPropagation();
-      const label = (w.product_name || w.product_id).slice(0, 20);
-      confirmDialog(`'${label}…' 찜을 삭제할까요?`, async () => {
-        try {
-          await api(`/devices/${deviceId}/watches/${encodeURIComponent(w.product_id)}`, {
-            method: "DELETE",
-          });
-        } catch {
-          setStatus("삭제 실패 — 서버 연결 확인");
-        }
-        loadList();
-        chrome.runtime.sendMessage({ type: "WATCHES_INVALIDATE" }).catch(() => {});
-      });
-    });
-    li.addEventListener("click", () => {
-      if (w.url) chrome.tabs.create({ url: w.url });
-    });
-    $("watchList").append(li);
-  }
-}
-
-// 몰 필터 픽커 (v0.7.4) — 로컬 필터, 캐시 재렌더
-document.querySelectorAll(".mall-filter-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    watchMallFilter = btn.dataset.mall;
-    document.querySelectorAll(".mall-filter-btn").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    renderList();
-  });
-});
-
-// 찜 목록 접이식 (v0.7.6)
-$("listToggle").addEventListener("click", () => {
-  const collapsed = $("listSection").classList.toggle("collapsed");
-  $("listToggle").textContent = collapsed ? "▸" : "▾";
-});
-
 // 함께 본 상품 접이식 (v0.9.2)
 $("relatedToggle").addEventListener("click", () => {
   const collapsed = $("related").classList.toggle("collapsed");
   $("relatedToggle").textContent = collapsed ? "▸" : "▾";
-});
-
-// ── 컨펌 다이얼로그 (플로팅 찜 목록과 동일 동작) ──────────
-let confirmCallback = null;
-
-function confirmDialog(message, onConfirm) {
-  $("confirmMsg").textContent = message;
-  confirmCallback = onConfirm;
-  $("confirmDlg").classList.remove("hidden");
-}
-
-$("confirmNo").addEventListener("click", () => {
-  confirmCallback = null;
-  $("confirmDlg").classList.add("hidden");
-});
-$("confirmYes").addEventListener("click", () => {
-  const cb = confirmCallback;
-  confirmCallback = null;
-  $("confirmDlg").classList.add("hidden");
-  if (cb) cb();
 });
 
 // ── 공통 ────────────────────────────────────────────────
@@ -565,7 +411,6 @@ $("debugBtn").addEventListener("click", () => {
   } catch {}
   await loadRelated();
   await loadDeals();
-  await loadList();
   clearTimeout(slowTimer);
   $("status").textContent = "";
 })();

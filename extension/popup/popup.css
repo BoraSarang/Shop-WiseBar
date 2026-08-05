@@ -3,7 +3,7 @@
 
 html, body {
   height: 600px;
-  overflow: hidden; /* v0.7.3 — 메인 스크롤 제거, 찜 목록만 내부 스크롤 */
+  overflow: hidden; /* v0.7.3 — 메인 스크롤 제거, 섹션별 내부 스크롤 */
 }
 
 body {
@@ -14,14 +14,20 @@ body {
   background: #fff;
   display: flex;
   flex-direction: column;
+  overflow-y: auto; /* v0.9.5 — 메인 스크롤 (찜 목록 제거 후 섹션이 화면을 벗어나면 스크롤) */
 }
+
+/* v0.9.5 — 얇은 스크롤바 (기본 OS 스크롤바가 투박해 대체) */
+body::-webkit-scrollbar { width: 6px; }
+body::-webkit-scrollbar-thumb { background: #c7cede; border-radius: 3px; }
+body::-webkit-scrollbar-track { background: transparent; }
 
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 12px 10px;
+  padding: 10px 10px;
   background: #2d4ae0;
   color: #fff;
   position: sticky;  /* v0.7.3 — 스크롤해도 항상 최상단 고정 */
@@ -48,8 +54,6 @@ header {
   padding: 10px 8px; font-size: 12px; color: #888;
 }
 
-.watch-list .row-loading { padding: 10px 14px; } /* 찜 목록 항목(14px)과 여백 정렬 */
-
 .row-error { color: #e5484d; }
 
 header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
@@ -65,7 +69,7 @@ header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink:
 .alert-list { list-style: none; max-height: 132px; overflow-y: auto; }
 
 /* ── 오늘의 핫딜 (v0.7.2) ─────────────────────────── */
-.deals { padding: 10px 14px 12px; background: #f4f7ff; border-bottom: 1px solid #e0e7ff; flex-shrink: 0; }
+.deals { padding: 12px 14px; background: #f4f7ff; border-bottom: 1px solid #e0e7ff; flex-shrink: 0; }
 
 .deals-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 
@@ -81,7 +85,7 @@ header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink:
 
 .deal-day-btn.active { background: #2d4ae0; color: #fff; border-color: #2d4ae0; }
 
-.deal-list { list-style: none; max-height: 168px; overflow-y: auto; } /* v0.7.6 — 넘치면 내부 스크롤 (찜 목록 공간 확보) */
+.deal-list { list-style: none; } /* v0.9.5 — 내부 스크롤 제거, 메인 스크롤로 전체 표시 */
 
 .deal-item {
   display: flex; align-items: center; gap: 8px;
@@ -170,60 +174,7 @@ header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink:
 .btn-ghost { background: #f1f3f5; color: #333; }
 .btn-ghost:hover { background: #e2e5e9; }
 
-.list-section h2, #listSection h2 {
-  font-size: 12px;
-  color: #888;
-}
-
-.watch-list { list-style: none; flex: 1; min-height: 0; overflow-y: auto; }
-
-#listSection { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-
-/* ── 찜 목록 헤더 + 몰 필터 (v0.7.4) ──────────────────── */
-#listSection h2 { font-size: 12px; }
-
-.list-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px 8px;
-}
-
-.list-head-right { display: flex; align-items: center; gap: 6px; }
-
-.list-toggle {
-  border: none; background: none; cursor: pointer;
-  font-size: 13px; color: #999; padding: 0 2px;
-}
-
-.list-toggle:hover { color: #2d4ae0; }
-
-#listSection.collapsed .watch-list,
-#listSection.collapsed #emptyMsg { display: none; }
-
-#listSection.collapsed .list-head { padding-bottom: 12px; }
-
-.watch-count { font-size: 11px; color: #999; font-weight: 400; margin-left: 4px; }
-
-.mall-filter { display: flex; gap: 4px; }
-
-.mall-filter-btn {
-  font-size: 10px; font-weight: 700; color: #666;
-  background: #fff; border: 1px solid #ddd; border-radius: 10px;
-  padding: 2px 8px; cursor: pointer;
-}
-
-.mall-filter-btn.active { background: #2d4ae0; color: #fff; border-color: #2d4ae0; }
-
-.watch-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-bottom: 1px solid #f3f3f5;
-  cursor: pointer;
-}
-
-.watch-item:hover { background: #f7f8fa; }
-
+/* ── 연관 상품·핫딜 공용 썸네일 (v0.9.1) ─────────────── */
 .watch-thumb {
   width: 36px; height: 36px;
   border-radius: 6px;
@@ -251,43 +202,10 @@ header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink:
 .watch-badge.b-fallback.b-coupang { background: #0074e9; }
 .watch-badge.b-fallback.b-oliveyoung { background: #56a99c; }
 
-.watch-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-
 .watch-name {
   font-size: 12px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-
-.watch-price { font-size: 13px; font-weight: 700; margin-top: 2px; }
-
-/* v0.9.2 — 가격 + 상태(품절/목표가 알림) 한 줄: 가격 왼쪽, 상태 오른쪽 */
-.watch-price-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 6px;
-}
-.watch-price-row .watch-check { margin-left: auto; text-align: right; white-space: nowrap; }
-
-.watch-check { font-size: 11px; color: #aaa; }
-.watch-check.stale {
-  color: #e5484d; background: #fff3f2;
-  border-radius: 8px; padding: 1px 8px; font-weight: 700;
-  align-self: flex-start;
-}
-.watch-item.stale-row { background: #fffdfd; }
-.watch-item.stale-row:hover { background: #f7f8fa; }
-
-/* v0.9.2 — 품절 행 배경 */
-.watch-item.sold-out-row { background: #fff8f6; }
-.watch-item.sold-out-row:hover { background: #fdf1ee; }
-
-/* v0.9.1 — 품절/목표가 상태 */
-.watch-check.sold-out {
-  color: #e5484d; background: #fff3f2;
-  border-radius: 8px; padding: 1px 8px; font-weight: 700;
-  align-self: flex-start;
-}
-.watch-check.target-set { color: #2d4ae0; font-weight: 600; }
-.watch-item.target-hit { background: #f3f7ff; }
-.watch-item.target-hit .watch-name { color: #2d4ae0; }
 
 .target-row {
   flex-basis: 100%; /* 찜 버튼 아래 두 번째 줄로 (v0.9.1) */
@@ -317,12 +235,13 @@ header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink:
 .target-clear:disabled { opacity: .45; cursor: default; }
 .target-row .btn { padding: 5px 7px; font-size: 11px; flex-shrink: 0; }
 
-.watch-unwatch {
-  border: none; background: none;
-  color: #bbb; font-size: 14px; cursor: pointer; padding: 4px;
+/* 접이식 토글 (함께 본 상품, v0.9.2) */
+.list-toggle {
+  border: none; background: none; cursor: pointer;
+  font-size: 13px; color: #999; padding: 0 2px;
 }
 
-.watch-unwatch:hover { color: #e5484d; }
+.list-toggle:hover { color: #2d4ae0; }
 
 .empty { padding: 24px 14px; text-align: center; color: #aaa; line-height: 1.6; }
 
@@ -337,12 +256,12 @@ header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink:
 .hidden { display: none; }
 
 /* v0.9.1 — 연관 상품 추천 */
-.related { border-bottom: 1px solid #eee; }
+.related { border-bottom: 1px solid #eee; background: #fff; }
 .related-head {
   display: flex; align-items: center; gap: 6px;
   padding: 12px 14px 4px;
 }
-.related-head h2 { font-size: 13px; color: #333; }
+.related-head h2 { font-size: 12px; color: #333; }
 .related-hint { font-size: 11px; color: #999; margin-left: auto; white-space: nowrap; }
 .related.collapsed .related-list,
 .related.collapsed .related-loading { display: none; }

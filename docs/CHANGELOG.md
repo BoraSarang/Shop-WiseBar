@@ -1,5 +1,23 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.9.5 (2026-08-05) — [extension] 팝업에서 찜 목록 제거 + 메인 스크롤 추가 (함께 본 상품·핫딜 공간 확보)
+
+### 팝업 — 찜 목록 섹션 제거
+- **이유**: 팝업 세로 공간(600px)이 부족해 함께 본 상품 5개가 화면에 아예 안 보이는 문제. 찜 목록은 플로팅 메뉴(찜목록 아이콘)에 이미 존재해 기능 손실 없음
+- **제거**: `popup.html`의 `#listSection`(찜 목록+몰 필터+접기 토글)과 `#confirmDlg` 삭제
+- **코드 정리**: `popup.js` — `loadList()`, `renderList()`, 몰 필터 이벤트, `listToggle` 리스너, `confirmDialog`(찜 삭제 확인용), `staleCheckLabel()`, `watchCache`/`watchMallFilter` 제거. `mallMeta`/`mallBadgeHtml`은 연관 상품·핫딜에서 공용으로 쓰므로 유지. watchBtn/targetClear/init의 `loadList()` 호출 제거
+- **스타일 정리**: `popup.css` — 찜 목록 전용 스타일(`.watch-item`/`.watch-price`/`.watch-check`/`.mall-filter`/`.watch-unwatch` 등) 제거, 연관·핫딜 공용(`.watch-thumb`/`.watch-badge`/`.watch-name`)과 함께 본 상품 토글(`.list-toggle`)은 유지
+
+### 팝업 — 메인 스크롤 추가 + 레이아웃 정리
+- **이유**: 찜 목록 제거 후에도 current+related+deals 섹션이 600px를 넘으면 핫딜이 잘림
+- **수정**: `body`에 `overflow-y: auto` 추가 — 섹션이 화면을 벗어나면 팝업 전체가 스크롤
+- **핫딜 목록 내부 스크롤 제거**: `.deal-list`의 `max-height: 168px; overflow-y: auto` 제거 — v0.7.6의 "찜 목록 공간 확보" 목적이 사라져 메인 스크롤로 전체 표시
+- **헤더 sticky 유지 (v0.9.5)**: 스크롤해도 헤더(똑바 로고)는 최상단 고정 유지 — v0.9.5 중 sticky 해제를 시도했으나 사용자 선호로 복원
+- **스크롤바 커스텀**: 기본 OS 스크롤바(투박) 대신 6px 얇은 스크롤바로 대체
+- **섹션 타이틀/여백 통일**: 핫딜(`.deals`) 패딩 10px→12px 상하 일관, `#related` 배경 흰색 + 타이틀 13px→12px로 핫딜과 통일 — 섹션 전환 시 높이 점프 없음
+- 렌더링 검증: Whale 팝업에서 body `overflow-y:auto` + 얇은 스크롤바, 콘텐츠 채웠을 때 scrollable + 스크롤 이동 확인. **핫딜 섹션이 viewport 하단 밖에 있지 않음**(스크롤 없이도 핫딜 헤더 노출). `#listSection`/`#confirmDlg` 부재 확인
+- 성능 영향 없음 (API 호출 1회 감소: `/devices/{did}/watches`)
+
 ## v0.9.4 (2026-08-05) — [extension] 플로팅 메뉴 직각 배치 + 페이지 정보(제작자/버전) + [server] alerts 500 수정
 
 ### 플로팅 메뉴 재배치 (ext) — 직각 배치
