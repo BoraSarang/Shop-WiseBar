@@ -2,6 +2,15 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-90 — Chrome Web Store 배포 준비 + 릴리즈 자동화 (v0.10.2) — ✅ 완료 (2026-08-05)
+- [x] **T-90a**: permission 최소 권한 재검토 + manifest 갱신 — `tabs` 제거 → `activeTab` (쇼핑몰 host_permissions로 URL 커버)
+- [x] **T-90b**: `docs/chrome/PERMISSIONS.md` v0.10.2 대조 갱신
+- [x] **T-90c**: `landing/privacy.html` 개인정보 처리방침 작성 + 랜딩 푸터 링크
+- [x] **T-90d**: `docs/store/STORE_LISTING.md` — 스토어 설명·카테고리·권한 설명·스크린샷 가이드
+- [x] **T-90e**: `scripts/webstore-publish.sh` — 검증+zip 패키징+`--dry-run` (통과), `dist/` gitignore
+- [x] **T-90f**: 심사 체크리스트 대조 완료 + CHANGELOG + 커밋 준비
+- [x] **T-90g**: GitHub Actions 릴리즈 워크플로우 — `release.yml` 태그(v*) push 시 zip 패키징 + manifest-태그 검증 + GitHub Release 생성
+
 ## T-89 — 품질 개선: 서버 테스트 자동화 + DB 인덱스 점검 (v0.10.1) — ✅ 완료 (2026-08-05)
 - [x] **T-89a**: pytest + httpx 의존성 (requirements.txt)
 - [x] **T-89b**: `server/tests/conftest.py` — TestClient + 임시 SQLite + get_db override

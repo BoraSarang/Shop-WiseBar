@@ -1,5 +1,15 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.10.2 (2026-08-05) — [extension+docs] Chrome Web Store 배포 준비
+
+- **권한 최소화 (T-90a)**: 광범위한 `tabs` 권한 제거 → `activeTab`(팝업/옵션 열기 시 활성 탭 URL 접근)로 축소.
+  백그라운드 탭 URL 감지는 쇼핑몰 `host_permissions`로 커버, `tab.url` 없으면 `captureProductInner`가 안전 return — 기능 영향 없음
+- **privacy_policy (T-90c)**: `landing/privacy.html` 개인정보 처리방침 작성 + 메인 푸터 링크. 스토어 대시보드 입력용 URL 준비
+- **스토어 리스팅 (T-90d)**: `docs/store/STORE_LISTING.md` — 설명(short/long)·카테고리·권한 심사 설명·스크린샷 가이드
+- **배포 스크립트 (T-90e)**: `scripts/webstore-publish.sh` — JS/manifest 검증 + zip 패키징(`dist/`) + `--dry-run` 지원 (통과). `dist/` gitignore
+- **문서 (T-90b/f)**: `docs/chrome/PERMISSIONS.md` v0.10.2 갱신 + 심사 체크리스트 완료
+- manifest v0.10.2
+
 ## v0.10.1 (2026-08-05) — [server] 서버 테스트 자동화 + 가격 유실 버그 수정 + DB 인덱스
 
 ### 테스트 자동화 (T-89)
