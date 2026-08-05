@@ -2,6 +2,12 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-86 — 옵션 페이지 서버 장애 안내 + GitHub 릴리즈 링크 + Edge 로드 확인 (v0.9.8) — ✅ 완료 (2026-08-05)
+- [x] **서버 주소 변경 불가 유지**: `common.js` SWB_CONFIG 단일 관리. 업데이트 시 자동 반영되므로 사용자에게 주소 변경 요청 없음
+- [x] **서버 접속 실패 안내**: 옵션 페이지 `/health` 실패 시 "서버에 접속할 수 없습니다. 문제가 있는지 확인해 보세요." err-box + **새 버전 확인(GitHub 릴리즈)**·**GitHub 저장소** 링크 (options.html err-box/btn-link, options.js loadServerStatus)
+- [x] 검증: 정상→errBox none+연결됨, `/health` 차단→errBox block+E-EXT-NET-1001
+- [x] **Edge 로드 확인**: Microsoft Edge Profile 1에 `/Users/lee/Documents/Apps/Shop WiseBar/extension` unpacked 로드 확인 (ID dmdgnfaihmeagfopdabippjnbgngafhj) — Edge 관련 T-64 보류 항목 종료
+
 ## T-85 — 플로팅 찜 목록 삭제 버그 + 가격 추이 목표가 행 숨김 수정 (v0.9.7) — ✅ 완료 (2026-08-05)
 - [x] **찜 목록 관리 삭제 버그 수정**: `renderWatchList`가 스코프 밖 `deviceId`를 참조하는 `deleteWatch(deviceId, ...)` 호출 → ReferenceError → 삭제 무시. `deleteWatch(productId)`로 변경 + 내부에서 `getDeviceId()` 직접 조회 (swb-ui.js:1244,1282)
 - [x] **가격 추이 찜 해제 시 목표가 행 숨김 버그 수정**: shadow DOM 범용 `.hidden{display:none}` 규칙 부재 → `.swb-target-row.hidden{display:none}` (swb-ui.js:136), 함께 쓰이는 `.swb-related.hidden{display:none}` (swb-ui.js:173) 규칙 추가
@@ -168,8 +174,8 @@
 
 ## T-64 — 마무리 (진행)
 - [x] Whale(웨일) MV3 로드 확인 — 2026-08-03 사용자 실기기 테스트 완료 (수집/배지/찜 정상)
-- [ ] Edge 확인 — ⏸ 보류 (웨일이 크로미움 계열이므로 로드 확인 정도만 남음)
-- [ ] 옵션 페이지 (서버 URL 설정) — 보류 가능
+- [x] Edge 확인 — ✅ 완료 (2026-08-05, v0.9.8): Profile 1 unpacked 로드 확인 (확장 ID dmdgnfaihmeagfopdabippjnbgngafhj → /Users/lee/Documents/Apps/Shop WiseBar/extension)
+- [x] 옵션 페이지 (서버 URL 설정) — ✅ 종료 (2026-08-05, v0.9.8): 서버 URL 변경 불가 확정 — SWB_CONFIG 단일 관리, 업데이트로 자동 반영. 서버 장애 시 GitHub 릴리즈 링크로 대체
 - [x] 테스트 기록: docs/tests/v0.3_crawler_poc.md 작성 완료
 - [x] 커밋
 

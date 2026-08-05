@@ -6,6 +6,7 @@ const CONFIG = SWB_CONFIG;
 const $ = (id) => document.getElementById(id);
 
 async function loadServerStatus() {
+  const errBox = document.getElementById("serverErrorBox");
   try {
     const res = await fetch(`${CONFIG.server}/health`);
     if (res.ok) {
@@ -15,10 +16,12 @@ async function loadServerStatus() {
     } else {
       $("serverStatus").textContent = `오류 (HTTP ${res.status})`;
       $("serverStatus").className = "fail";
+      if (errBox) errBox.style.display = "block";
     }
   } catch {
     $("serverStatus").textContent = "연결 실패 (E-EXT-NET-1001)";
     $("serverStatus").className = "fail";
+    if (errBox) errBox.style.display = "block";
   }
 }
 

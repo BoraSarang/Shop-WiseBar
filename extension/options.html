@@ -42,6 +42,19 @@
     background: #f0f0f2; border: 1px solid #d8d8dc; border-bottom-width: 2px;
     border-radius: 5px; padding: 1px 6px; font-size: 11px; font-family: inherit;
   }
+  .err-box {
+    background: #fff1f0; border: 1px solid #f3c6c3; border-radius: 10px;
+    padding: 12px 14px; margin: 12px 0 14px; font-size: 12px; color: #b3403a;
+  }
+  .err-box p { margin-bottom: 8px; }
+  .err-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn-link {
+    background: #fff; color: #2d4ae0; border: 1px solid #d8dcf3;
+    text-decoration: none; font-size: 12px; font-weight: 600;
+    padding: 6px 10px; border-radius: 8px; display: inline-block;
+  }
+  .btn-link:hover { background: #f2f4ff; }
+
 </style>
 </head>
 <body>
@@ -67,6 +80,13 @@
     <div class="row">
       <span class="label">수집 몰</span>
       <span class="val">네이버 · 쿠팡 · 올리브영</span>
+    </div>
+    <div id="serverErrorBox" class="err-box" style="display:none;">
+      <p>서버에 접속할 수 없습니다. 문제가 있는지 확인해 보세요.</p>
+      <div class="err-actions">
+        <a class="btn-link" href="https://github.com/BoraSarang/Shop-WiseBar/releases" target="_blank" rel="noopener">새 버전 확인 (GitHub 릴리즈)</a>
+        <a class="btn-link" href="https://github.com/BoraSarang/Shop-WiseBar" target="_blank" rel="noopener">GitHub 저장소</a>
+      </div>
     </div>
   </div>
 

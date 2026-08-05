@@ -1,5 +1,15 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.9.8 (2026-08-05) — [extension] 옵션 페이지 서버 장애 안내 + GitHub 릴리즈 링크 추가 + [확인] Edge 로드
+
+### 옵션 페이지 — 서버 접속 실패 시 안내 문구 + GitHub 링크
+- **배경**: 사용자가 서버 URL을 변경할 수 없도록 설계(서버 주소는 `common.js`의 `SWB_CONFIG` 단일 관리). 업데이트 시 자동으로 서버 주소가 바뀌므로 사용자에게 주소 변경을 요청하는 것은 타당하지 않음
+- **추가**: 서버 `/health` 확인 실패 시 "서버에 접속할 수 없습니다. 문제가 있는지 확인해 보세요." 안내 박스 + **새 버전 확인 (GitHub 릴리즈)** / **GitHub 저장소** 링크 (options.html: err-box, options.js: loadServerStatus 실패 시 errBox 표시)
+- 검증: 정상 상태 → errBox 숨김(none) + "연결됨". `/health` 차단 → errBox 표시(block) + "연결 실패 (E-EXT-NET-1001)". 옵션 페이지 UI는 서버 주소 표시 전용(수정 불가) 유지
+
+### 확인 — Microsoft Edge 확장 로드 확인
+- Edge(151.0.4129.59) Profile 1의 `Secure Preferences`에서 확장 ID `dmdgnfaihmeagfopdabippjnbgngafhj`가 `/Users/lee/Documents/Apps/Shop WiseBar/extension` 경로로 unpacked(개발자 모드) 로드 확인 — 똑바 확장 정상 로드
+
 ## v0.9.7 (2026-08-05) — [extension] 플로팅 찜 목록 삭제 버그 수정 + 가격 추이 찜 해제 시 목표가 행 숨김 수정
 
 ### 플로팅 — 찜 목록 관리에서 삭제 버튼이 동작하지 않던 버그 수정
