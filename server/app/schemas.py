@@ -49,12 +49,6 @@ class ProductBatchIn(BaseModel):
     items: list[BatchItemIn] = Field(..., max_length=50)
 
 
-class ProductBatchOut(BaseModel):
-    upserted: int  # 상품 upsert 처리 건수
-    price_count: int  # 가격 저장 건수
-    items: list[ProductOut]  # 저장된 상품 목록 (중복 product_id dedup 후)
-
-
 class ProductOut(BaseModel):
     product_id: str
     mall: str
@@ -71,6 +65,12 @@ class ProductOut(BaseModel):
     avg_price: int | None = None
     price_count: int = 0
     watch_count: int = 0  # 이 상품을 추적 중인 기기 수 (계정 규모 지표)
+
+
+class ProductBatchOut(BaseModel):
+    upserted: int  # 상품 upsert 처리 건수
+    price_count: int  # 가격 저장 건수
+    items: list[ProductOut]  # 저장된 상품 목록 (중복 product_id dedup 후)
 
 
 class PricePointOut(BaseModel):
