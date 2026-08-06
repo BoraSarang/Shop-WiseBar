@@ -1,5 +1,19 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.10.4-post (2026-08-06) — [server+store] 웨일 심사용 스크린샷 자동 캡처 (T-96a)
+
+### 도구 (T-96a)
+- **자동 캡처 스크립트**: `scripts/store-capture/capture.js` — 웨일 실행 → 확장 unpacked 로드 → 서버에 데모 데이터 주입(핫딜 5개 + 현재 상품 가격 이력) → 팝업 캡처 2장(`docs/screenshots/store/shop-wisebar-{01,02}.png`) → **데모 데이터 자동 정리**. `playwright-core` 사용
+- **수동 정리**: `scripts/store-capture/cleanup.js` — capture 비정상 종료 시 잔여 demo 상품 삭제
+- **가이드**: `docs/store/SCREENSHOT_GUIDE.md` — 자동/수동 캡처 방법 + 스토어 제출 체크리스트
+
+### 서버 (T-96a)
+- **`DELETE /products/{id}`** 추가 — 데모 데이터 정리용. FK 참조 테이블(watches/alerts/price_daily_stats/product_relations/price_points)을 정리 후 상품 삭제, 없으면 204(idempotent)
+- pytest `test_demo_cleanup.py` 2건 추가 → **34건 전체 통과**
+
+### 검증
+- 실서버 배포 완료 (`DELETE /products/{id}` 204 확인) — 이전 캡처 실행에서 정리 실패했던 demo 상품 5개 수동 정리 후, 캡처 스크립트 전체 재실행: 팝업 상태 정상(현재 상품 8,900원 + 평균/최저 + 핫딜 5개) + 데모 자동 정리 완료 + 잔여 404 확인
+
 ## v0.10.4-post (2026-08-06) — [server] 코드 리뷰 후속: 버그 수정 + 리팩토링 (T-95)
 
 ### 버그 수정 (T-95a)
