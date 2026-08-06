@@ -21,6 +21,7 @@
 //      - shop-wisebar-04.png : 상품 페이지 1280x800 + 플로팅 메뉴 펼침 (v0.12.3)
 //      - shop-wisebar-05.png : 상품 페이지 1280x800 + 가격 추이 패널 (v0.12.3)
 //   7. 데모 데이터 자동 정리: 넣었던 demo 상품 전부 삭제 (DELETE /products/{id})
+//   8. 온보딩 페이지용 이미지(extension/onboarding/step-01~05.jpg) 자동 재생성 (v0.12.2, T-96b)
 //
 // 사전 준비:
 //   npm install   (최초 1회, playwright-core 설치)
@@ -31,6 +32,7 @@
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -178,6 +180,37 @@ async function cleanupDemoData() {
     await new Promise((r) => setTimeout(r, 300));
   }
   console.log("✓ 데모 데이터 정리 완료");
+}
+
+// v0.12.2 (T-96b) — 스토어 스크린샷 5장을 확장 온보딩 페이지용 이미지로 축소 생성.
+// macOS `sips` 사용 (스크린샷 캡처가 macOS+Whale 전용이라 동일 플랫폼 가정).
+// step-01/04/05(상품 페이지 1280×800) → 폭 520, step-02/03(팝업 320×600) → 폭 280.
+function regenerateOnboardingImages() {
+  const onbDir = path.join(EXT_DIR, "onboarding");
+  const shots = [
+    { src: "shop-wisebar-01.png", out: "step-01.jpg", width: 520 },
+    { src: "shop-wisebar-02.png", out: "step-02.jpg", width: 280 },
+    { src: "shop-wisebar-03.png", out: "step-03.jpg", width: 280 },
+    { src: "shop-wisebar-04.png", out: "step-04.jpg", width: 520 },
+    { src: "shop-wisebar-05.png", out: "step-05.jpg", width: 520 },
+  ];
+  if (!existsSync(onbDir)) return; // onboarding이 없으면 스킵
+  let ok = 0;
+  for (const s of shots) {
+    const src = path.join(OUT_DIR, s.src);
+    if (!existsSync(src)) continue;
+    try {
+      execFileSync("sips", [
+        "-s", "format", "jpeg", "-s", "formatOptions", "88",
+        "--resampleWidth", String(s.width),
+        src, "--out", path.join(onbDir, s.out),
+      ], { stdio: "ignore" });
+      ok++;
+    } catch (e) {
+      console.warn(`⚠ 온보딩 이미지 생성 실패 ${s.out}: ${e.message}`);
+    }
+  }
+  if (ok) console.log(`✓ 온보딩 이미지 ${ok}장 재생성 (extension/onboarding/)`);
 }
 
 function findWhale() {
@@ -559,5 +592,11 @@ try {
       await new Promise((r) => setTimeout(r, 300));
     }
     console.log(`✓ 임시 가격 포인트 ${currentTempPrices.length}개 정리 완료 (실데이터 보존)`);
+  }
+  // v0.12.2 (T-96b) — 스크린샷 캡처 후 온보딩 페이지용 이미지 자동 갱신
+  try {
+    regenerateOnboardingImages();
+  } catch (e) {
+    console.warn(`⚠ 온보딩 이미지 재생성 실패: ${e.message}`);
   }
 }

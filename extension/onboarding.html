@@ -7,7 +7,7 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--swb-font); }
   body { background: var(--swb-bg); color: var(--swb-text); padding: 32px 24px; }
-  .wrap { max-width: 560px; margin: 0 auto; }
+  .wrap { max-width: 600px; margin: 0 auto; }
   .head {
     background: linear-gradient(135deg, #4f6bff, #2d4ae0); color: #fff;
     border-radius: 16px; padding: 28px 28px 24px; margin-bottom: 20px;
@@ -27,16 +27,21 @@
     display: flex; align-items: center; justify-content: center;
     font-size: var(--swb-fs-base); font-weight: 800; flex-shrink: 0; margin-top: 1px;
   }
+  .step-body { flex: 1; min-width: 0; }
   .step-body h3 { font-size: var(--swb-fs-base); font-weight: 700; margin-bottom: 6px; }
   .step-body p { font-size: 12.5px; color: var(--swb-text-secondary); line-height: 1.65; }
   .step-body .tag { display: inline-block; font-size: var(--swb-fs-xs); font-weight: 700; color: var(--swb-primary); background: var(--swb-primary-soft); border-radius: var(--swb-radius-sm); padding: 2px 8px; margin: 2px 2px 0 0; }
+  .step-body a { color: var(--swb-primary); text-decoration: none; font-weight: 600; }
+  .step-body a:hover { text-decoration: underline; }
+  .shot { margin-top: 12px; border-radius: 10px; border: 1px solid var(--swb-border); box-shadow: var(--swb-shadow-sm); display: block; width: 100%; height: auto; }
+  .shot-row { display: flex; gap: 10px; margin-top: 12px; }
+  .shot-row .shot { margin-top: 0; width: 50%; }
+  .shot-cap { font-size: var(--swb-fs-xxs); color: var(--swb-text-faint); text-align: center; margin-top: 6px; }
   .pin-box { margin-top: 10px; background: #fff7e6; border: 1px solid #ffd591; border-radius: 10px; padding: 10px 12px; font-size: var(--swb-fs-sm); color: #874d00; line-height: 1.6; }
   .pin-box.ok { background: #f0fdf4; border-color: #86efac; color: #166534; }
   .pin-box.ok b { color: #166534; }
   .foot { font-size: var(--swb-fs-xs); color: var(--swb-text-faint); text-align: center; padding: 10px 0 30px; }
   .foot a { color: var(--swb-primary); text-decoration: none; font-weight: 600; }
-  .step-body a { color: var(--swb-primary); text-decoration: none; font-weight: 600; }
-  .step-body a:hover { text-decoration: underline; }
   a:focus-visible { outline: 2px solid var(--swb-primary); outline-offset: 2px; }
 </style>
 </head>
@@ -62,18 +67,23 @@
       <p>
         <span class="tag">네이버+ 스토어</span>
         <span class="tag">네이버 브랜드</span>
+        <span class="tag">네이버 쇼핑 검색</span>
         <span class="tag">쿠팡</span>
         <span class="tag">올리브영</span>
-        <br>페이지를 보는 순간 가격이 자동으로 기록됩니다.
+        <br>페이지를 보는 순간 가격이 자동으로 기록됩니다. 저장 버튼이 필요 없어요.
       </p>
+      <img class="shot" src="onboarding/step-01.jpg" alt="쇼핑몰 상품 페이지에 똑바 플로팅 버튼이 떠 있는 화면">
+      <div class="shot-cap">상품 페이지 오른쪽 하단에 떠 있는 똑바 버튼</div>
     </div>
   </div></div>
 
   <div class="card"><div class="step">
     <div class="step-num">2</div>
     <div class="step-body">
-      <h3>화면 1/4 지점 똑바 버튼</h3>
-      <p>상품 페이지 오른쪽 1/4 지점에 떠 있는 남색 버튼이 바로 똑바입니다.<br>버튼에 마우스를 올리면 <b>“똑바”</b> 툴팁이 보이고, 클릭하면 버튼 왼쪽에 <b>가격 추이</b>가 바로 펼쳐집니다.</p>
+      <h3>화면 오른쪽 하단 25% 지점 똑바 버튼</h3>
+      <p>상품 페이지 오른쪽 하단에 떠 있는 남색 버튼이 바로 똑바입니다.<br>클릭하면 버튼 주위로 메뉴 5개가 펼쳐지고, 왼쪽에는 <b>가격 추이</b>가 바로 보입니다.</p>
+      <img class="shot" src="onboarding/step-04.jpg" alt="똑바 플로팅 메뉴가 펼쳐진 화면">
+      <div class="shot-cap">버튼 클릭 시 펼쳐지는 메뉴</div>
     </div>
   </div></div>
 
@@ -86,8 +96,10 @@
         <b>알림</b> — 가격 하락·목표가 도달·품절 알림 내역<br>
         <b>가격 추이</b> — 7일(기본)/2주/1달 일별 그래프와 최저·최고가<br>
         <b>찜 목록</b> — 찜한 상품 모아보기, 탭하면 상품 페이지로 이동<br>
-        <b>설정</b> — 서버/기기 정보 (브라우저 설정 페이지)
+        <b>설정</b> — 서버/기기 정보 (확장 설정 페이지)
       </p>
+      <img class="shot" src="onboarding/step-05.jpg" alt="가격 추이 패널이 펼쳐진 화면">
+      <div class="shot-cap">가격 추이 패널</div>
     </div>
   </div></div>
 
@@ -95,7 +107,7 @@
     <div class="step-num">4</div>
     <div class="step-body">
       <h3>가격이 내려가면 알려드려요</h3>
-      <p>상품 페이지에서 하트를 눌러 상품을 찜하면, 가격이 내려갔을 때 브라우저 알림이 옵니다.</p>
+      <p>상품 페이지에서 하트를 눌러 상품을 찜하면, 가격이 내려갔을 때 브라우저 알림이 옵니다.<br>목표가를 설정하면 그 가격에 도달했을 때도 알려드려요.</p>
     </div>
   </div></div>
 
@@ -103,7 +115,12 @@
     <div class="step-num">5</div>
     <div class="step-body">
       <h3>똑바를 툴바에 고정하세요</h3>
-      <p>고정해 두면 퍼즐 메뉴를 열지 않고도 한 번의 클릭으로 현재 상품 정보와 오늘의 핫딜을 볼 수 있습니다.</p>
+      <p>고정해 두면 퍼즐 메뉴를 열지 않고도 한 번의 클릭으로 <b>현재 상품</b>과 <b>오늘의 핫딜</b>을 볼 수 있습니다.</p>
+      <div class="shot-row">
+        <img class="shot" src="onboarding/step-02.jpg" alt="똑바 팝업 현재 상품 탭">
+        <img class="shot" src="onboarding/step-03.jpg" alt="똑바 팝업 핫딜 탭">
+      </div>
+      <div class="shot-cap">똑바 팝업 — 현재 상품 정보와 오늘의 핫딜</div>
       <div id="pinBox" class="pin-box">툴바 상태 확인 중…</div>
     </div>
   </div></div>
@@ -111,10 +128,8 @@
   <div class="foot">
     서버 주소·기기 ID는 <a href="#" id="optLink">설정 페이지</a>에서 확인할 수 있습니다.
   </div>
-</div>
 
-<div class="card" style="margin: 0 auto; max-width: 560px;">
-  <div class="step">
+  <div class="card"><div class="step">
     <div class="step-body">
       <h3>제작자 & 문의</h3>
       <p>
@@ -123,7 +138,7 @@
         소스 코드: <a href="https://github.com/BoraSarang/Shop-WiseBar" target="_blank" rel="noopener">github.com/BoraSarang/Shop-WiseBar</a>
       </p>
     </div>
-  </div>
+  </div></div>
 </div>
 
 <script src="common.js"></script>
