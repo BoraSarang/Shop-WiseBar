@@ -14,12 +14,12 @@
 //   4. 상품 페이지를 탭으로 열기
 //   5. 팝업(chrome-extension://.../popup/popup.html)을 백그라운드 탭으로 열되
 //      상품 탭이 active로 유지되게 해 "현재 상품" 인식 보장
-//   6. 스크린샷 저장 (v0.12.3 — 5장 확장, T-96a):
+//   6. 스크린샷 저장 (v0.12.2 — 5장, 스토어 요구 해상도 1280×800 통일, T-96a/b):
 //      - shop-wisebar-01.png : 상품 페이지 전체 1280x800 + 플로팅 버튼 (실사용 화면)
-//      - shop-wisebar-02.png : 팝업 320x600 (현재 상품 탭)
-//      - shop-wisebar-03.png : 팝업 320x600 (핫딜 "30일" 탭)
-//      - shop-wisebar-04.png : 상품 페이지 1280x800 + 플로팅 메뉴 펼침 (v0.12.3)
-//      - shop-wisebar-05.png : 상품 페이지 1280x800 + 가격 추이 패널 (v0.12.3)
+//      - shop-wisebar-02.png : 팝업 320x600 → 1280x800 캔버스 중앙 배치 (현재 상품 탭)
+//      - shop-wisebar-03.png : 팝업 320x600 → 1280x800 캔버스 중앙 배치 (핫딜 "30일" 탭)
+//      - shop-wisebar-04.png : 상품 페이지 1280x800 + 플로팅 메뉴 펼침
+//      - shop-wisebar-05.png : 상품 페이지 1280x800 + 가격 추이 패널
 //   7. 데모 데이터 자동 정리: 넣었던 demo 상품 전부 삭제 (DELETE /products/{id})
 //   8. 온보딩 페이지용 이미지(extension/onboarding/step-01~05.jpg) 자동 재생성 (v0.12.2, T-96b)
 //
@@ -44,6 +44,28 @@ const WHALE_CANDIDATES = [
   "/Applications/Whale.app/Contents/MacOS/Whale",
   "/Applications/Naver Whale.app/Contents/MacOS/Naver Whale",
 ];
+
+// v0.12.2 — 웨일 스토어 요구 해상도(권장 1280×800)에 맞춰 팝업(320×600) 캡처를
+// 1280×800 캔버스 중앙에 배치한 합성이미지로 저장. 시스템 python3 + PIL 사용.
+// 배경은 스토어 심사 시 자연스러운 흰색 계열. 캡처 시 2x(640×1200)로 찍어 캔버스에 1:2 로 확대 없이 샤프하게 배치.
+function canvas1280x800(src, dst, canvasColor = "#ffffff") {
+  const py = `
+import sys
+from PIL import Image
+src, dst, color = sys.argv[1], sys.argv[2], sys.argv[3]
+im = Image.open(src).convert("RGB")
+W, H = 1280, 800
+canvas = Image.new("RGB", (W, H), color)
+x = (W - im.width) // 2
+y = (H - im.height) // 2
+if y < 0:
+    # 초과 세로는 상하 중앙을 맞추되 크기 덮어씀(실제로는 발생 안 함)
+    y = 0
+canvas.paste(im, (x, y))
+canvas.save(dst)
+`;
+  execFileSync("python3", ["-c", py, src, dst, canvasColor], { stdio: "ignore" });
+}
 
 // ── 서버 API (데모 데이터 주입/정리) ─────────────────────
 const SERVER = process.env.SWB_SERVER || "https://shop-wisebar.onrender.com";
@@ -183,28 +205,36 @@ async function cleanupDemoData() {
 }
 
 // v0.12.2 (T-96b) — 스토어 스크린샷 5장을 확장 온보딩 페이지용 이미지로 축소 생성.
-// macOS `sips` 사용 (스크린샷 캡처가 macOS+Whale 전용이라 동일 플랫폼 가정).
-// step-01/04/05(상품 페이지 1280×800) → 폭 520, step-02/03(팝업 320×600) → 폭 280.
+// PIL 사용. step-01/04/05(상품 페이지 1280×800) → 폭 520,
+// step-02/03(팝업 1280×800 캔버스 중앙 배치분) → 중앙 팝업 영역(320×600)만 크롭해 폭 280.
 function regenerateOnboardingImages() {
   const onbDir = path.join(EXT_DIR, "onboarding");
-  const shots = [
-    { src: "shop-wisebar-01.png", out: "step-01.jpg", width: 520 },
-    { src: "shop-wisebar-02.png", out: "step-02.jpg", width: 280 },
-    { src: "shop-wisebar-03.png", out: "step-03.jpg", width: 280 },
-    { src: "shop-wisebar-04.png", out: "step-04.jpg", width: 520 },
-    { src: "shop-wisebar-05.png", out: "step-05.jpg", width: 520 },
-  ];
   if (!existsSync(onbDir)) return; // onboarding이 없으면 스킵
+  const shots = [
+    { src: "shop-wisebar-01.png", out: "step-01.jpg", width: 520, cropPopup: false },
+    { src: "shop-wisebar-02.png", out: "step-02.jpg", width: 280, cropPopup: true },
+    { src: "shop-wisebar-03.png", out: "step-03.jpg", width: 280, cropPopup: true },
+    { src: "shop-wisebar-04.png", out: "step-04.jpg", width: 520, cropPopup: false },
+    { src: "shop-wisebar-05.png", out: "step-05.jpg", width: 520, cropPopup: false },
+  ];
   let ok = 0;
   for (const s of shots) {
     const src = path.join(OUT_DIR, s.src);
     if (!existsSync(src)) continue;
     try {
-      execFileSync("sips", [
-        "-s", "format", "jpeg", "-s", "formatOptions", "88",
-        "--resampleWidth", String(s.width),
-        src, "--out", path.join(onbDir, s.out),
-      ], { stdio: "ignore" });
+      execFileSync("python3", ["-c", `
+import sys
+from PIL import Image
+src, dst, width, crop_popup = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4] == "1"
+im = Image.open(src).convert("RGB")
+if crop_popup:
+    W, H = im.size
+    if (W, H) == (1280, 800):
+        im = im.crop(((W - 320) // 2, (H - 600) // 2, (W + 320) // 2, (H + 600) // 2))
+ratio = width / im.width
+im = im.resize((width, max(1, round(im.height * ratio))), Image.LANCZOS)
+im.save(dst, "JPEG", quality=88)
+`, src, path.join(onbDir, s.out), String(s.width), s.cropPopup ? "1" : "0"], { stdio: "ignore" });
       ok++;
     } catch (e) {
       console.warn(`⚠ 온보딩 이미지 생성 실패 ${s.out}: ${e.message}`);
@@ -521,11 +551,13 @@ try {
   });
   console.log("▸ 팝업 상태:", JSON.stringify(dump, null, 2));
 
-  // ── 스크린샷 2: 현재 상품 탭 (팝업 그대로 320x600) ──
+  // ── 스크린샷 2: 현재 상품 탭 (팝업 320x600 → 1280x800 캔버스 중앙 배치, v0.12.2) ──
   const popupBody = await popupPage.$("body");
   if (!popupBody) throw new Error("popup body를 찾을 수 없습니다.");
-  await popupBody.screenshot({ path: path.join(OUT_DIR, "shop-wisebar-02.png") });
-  console.log("✓ 저장: docs/screenshots/store/shop-wisebar-02.png (현재 상품 탭)");
+  const shot02 = path.join(OUT_DIR, "shop-wisebar-02.png");
+  await popupBody.screenshot({ path: shot02 });
+  canvas1280x800(shot02, shot02); // 스토어 요구 규격(1280×800)으로 중앙 합성
+  console.log("✓ 저장: docs/screenshots/store/shop-wisebar-02.png (현재 상품 탭, 1280×800)");
 
   // ── 스크린샷 3: 핫딜 "30일" 탭 (v0.10.7 — 7일과 화면 구분) ──
   // 7일이 기본 active라 02와 03이 같아지는 문제 해결 — 데모가 dropDays=15 상품을 포함해
@@ -547,8 +579,10 @@ try {
     };
   });
   console.log("▸ 팝업 상태(30일):", JSON.stringify(dump30, null, 2));
-  await popupBody.screenshot({ path: path.join(OUT_DIR, "shop-wisebar-03.png") });
-  console.log("✓ 저장: docs/screenshots/store/shop-wisebar-03.png (핫딜 30일 탭)");
+  const shot03 = path.join(OUT_DIR, "shop-wisebar-03.png");
+  await popupBody.screenshot({ path: shot03 });
+  canvas1280x800(shot03, shot03); // 스토어 요구 규격(1280×800)으로 중앙 합성
+  console.log("✓ 저장: docs/screenshots/store/shop-wisebar-03.png (핫딜 30일 탭, 1280×800)");
 
   // 실제 창 확인을 위해 잠시 유지 후 종료
   console.log("✓ 3초 후 브라우저를 닫습니다. 화면을 확인하세요.");
