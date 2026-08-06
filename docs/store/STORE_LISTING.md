@@ -1,14 +1,15 @@
-# Chrome Web Store 리스팅 자료 (v0.10.2)
+# 똑바(Shop WiseBar) 스토어 리스팅 자료 (v0.12.2, T-96b)
 
-> 등록 대시보드(https://chrome.google.com/webstore/devconsole/) 입력용. T-90d.
-> 실제 업로드/게시는 사용자 계정으로 진행 (개발자 등록비 $5 발생).
+> 등록 대시보드(웨일 스토어 개발자 센터: https://store.whale.naver.com/developers/upload/draft) 입력용.
+> 실제 업로드/게시는 사용자 계정(네이버 로그인, 무료)으로 진행 — T-96c.
+> 패키징: `./scripts/webstore-publish.sh --dry-run` → `dist/shop-wisebar-v0.12.2.zip`
 
 ## 기본 정보
 
 | 항목 | 값 |
 |------|-----|
 | 이름 (short, 45자 이내) | 똑바 · Shop WiseBar — 가격이 내려가면 알려드려요 |
-| 버전 | 0.10.2 |
+| 버전 | 0.12.2 |
 | 언어 | 한국어 |
 | 카테고리 | 생산성 (Productivity) / 쇼핑 (Shopping) |
 | 홈페이지 | https://github.com/BoraSarang/Shop-WiseBar |
@@ -65,8 +66,17 @@
 | 탭 및 탐색 활동 읽기 | 방문한 상품 페이지의 가격을 기록하기 위한 현재 탭 주소 확인 |
 | 알림 관리(저장소) | 기기 ID·수집 상태를 기기에 저장 |
 
+## 웨일 스토어 등록 절차 (T-96c)
+
+1. https://store.whale.naver.com/developers/upload/draft 접속 (네이버 로그인 — 무료)
+2. 새 확장앱 등록 → 패키지(ZIP) 업로드: `dist/shop-wisebar-v0.12.2.zip`
+3. 리스팅 입력 (이 문서 기본 정보 · 상세 설명 · 스크린샷 5장)
+4. 권한 심사 설명 입력 (상기 표)
+5. 심사 요청 → 승인 시 웨일 스토어 게시
+
 ## 심사 시 유의
 
 - "원격 코드 실행" 없음 — 서버는 가격 저장/조회 API만, 확장 로직은 번들 JS뿐
 - 서버 URL은 고정(shop-wisebar.onrender.com) — 사용자 입력 서버 없음, 스크립트 주입 없음
 - 개인정보 수집: 익명 device ID + 상품 가격 (제3자 제공 없음)
+- 웨일은 크로미움 기반 MV3 호환 — 별도 manifest 수정 불필요 (Chrome Web Store 패키지 그대로 사용)

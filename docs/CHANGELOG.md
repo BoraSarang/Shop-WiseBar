@@ -1,5 +1,13 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.12.2 (2026-08-06) — [store+extension] 웨일 스토어 패키징 + 리스팅 확정 (T-96b)
+
+- `extension/manifest.json` version **0.11.0 → 0.12.2** (확장에 반영된 v0.12.x 변경 포함)
+- `scripts/webstore-publish.sh --dry-run` 실행 → `dist/shop-wisebar-v0.12.2.zip` 생성 (80KB)
+  - JS 문법 검증 + manifest 필수 필드/CSP/권한 검증 통과, node_modules/시크릿/DB 제외 확인
+- `docs/store/STORE_LISTING.md` — Chrome Web Store → **웨일 스토어 기준**으로 확정 (등록 URL, 버전 0.12.2, 등록 절차, MV3 호환 명시)
+- T-96c(업로드)에서 사용자 네이버 계정으로 진행 예정
+
 ## v0.12.3 (2026-08-06) — [store+script] 웨일 심사용 스크린샷 5장 확장 (T-96a)
 
 - `capture.js` 기본 상품 URL을 올리브영 `A000000224494`로 교체 — 기존 `gamewoori/.../13360049393`은 존재하지 않는 상품(`not-found` 리다이렉트)이라 콘텐츠 스크립트 미주입 문제
