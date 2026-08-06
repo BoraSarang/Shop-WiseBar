@@ -278,16 +278,24 @@ try {
   await productPage.waitForTimeout(4000); // 가격 DOM + 콘텐츠 스크립트 로드 대기
 
   // ── 스크린샷 1: 상품 페이지 전체 1280x800 (플로팅 버튼이 보이는 실사용 화면, v0.10.7) ──
-  // 텍스트 전용 모델 검증 대응: 플로팅 버튼(#swb-root .swb-fab) 존재 여부를 로그로 확인
+  // 텍스트 전용 모델 검증 대응: 플로팅 버튼(#swb-root .swb-fab) 존재 여부를 폴링으로 확인
+  // (콘텐츠 스크립트가 늦게 주입되는 경우 대비 — v0.10.7)
   let floatingVisible = false;
-  try {
-    floatingVisible = await productPage.evaluate(() => {
-      const fab = document.querySelector("#swb-root .swb-fab");
-      if (!fab) return false;
-      const r = fab.getBoundingClientRect();
-      return r.width > 0 && r.height > 0;
-    });
-  } catch {}
+  for (let i = 0; i < 10; i++) {
+    try {
+      floatingVisible = await productPage.evaluate(() => {
+        // swb-ui는 #swb-root(shadow host) 안에 shadow DOM으로 FAB를 구성 — shadowRoot로 조회
+        const host = document.querySelector("#swb-root");
+        if (!host || !host.shadowRoot) return false;
+        const fab = host.shadowRoot.querySelector(".swb-fab");
+        if (!fab) return false;
+        const r = fab.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      });
+    } catch {}
+    if (floatingVisible) break;
+    await productPage.waitForTimeout(1000);
+  }
   console.log(
     floatingVisible
       ? "✓ 플로팅 버튼 표시 확인 (상품 페이지)"
@@ -306,9 +314,16 @@ try {
   await popupPage.goto(popupUrl, { waitUntil: "commit", timeout: 30000 });
   await productPage.bringToFront(); // 이제 상품 탭이 active → 팝업 init이 상품을 읽음
   await popupPage.waitForLoadState("domcontentloaded");
-  await popupPage.waitForTimeout(6000); // 서버 API 로드 + 렌더 대기
+  await popupPage.waitForTimeout(3000); // 팝업 init 시작 대기 (서버 API 콜드스타트 대비 최소 대기)
 
   // ── 팝업 상태 검증 (텍스트 전용 모델 대응 — 스크린샷 전에 화면 상태 로깅) ──
+  // v0.10.7: 팝업 init(loadCurrent→loadRelated→loadDeals) 완료 후 status=""가 되므로,
+  // 로딩 문구가 사라질 때까지 폴링해 로딩 중 화면 캡처를 방지
+  for (let i = 0; i < 15; i++) {
+    const s = await popupPage.evaluate(() => document.getElementById("status")?.textContent?.trim() || "");
+    if (!s || !/불러오는 중|서버 연결 중/.test(s)) break;
+    await popupPage.waitForTimeout(1000);
+  }
   await popupPage.evaluate(() => document.fonts?.ready);
   const dump = await popupPage.evaluate(() => {
     const $ = (id) => document.getElementById(id);
@@ -348,6 +363,7 @@ try {
         (el) => el.textContent.trim()
       ),
       dealEmptyVisible: !$("dealEmpty")?.classList.contains("hidden"),
+      status: $("status")?.textContent?.trim() || "",
     };
   });
   console.log("▸ 팝업 상태(30일):", JSON.stringify(dump30, null, 2));
