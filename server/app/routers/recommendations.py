@@ -9,6 +9,8 @@
 # PLATFORM: server
 from datetime import datetime, timedelta, timezone
 
+from app.datetimeutil import KST
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -33,7 +35,7 @@ INDEX_SQLS = [
 @router.get("/recommendations", response_model=list)
 def get_recommendations(limit: int = 10, days: int = 7, db: Session = Depends(get_db)) -> list[dict]:
     """최근 days일 이내 ①하락폭 큰 상품 → ②역대 최저가 갱신 상품 (부족분 채움)"""
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc).astimezone(KST) - timedelta(days=days)  # v0.12.2 (T-102) — KST 기준
     if is_sqlite:
         cutoff = cutoff.replace(tzinfo=None)  # SQLite는 naive 저장
 

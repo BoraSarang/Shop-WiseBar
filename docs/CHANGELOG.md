@@ -1,5 +1,112 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.12.2 (2026-08-06) — [server+extension] 시간대 통일 (KST 기준, T-102)
+
+### 배경 — 시간 처리 종합 검토
+- 서버는 UTC aware로 DB 저장(기존 유지)하지만 **일(daily) 집계·통계·날짜 표시가 UTC 기준** → 확장 그래프(로컬 KST)와 하루 어긋남
+- 한국 00~08:59 수집분이 서버에서 "전날" 통계로 집계되는 문제 · 팝업 "역대 최저 (날짜)" 하루 밀림 가능 · 디버그 로그가 GMT(UTC)로 표시되는 문제
+
+### 서버 (T-102a~c, 배포 필요)
+- `server/app/datetimeutil.py` **신규** — `KST = timezone(timedelta(hours=9))` + `kst_date(now)` (naive는 UTC 규약으로 간주)
+- `products.py` `_apply_price` — `PriceDailyStat.stat_date`를 `now.astimezone(KST).date()`로 (KST 일자 집계)
+- `products.py` `get_product_stats` — `today`(기간 cutoff) KST 날짜 · variant 조회 cutoff KST 자정 · `min_date` KST 날짜 반환
+- `recommendations.py` — 핫딜 "최근 N일" cutoff KST 시각 기준 (SQLite naive 처리 유지)
+
+### 확장 (T-102d, 즉효)
+- `debug.js` 로그 시간 표시 — `toISOString()`(UTC) → **현지 시각(KST) 수동 포맷** `YYYY-MM-DD HH:mm:ss.SSS` (형식·파서 호환 유지)
+
+### 검증 (T-102e)
+- `tests/test_tz.py` 신규 5건(KST 날짜 경계·stat_date·min_date) + 전체 pytest **41건 통과**
+- `node --check debug.js` + `run-e2e.sh` **10/10 통과**
+- 기존 UTC 저장 데이터는 마이그레이션 없이 유지 (신규 수집부터 KST — 기간 경계 인접 데이터만 일시 혼재, 영향 미미)
+
+### 관련 문서
+- `docs/plans/PLAN_v0.12.2_tz.md` + `docs/TODO.md` T-102
+
+## v0.12.1 (2026-08-06) — [extension] /health 워밍업 404 수정 (T-101)
+
+- `background.js` `sendBatchChunk` 워밍업이 `api("/health")` → `SWB_API`가 항상 `/api/v1` 접두사를 붙여 **`/api/v1/health` 404(NOT_FOUND)** WARN 로그가 발생 + 콜드스타트 선차단 효과 없음
+- **루트 `/health` 직접 `fetch`**(AbortController 30s)로 변경 — 200 응답으로 워밍업 정상화, WARN 로그 제거. 서버 변경 불필요(중복 엔드포인트 없음)
+- 검증: `node --check` + 배포 서버 `GET /health` 200 실측 확인
+
+## v0.12.0 (2026-08-06) — [extension] 가격 추이 그래프 전면 재설계 (T-100)
+
+### 그래프 데이터 준비 (T-100a)
+- `swb-ui.js` `dailySeries` 재작성 — **결측일 보간(직전 가격 유지) 제거**. 실제 기록일만 `{t(ms), price}[]`로 반환(오늘은 페이지 현재 가격 병합, 7/30일 범위 필터). → 기록 2일이면 2포인트로 정직하게 렌더링
+- `renderTrend` 호출부를 `{points, recordDays}` 구조로 대응 (delta는 첫 기록일 가격, st-min/max는 기록일 min/max, st-count는 기록일 수)
+
+### 캔버스 렌더링 전면 재작성 (T-100b)
+- **실제 날짜 X축** — 기록일 min~max 시간 범위를 가로에 매핑, 하단 첫/마지막 기록일 `M/D` 날짜 라벨. 기록 1일이면 중앙 단일 점
+- **Y축 여유(버퍼)** — 데이터 range의 상하 10% + 상하 pad(상 18/하 20) → 최대값이 꼭대기에 안 붙고 세로 ~90%만 사용
+- **min==max 처리** — 동일가격(변동 없는) 상품은 하단 납작 선 대신 **캔버스 중앙 단일 점 + "변동 없음"** 표시. 기존 "하단의 점"(최저/최고 마커 겹침) 해소
+- **그리드** — min/mid/max 수평 점선 3줄 + **평균선**(회색 점선) + **최저선**(파란 점선 + "최저 N원" 라벨) 유지
+- **마커 겹침 방지** — 최저/최고 좌표가 비슷하면 회색 1점으로 대체
+- **DPR 반영** — `devicePixelRatio` 스케일로 고해상도 선명도 개선 (CSS 292×140 유지)
+- 하락 구간 파란 굵은 선 / 상승·평탄 회색 얇은 선 동작 불변
+
+### 검증 (T-100d)
+- 실데이터 3종 시각 확인: 9648038896(2일 9,800→20,530 변동) · 9590025132(동일가 3,000 — min==max) · 8630323981(같은 날 변동 3건)
+- `run-e2e.sh` 전체 통과
+
+### 관련 문서
+- `docs/plans/PLAN_v0.12.0_extension.md` + `docs/TODO.md` T-100 등록
+
+## v0.11.0 (2026-08-06) — [extension] UI 디자인 시스템 + UI/UX 개선 (T-99)
+
+### 디자인 토큰 (T-99a)
+- **`extension/swb-tokens.css` 신규** — 색상/타이포(10~20px 7단계)/간격(4px 그리드)/라운드(sm6·md8·lg12·pill)/그림자 4종 CSS 변수 단일 소스
+  - 팝업·옵션·온보딩은 `<link>`로, swb-ui(shadow DOM)는 `:host`에 동일 토큰 주입 후 `var()` 참조
+- 보조색 파편화(`#f2f4ff`/`#eef1ff`/`#f4f7ff`/`#e2e7ff`/`#e8eeff`)와 텍스트 7계층(`#333`~`#aaa`)을 토큰 4계층으로 통일
+
+### 팝업 (T-99b)
+- `popup.css` 전체 토큰 기반 리팩터 + 사용처 없는 잔재 제거(`.alerts`·`.alert-list`·`.detail*`·`.btn-ghost`·`.watch-name`)
+- 헤더의 status를 본문 최상단 `.status-bar`로 분리(빈 상태 자동 숨김, `aria-live`) — 헤더는 로고+설명만
+- 디버그 버튼 이모지(🛠)→SVG, 빈 상태 문구 이모지(🛍️) 제거
+
+### 플로팅 FAB (T-99c, T-99e)
+- `swb-ui.js` shadow CSS 전면 토큰 기반 리팩터 + 팝업과 컴포넌트 통일(기간 탭·목표가 행·스피너·배지·썸네일)
+- **FAB 25vh 유지 + 메뉴 원점 보정** — T-99e에서 우하단(`bottom:24px`) 시도 후 후속 수정으로 **25vh 복원**(메뉴 원점=FAB 중심 일치, 아이콘이 FAB를 덮던 23px 오프셋 해소)
+- **메뉴 3방향 재배치** — 위(핫딜/알림) · 왼쪽(가격 추이 바로 옆, 찜 목록) · 아래(설정/사용법/디버그, 라벨 dir=above)
+- 패널 위치 FAB 상단 정렬로 변경, 핫딜 배지 이모지(🎉/🔥) 제거
+
+### 옵션·온보딩 (T-99d, T-99f)
+- 인라인 CSS → `swb-tokens.css` 공유(토글 스위치·err-box 등 토큰 참조)
+- 온보딩 문구 동기화: 펼침 메뉴 4가지→**6가지**(핫딜/알림/추이/찜목록/설정/사용법), 툴바 설명 정정
+
+### 접근성 (T-99g)
+- 이모지 아이콘→SVG, `:focus-visible` 포커스 링(팝업/플로팅/옵션/온보딩), 상태 영역 `aria-live`
+
+### 검증 (T-99h)
+- `node --check` 전체 통과 + `run-e2e.sh` **10/10 통과** (팝업 렌더·핫딜 5개·데모 정리)
+- manifest v0.11.0 상향, `docs/plans/PLAN_v0.11.0_design-system.md` + `docs/DESIGN.md` 3.7 UI 디자인 시스템 섹션
+
+### 네이버+ 스토어 표기/주소 전환 (T-99i)
+- **표기 일괄 전환**: "네이버 스마트스토어" → **"네이버+ 스토어"** (popup/onboarding/landing/PRD/DESIGN/PERMISSIONS/STORE_LISTING/README 등)
+- **주소 전환**: `smartstore.naver.com` → `shopping.naver.com` (문서·UI 링크·스크립트 기본 URL)
+- **기능 하위 호환**: `common.js` MallParser/parseProductID에 `shopping.naver.com`을 `store:{store}:{id}` 규약으로 추가 감지, 기존 `smartstore.naver.com` 호환 유지
+- `manifest.json` host_permissions/content_scripts에 `*://shopping.naver.com/*` 추가 (smartstore·brand·search.shopping 유지)
+- `e2e.js`/`capture.js` 감지 로직도 smartstore+shopping 병행
+- 검증: `node --check` 전체 통과 + manifest JSON 파싱 OK
+
+### FAB 배치 후속 수정 (T-99j)
+- **FAB 25vh 복원**: `bottom:24px` 시도로 메뉴 원점이 FAB 중심과 23px 어긋나 아이콘이 FAB를 덮고, `y>0` 아이템(찜 목록·사용법)이 화면 밖으로 밀려나는 버그 발견
+- `.swb-fab` `bottom: calc(25vh - 23px)` + `.swb-menu` `bottom: 25vh` → 원점 정확 일치, 아래 방향 아이템 화면 안 복귀
+- **가격 추이 FAB 바로 왼쪽 배치**(x=-60, y=0, 같은 높이) — 메뉴 열면 버튼 왼쪽에 추이가 가장 가깝게 노출
+- **사용법(help) 메뉴 제거** — 온보딩에서만 안내(옵션 "사용법 보기"로 접근). `onMenuItem` help 분기 정리
+- **아이콘 간격 48px로 통일**: 위 열(핫딜/알림 -60/-108) = 왼쪽 열(추이/찜 0/48) = 아래 열(설정/디버그 60/108) 동일 여백
+- 메뉴 배치: 위(핫딜/알림) · 왼쪽(추이/찜 목록) · 아래(설정/디버그, 라벨 dir=above) — 5개
+- 온보딩 문구 정정: "우하단" → "화면 오른쪽 1/4 지점" + 추이 왼쪽 설명 + "메뉴 5가지"
+- `capture.js`에 메뉴 펼침 시 아이콘 화면 좌표 덤프(텍스트) 추가 — 화면 밖/겹침 검증
+- 검증: `node --check` + capture 메뉴 좌표 덤프(모든 아이콘 화면 내부·좌표 정확) + `run-e2e.sh` 회귀
+
+### 연관 상품 배치 안정성 개선 (T-99k)
+- **문제**: `POST /products/batch`가 서버 지연(Render 무료티어 3~9s 응답) + 45s 타임아웃/MV3 SW 유휴 종료로 abort → POST 재시도 0회라 연관(카드) 상품 3회 누락 (`AbortError: signal is aborted without reason`)
+- **A. 워밍업**: `sendBatchChunk`가 batch POST 전 `GET /health`(30s)로 콜드스타트/sleep 선차단
+- **B. 재시도**: `SWB_API`에 `timeoutMs`/`maxAttempts` 옵션 추가 — 멱등 upsert인 `/products/batch`는 90s·재시도 2회, `/products/relations` 60s·재시도 2회 (prices는 중복 위험으로 기본 유지)
+- **C. 타임아웃 상향**: 배치 전용 90s (Render 콜드스타트 최대 ~60s + 재시도 대기 여유)
+- **D. 오프라인 큐**: 실패 배치를 `chrome.storage.local` `pendingRelated`에 보관(최대 10건, 초과 시 오래된 것 삭제) → SW가 깨어날 때마다(`pollAlerts` 시작) `flushPendingRelated`로 재전송, 성공 시 큐에서 제거
+- 검증: `node --check` + `run-e2e.sh` 10/10 회귀
+
 ## v0.10.7 (2026-08-06) — [store+server] 웨일 심사용 스크린샷 재구성 (T-96a, 플로팅 화면 추가)
 
 ### 도구 (T-96a)

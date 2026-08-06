@@ -122,7 +122,10 @@ const DebugLogger = (() => {
   }
 
   function debugLine(e) {
-    const t = new Date(e.ts).toISOString().replace("T", " ").slice(0, 23);
+    // v0.12.2 (T-102) — 로그를 현지 시각(KST)으로 표시 (기존 toISOString()은 UTC라 9시간 밀려 보임)
+    const d = new Date(e.ts);
+    const p = (n) => String(n).padStart(2, "0");
+    const t = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${String(d.getMilliseconds()).padStart(3, "0")}`;
     const scopeMark = e.scope === "content" ? "[TAB]" : `[${e.scope.toUpperCase()}]`;
     const mallMark = e.mall ? `[${e.mall.toUpperCase()}]` : "";
     return `[${t}] [${e.level}] ${scopeMark}${mallMark} ${e.text}`;

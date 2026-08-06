@@ -2,6 +2,43 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-102 — 시간대 통일 (KST 기준) (v0.12.2) — ✅ 완료 (2026-08-06)
+> 시간 처리 종합 검토: ①서버 일집계·통계가 UTC 기준(products.py `stat_date=now.date()`, stats cutoff/min_date) → 확장 그래프(KST)와 하루 어긋남 ②핫딜 cutoff UTC ③디버그 로그 GMT 표시. DB는 UTC 저장 유지 + 일 경계·통계·표시를 KST로 통일.
+- [x] **T-102a**: `server/app/datetimeutil.py` 신규 — `KST = timezone(timedelta(hours=9))` + `kst_date()`
+- [x] **T-102b**: `products.py` — `_apply_price` stat_date KST(`now.astimezone(KST).date()`) + `get_product_stats` today/cutoff/min_date KST
+- [x] **T-102c**: `recommendations.py` — 핫딜 cutoff KST
+- [x] **T-102d**: `debug.js` — 로그 표시 `toISOString()`(UTC) → 로컬(KST) 수동 포맷
+- [x] **T-102e**: 검증 — pytest 41건(신규 test_tz 5건) + node --check + run-e2e.sh **10/10**
+- [x] **T-102f**: CHANGELOG v0.12.2 + 세션 로그
+
+## T-101 — /health 워밍업 404 수정 (v0.12.1) — ✅ 완료 (2026-08-06)
+> `sendBatchChunk` 워밍업이 `api("/health")`(SWB_API는 항상 `/api/v1` 접두사)로 `/api/v1/health`를 호출 → 서버엔 루트 `/health`만 존재 → 404 NOT_FOUND WARN 로그 + 콜드스타트 선차단 효과 없음.
+- [x] `background.js` 워밍업을 루트 `/health` 직접 `fetch`(AbortController 30s)로 변경 — 200 응답, WARN 제거, 워밍업 정상화. 서버 중복 엔드포인트 추가 없음
+- [x] 검증: node --check + 배포 서버 `/health` 200 실측
+
+## T-100 — 가격 추이 그래프 전면 재설계 (v0.12.0) — ✅ 완료 (2026-08-06)
+> 플로팅 패널 추이 그래프(`swb-ui.js` `drawChart`) 3대 문제 해결: ①결측 보간으로 2일이 7일로 늘어남(X축 인덱스) ②Y축 여유 없음(min/max가 캔버스 100% 사용 → 최대값 꼭대기 밀착) ③min==max일 때 하단 납작 선 + 마커 겹침.
+- [x] **T-100a**: `dailySeries` 재작성 — 결측 보간 제거, 날짜 범위 필터, `{t, price}[]` 반환
+- [x] **T-100b**: `drawChart` 전면 재작성 — DPR · 실제 날짜 X축 · Y축 여유(px 고정 + range 8% 버퍼) · 그리드 3줄 · 평균선 · 최저선 · min==max 중앙 점+“변동 없음” · 마커 겹침 방지 · 날짜 라벨
+- [x] **T-100c**: `renderTrend` 호출부 대응 — `{series,recordDays}` → `{points,recordDays}`
+- [x] **T-100d**: 검증 — node --check + run-e2e.sh **10/10** + 헤드리스 좌표 검증(TC-CHART-001~004)
+- [x] **T-100e**: CHANGELOG v0.12.0 기록
+
+## T-99 — UI 디자인 시스템 + UI/UX 개선 (v0.11.0) — ✅ 완료 (2026-08-06)
+> 디자인 토큰(CSS 변수) 단일 소스 + 컴포넌트 통일 + FAB 우하단/메뉴 2방향 + 접근성.
+> 상세: `docs/plans/PLAN_v0.11.0_design-system.md`
+- [x] **T-99a**: `extension/swb-tokens.css` 신규 — 색상/타이포/간격/라운드/그림자 토큰
+- [x] **T-99b**: popup.css 토큰 적용 + 잔재(`.alerts/.detail*/.btn-ghost`) 제거 + 헤더 status 분리 + 🛠→SVG
+- [x] **T-99c**: swb-ui.js shadow `:host` 토큰 주입 + var() 참조 + 컴포넌트 통일
+- [x] **T-99d**: options/onboarding 인라인 CSS → swb-tokens.css link 전환
+- [x] **T-99e**: UX — FAB 우하단(bottom:24px) + 메뉴 2방향 재배치 + 팝업 빈 상태 개선
+- [x] **T-99f**: 온보딩 문구 동기화 (우하단·메뉴 6개)
+- [x] **T-99g**: 접근성 — 이모지→SVG, :focus-visible, aria-label
+- [x] **T-99h**: 검증 — node --check + run-e2e.sh 10/10 + CHANGELOG + manifest v0.11.0
+- [x] **T-99i**: 네이버+ 스토어 표기/주소 전환 — "네이버 스마트스토어"→"네이버+ 스토어", `smartstore.naver.com`→`shopping.naver.com` (표기·링크·스크립트) + `common.js`/`manifest.json`/`e2e.js`/`capture.js`에 shopping 감지 추가(스마트스토어 하위 호환 유지) + CHANGELOG/PERMISSIONS/DESIGN 반영
+- [x] **T-99j**: FAB 배치 후속 수정 — 우하단(24px) 시도의 메뉴 원점 23px 어긋남 + 화면 밖 아이템 버그 해소 위해 **25vh 복원**, 가격 추이를 FAB 바로 왼쪽(같은 높이)에 배치, **사용법(help) 메뉴 제거 + 아이콘 간격 48px 통일**, 온보딩 문구 "화면 1/4 지점"/"메뉴 5가지"로 정정, capture.js에 메뉴 펼침 좌표 덤프 추가
+- [x] **T-99k**: 연관 상품 배치 안정성 — `/products/batch` AbortError 누락 해소: ①batch 전 `GET /health` 워밍업 ②`SWB_API`에 `timeoutMs`/`maxAttempts` 옵션 추가(배치 90s·재시도 2회) ③타임아웃 상향 ④실패 배치 오프라인 큐(`pendingRelated`) 보관 → `pollAlerts` 시작 시 `flushPendingRelated` 재전송
+
 ## T-98 — 확장 E2E 자동화 (v0.10.6) — ✅ 완료 (2026-08-06)
 > 로컬 서버 격리 + 실제 Whale + 실제 확장으로 전체 파이프라인(추출→저장→표시) 자동 검증.
 > 상세: `docs/plans/PLAN_v0.10.6_e2e.md`

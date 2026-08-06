@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.datetimeutil import KST, kst_date
 from app.models import (
     Alert,
     Device,
@@ -133,7 +134,7 @@ def get_product_stats(
     # variant가 price_points에 저장되고 price_daily_stats에는 variant가 없으므로,
     # variant 지정 시 price_daily_stats로는 variant 분리가 불가능 → price_points에서 집계한다.
     # (쿠팡 variant 가격이 일별 통계에 뒤섞여 분리 집계가 필요한 경우)
-    today = date.today()
+    today = kst_date()  # v0.12.2 (T-102) — 통계 기간 경계를 KST 날짜 기준으로
     cutoff7 = today - timedelta(days=7)
     cutoff30 = today - timedelta(days=30)
     epoch = date(1970, 1, 1)
@@ -145,7 +146,7 @@ def get_product_stats(
             pcond = [
                 PricePoint.product_id == product_id,
                 PricePoint.variant == variant,
-                PricePoint.captured_at >= datetime.combine(cutoff, datetime.min.time(), timezone.utc),
+                PricePoint.captured_at >= datetime.combine(cutoff, datetime.min.time(), KST),
             ]
             pmin = db.scalar(select(func.min(PricePoint.price)).where(*pcond))
             pmin_at = None
@@ -157,7 +158,7 @@ def get_product_stats(
             pavg = db.scalar(select(func.avg(PricePoint.price)).where(*pcond))
             return PriceStatsOut.PeriodStats(
                 min=int(pmin) if pmin is not None else None,
-                min_date=pmin_at.date() if pmin_at is not None else None,
+                min_date=kst_date(pmin_at) if pmin_at is not None else None,
                 avg=round(float(pavg)) if pavg is not None else None,
             )
 
@@ -237,7 +238,7 @@ def _upsert(db: Session, product_id: str, mall: str, url: str, name: str | None,
 def _apply_price(db: Session, product: Product, price: int, source: str, variant: str | None,
                  captured_at: datetime | None = None) -> None:
     now = captured_at or datetime.now(timezone.utc).replace(microsecond=0)
-    today = now.date()
+    today = kst_date(now)  # v0.12.2 (T-102) — 일(daily) 경계를 KST 기준으로 (확장 그래프와 일치)
     variant_cond = PricePoint.variant.is_(None) if variant is None else PricePoint.variant == variant
     last = db.scalar(
         select(PricePoint)
