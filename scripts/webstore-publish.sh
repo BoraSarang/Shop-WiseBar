@@ -37,16 +37,12 @@ assert 'privacy_policy' not in m
 print('      OK —', m['name'], 'v'+m['version'], '| permissions:', m['permissions'])
 "
 
-# 3) 확장 루트만 zip (node_modules/시크릿/로컬DB/개발용 파일 제외)
+# 3) 확장 루트만 zip (node_modules/시크릿/로컬DB 제외)
 echo "[3/4] zip 생성..."
 rm -f "$ZIP"
 # 확장 루트에 shopwisebar.db 등 제외 대상이 있으면 필터
-# 개발용·미사용 파일은 패키지에서 제외 (git에는 유지):
-#   icons_backup_20260803/  — 아이콘 백업 (manifest 미참조)
-#   make_icons.py           — 아이콘 생성 도구 (manifest 미참조)
 zip -r "$ZIP" extension \
   -x "*/shopwisebar.db" "*/shopwisebar.db-*" "*.DS_Store" \
-  -x "extension/icons_backup_*/*" "extension/make_icons.py" \
   >/dev/null
 # zip 안의 manifest 권한 확인용 경로
 unzip -l "$ZIP" | grep -q "extension/manifest.json" && echo "      OK — $ZIP"
