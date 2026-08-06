@@ -2,6 +2,14 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-98 — 확장 E2E 자동화 (v0.10.6) — ✅ 완료 (2026-08-06)
+> 로컬 서버 격리 + 실제 Whale + 실제 확장으로 전체 파이프라인(추출→저장→표시) 자동 검증.
+> 상세: `docs/plans/PLAN_v0.10.6_e2e.md`
+- [x] **T-98a**: `scripts/e2e/package.json` + playwright-core 설치
+- [x] **T-98b**: `e2e.js` — 확장 복사본(서버 URL 치환) + 데모 주입 + 브라우저 E2E + 검증
+- [x] **T-98c**: `run-e2e.sh` — 서버 기동/종료 + e2e.js 실행 + 정리 트랩 (exec로 서버 PID 정상 종료)
+- [x] **T-98d**: 실검증 (연속 3회 10/10 통과) + 문서 갱신 (README/CHANGELOG)
+
 ## T-96 — 웨일 스토어 실등록 (무료, 우선 진행) (v0.10.x) — 🔵 진행
 - [~] **T-96a**: 스크린샷 준비 — 자동 캡처 스크립트(`scripts/store-capture/capture.js`) + 데모 데이터 자동 주입/삭제(서버 `DELETE /products/{id}` + 테스트) + 가이드(`docs/store/SCREENSHOT_GUIDE.md`) 완성. **사용자 실행으로 PNG 2장 생성 확인 남음**
 - [ ] **T-96b**: zip 패키징 + 리스팅 자료 확정 (STORE_LISTING.md 재사용)
