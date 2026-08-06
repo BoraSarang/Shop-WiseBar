@@ -2,14 +2,14 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
-## T-93 — 일괄 업로드 API + 확장 배치 전환 (v0.10.4) — 🔵 진행
+## T-93 — 일괄 업로드 API + 확장 배치 전환 (v0.10.4) — ✅ 완료 (2026-08-06)
 - [x] **T-93a**: 서버 `POST /products/batch` 라우터 + schema — 단일 트랜잭션 upsert+price
 - [x] **T-93b**: 확장 `uploadRelatedItems` → 배치 청크 전환 (80요청 → 2~4요청)
-- [ ] **T-93c**: pytest batch + 기존 24건 회귀 + CHANGELOG
+- [x] **T-93c**: pytest batch + 기존 24건 회귀 + CHANGELOG
 
-## T-94 — DB 연결 풀 (v0.10.4) — 🔵 진행
+## T-94 — DB 연결 풀 (v0.10.4) — ✅ 완료 (2026-08-06)
 - [x] **T-94a**: `database.py` PostgreSQL QueuePool + pool_pre_ping (SQLite 유지)
-- [ ] **T-94b**: pytest 회귀 + CHANGELOG
+- [x] **T-94b**: pytest 회귀 + CHANGELOG
 
 ## T-91 — 서버 운영 개선: 구조적 로깅 + /health 강화 + 운영 문서 (v0.10.3) — ✅ 완료 (2026-08-06)
 - [x] **T-91a**: `app/logging_setup.py` — 로거 + 요청 미들웨어(메서드/경로/상태/ms) + 예외 핸들러(E-SRV-GEN-1001) + main.py 적용
