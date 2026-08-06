@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # 서버 API 버전 — /health 및 FastAPI title에 노출 (manifest 버전과 별개, 배포 시 갱신)
-APP_VERSION = "0.10.4"
+APP_VERSION = "0.10.7"
 
 
 class Settings:
