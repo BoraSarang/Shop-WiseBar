@@ -1,5 +1,10 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.12.2 (2026-08-06) — [store] 웨일 스토어 심사 요청 완료 (T-96c)
+
+- 사용자 네이버 계정으로 웨일 스토어에 `dist/shop-wisebar-v0.12.2.zip` 업로드 + **심사 요청 완료**
+- 심사 대기 중 — 승인 시 T-96d(README 링크 반영) 진행
+
 ## v0.12.2 (2026-08-06) — [store+extension] 웨일 스토어 패키징 + 리스팅 확정 (T-96b)
 
 - `extension/manifest.json` version **0.11.0 → 0.12.2** (확장에 반영된 v0.12.x 변경 포함)
