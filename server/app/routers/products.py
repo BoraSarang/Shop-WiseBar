@@ -10,9 +10,12 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Device, PriceDailyStat, PricePoint, Product, Watch
 from app.schemas import (
+    BatchItemIn,
     PricePointOut,
     PriceStatsOut,
     PriceUploadIn,
+    ProductBatchIn,
+    ProductBatchOut,
     ProductOut,
     ProductUpsertIn,
     SoldOutIn,
@@ -175,20 +178,28 @@ def get_product_stats(
 @router.post("/products", response_model=ProductOut, status_code=201)
 def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: Session = Depends(get_db)) -> ProductOut:
     """클라이언트가 캐치한 상품 등록/정보 업데이트 (name/image 최신화)"""
+    product = _upsert(db, payload.product_id, payload.mall, payload.url, payload.name, payload.image, payload.source)
+    db.commit()
+    return _product_out_basic(product)
+
+
+# v0.10.4 (T-93) — 단일 상품 upsert 코어. 배치에서도 재사용 (트랜잭션 커밋은 호출자가)
+def _upsert(db: Session, product_id: str, mall: str, url: str, name: str | None,
+            image: str | None, source: str | None) -> Product:
     # v0.9.3 — DB 컬럼 최대 길이(Postgres는 초과 시 IntegrityError 500, SQLite는 무시)에
     #          맞춰 잘라 저장한다. 네이버 연관 카드의 장황한 상품명이 name(512)을 넘는 경우
     #          '연관 상품 업로드 실패 HTTP 500' + 관계 저장 누락이 발생했었음
-    url = (payload.url or "")[:1024]
-    name = (payload.name or "")[:512]
-    image = (payload.image or "")[:1024]
+    url = (url or "")[:1024]
+    name = (name or "")[:512]
+    image = (image or "")[:1024]
     # 프로토콜-상대 URL("//cdn...") → https: 정규화 (팝업/확장 페이지에서 로드 가능하도록)
     if image and image.startswith("//"):
         image = f"https:{image}"
-    product = db.get(Product, payload.product_id)
+    product = db.get(Product, product_id)
     if product is None:
         product = Product(
-            id=payload.product_id,
-            mall=payload.mall,
+            id=product_id,
+            mall=mall,
             url=url,
             name=name,
             image=image,
@@ -200,16 +211,62 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
         #          최초 1회만 저장하면 팝업/추이/찜 목록에 옛 이름("1개")이 남는 문제
         # v0.8.18: 카드 캡처(source=card, 검색/연관 카드의 짧은 이름)는 최초 1회만 —
         #          카드 이름이 상세 페이지 이름을 덮어쓰는 회귀 방지 (네이버/올리브 포함)
-        if name and (payload.source == "detail" or not product.name):
+        if name and (source == "detail" or not product.name):
             product.name = name
         if image:
             product.image = image
-        if payload.mall:
-            product.mall = payload.mall
-    db.commit()
-    db.refresh(product)
-    # v0.9.4 — POST /products는 확장이 응답 body를 쓰지 않으므로 무거운 통계 쿼리(_product_out)를
-    #          생략하고 기본 필드만 반환 — 연관 카드 N개 순차 업로드 시 5개 쿼리 × N 지연 제거
+        if mall:
+            product.mall = mall
+    return product
+
+
+# v0.10.4 (T-93) — 가격 저장 코어. 배치에서도 재사용. 커밋은 호출자가.
+# 개별 upload_price와 동일 dedup/통계 로직 — 단, IntegrityError(같은 초 다른 가격)는
+# 배치에서 항목 단위 스킵으로 처리되므로 여기서는 재시도하지 않고 그대로 propagate.
+def _apply_price(db: Session, product_id: str, price: int, source: str, variant: str | None) -> None:
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    today = now.date()
+    variant_cond = PricePoint.variant.is_(None) if variant is None else PricePoint.variant == variant
+    last = db.scalar(
+        select(PricePoint)
+        .where(PricePoint.product_id == product_id, variant_cond)
+        .order_by(PricePoint.captured_at.desc())
+        .limit(1)
+    )
+    if last is None or last.price != price:
+        point = PricePoint(
+            product_id=product_id, price=price, source=source,
+            variant=variant, captured_at=now,
+        )
+        db.add(point)
+        db.flush()  # UNIQUE 충돌 시 IntegrityError propagate
+    product = db.get(Product, product_id)
+    product.last_price = price
+    product.last_checked_at = now
+    if product.sold_out_at is not None:
+        product.sold_out_at = None  # v0.9.1 — 가격 캡처 = 판매 중 → 품절 자동 해제
+    stat = db.scalar(
+        select(PriceDailyStat)
+        .where(PriceDailyStat.product_id == product_id, PriceDailyStat.stat_date == today)
+    )
+    if stat is None:
+        stat = PriceDailyStat(
+            product_id=product_id, stat_date=today,
+            open_price=price, close_price=price,
+            low_price=price, high_price=price,
+            point_count=1, updated_at=now,
+        )
+        db.add(stat)
+    else:
+        stat.close_price = price
+        stat.low_price = min(stat.low_price, price)
+        stat.high_price = max(stat.high_price, price)
+        stat.point_count += 1
+        stat.updated_at = now
+
+
+def _product_out_basic(product: Product) -> ProductOut:
+    """v0.9.4 — 무거운 통계 쿼리(_product_out) 생략 — 업로드/배치는 기본 필드만 반환"""
     return ProductOut(
         product_id=product.id,
         mall=product.mall,
@@ -220,6 +277,35 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
         last_checked_at=product.last_checked_at,
         sold_out=product.sold_out_at is not None,
     )
+
+
+@router.post("/products/batch", response_model=ProductBatchOut, status_code=201)
+def upsert_batch(payload: ProductBatchIn, db: Session = Depends(get_db)) -> ProductBatchOut:
+    """연관 상품 일괄 업로드 (v0.10.4, T-93) — 개별 POST /products + /prices를 1요청으로.
+    확장이 연관 카드 40개를 개별 요청 80개로 보내 서버가 과부하되는 것을 해결.
+    단일 트랜잭션으로 커밋하고, 항목별 예외(중복/동시 캡처 등)는 그 항목만 스킵(부분 실패 허용)."""
+    upserted = 0
+    price_count = 0
+    items: list[ProductOut] = []
+    seen: set[str] = set()
+    for item in payload.items:
+        if item.product_id in seen:  # 같은 요청 내 중복 product_id는 첫 건만 (연관 카드 중복)
+            continue
+        seen.add(item.product_id)
+        # savepoint(begin_nested) — 항목 단위 격리. 실패 시 이 항목만 롤백되고
+        # 이전에 성공한 항목은 보존 (단일 트랜잭션 커밋 유지)
+        with db.begin_nested():
+            try:
+                product = _upsert(db, item.product_id, item.mall, item.url, item.name, item.image, item.source)
+                if item.price and item.price > 0:
+                    _apply_price(db, item.product_id, item.price, item.source or "extension", None)
+                    price_count += 1
+                items.append(_product_out_basic(product))
+                upserted += 1
+            except IntegrityError:
+                pass  # 이 항목 스킵 — 나머지 진행 (다음 수집 시 재시도)
+    db.commit()
+    return ProductBatchOut(upserted=upserted, price_count=price_count, items=items)
 
 
 @router.post("/products/{product_id}/prices", response_model=PricePointOut, status_code=201)

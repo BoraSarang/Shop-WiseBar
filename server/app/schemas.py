@@ -32,6 +32,28 @@ class SoldOutIn(BaseModel):
     sold_out: bool  # v0.9.1 — 품절 상태 (true=품절 시작, false=재판매)
 
 
+class BatchItemIn(BaseModel):
+    """v0.10.4 (T-93) — 연관 상품 일괄 업로드 항목. 개별 POST /products + /prices 대체.
+    price 있으면 함께 저장, 없으면 상품 upsert만 (연관 카드에 가격 미노출인 경우)."""
+    product_id: str = Field(..., max_length=255)
+    mall: str = Field(..., max_length=32)
+    url: str = Field(..., max_length=1024)
+    name: str | None = None
+    image: str | None = None
+    source: str | None = Field(None, max_length=16)
+    price: int | None = Field(None, gt=0)
+
+
+class ProductBatchIn(BaseModel):
+    items: list[BatchItemIn] = Field(..., max_length=50)
+
+
+class ProductBatchOut(BaseModel):
+    upserted: int  # 상품 upsert 처리 건수
+    price_count: int  # 가격 저장 건수
+    items: list[ProductOut]  # 저장된 상품 목록 (중복 product_id dedup 후)
+
+
 class ProductOut(BaseModel):
     product_id: str
     mall: str

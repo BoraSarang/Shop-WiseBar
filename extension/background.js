@@ -227,52 +227,39 @@ async function captureProductInner(tab) {
 // 수집 시점: ①페이지 로드 직후 1회(현재 보이는 카드) ②사용자 스크롤로 새 카드 로드 시 (content.js가 감지)
 const relatedUploadedIds = new Set(); // 세션 내 중복 업로드 방지 (content.js Set과 이중 안전망)
 
-// v0.9.4 — 연관 상품 N개 업로드를 동시성 제한 병렬로: 순차 await 루프는 상품당
-// /products(1.7~2.3s) + /prices(1.4~2.8s) ≈ 3.5s × 40개 = 2분 넘게 걸려 스크롤
-// 직후 대기 시간이 길다. concurrency 5로 제한해 서버 부하를 억제하면서 병렬 처리.
-async function mapLimit(items, limit, fn) {
-  const results = new Array(items.length);
-  let idx = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (idx < items.length) {
-      const i = idx++;
-      results[i] = await fn(items[i], i);
-    }
-  });
-  await Promise.all(workers);
-  return results;
-}
-
 async function uploadRelatedItems(items, label, parentId) {
+  // v0.10.4 (T-93) — 일괄 업로드: 개별 /products + /prices (상품당 2요청) 대신
+  // POST /products/batch 1요청에 최대 40개 묶음. 40개 카드 캡처가 80개 요청이던 것을
+  // 1회로 줄여 서버 연결·라우팅 오버헤드 제거 ([PERF] 1~3s 지연의 주요 원인)
   let upserted = 0;
   const relatedIds = [];
-  await mapLimit(items, 5, async (item) => {
-    if (relatedUploadedIds.has(item.productID)) return; // 같은 세션 중복 skip
+  const fresh = items.filter((item) => !relatedUploadedIds.has(item.productID));
+  // batch는 한 번에 40개까지 (schemas max_length=50) — 초과분은 다음 요청으로
+  for (let i = 0; i < fresh.length; i += 40) {
+    const chunk = fresh.slice(i, i + 40).map((item) => ({
+      product_id: item.productID,
+      mall: item.mall,
+      url: item.url,
+      name: item.name,
+      image: item.image,
+      source: "card",
+      price: item.price && item.price > 0 ? item.price : undefined,
+    }));
     try {
-      await api("/products", {
+      const res = await api("/products/batch", {
         method: "POST",
-        body: JSON.stringify({
-          product_id: item.productID,
-          mall: item.mall,
-          url: item.url,
-          name: item.name,
-          image: item.image,
-          source: "card",
-        }),
+        body: JSON.stringify({ items: chunk }),
       });
-      if (item.price && item.price > 0) {
-        await api(`/products/${encodeURIComponent(item.productID)}/prices`, {
-          method: "POST",
-          body: JSON.stringify({ price: item.price, source: "extension" }),
-        });
+      for (const out of res?.items || []) {
+        if (!out?.product_id) continue;
+        relatedUploadedIds.add(out.product_id);
+        relatedIds.push(out.product_id);
       }
-      relatedUploadedIds.add(item.productID);
-      relatedIds.push(item.productID);
-      upserted++;
+      upserted += res?.upserted || 0;
     } catch (e) {
-      DebugLogger.warn(`[똑바] 연관 상품 업로드 실패 ${item.productID}`, e);
+      DebugLogger.warn("[똑바] 연관 상품 일괄 업로드 실패", e);
     }
-  });
+  }
   // Phase 3 (v0.9.0): 상품 페이지 연관 카드 → 관계 그래프 저장 (목록 페이지는 parentId 없음)
   if (parentId && relatedIds.length) {
     try {

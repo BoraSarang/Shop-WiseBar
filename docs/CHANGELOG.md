@@ -1,5 +1,19 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.10.4 (2026-08-06) — [server] 연관 상품 일괄 업로드 + DB 연결 풀
+
+### 성능 (T-93)
+- **일괄 업로드 API (T-93a)**: `POST /products/batch` — 최대 50개(확장은 40개 청크) 상품의 upsert+가격 저장을 1요청으로. 단일 트랜잭션 + 항목별 savepoint(`begin_nested`)로 부분 실패 시 해당 항목만 스킵. 같은 요청 내 중복 product_id는 첫 건만 처리. 응답 `{upserted, price_count, items}`
+- **확장 배치 전환 (T-93b)**: `uploadRelatedItems`를 기존 개별 `/products` + `/prices` (상품당 2요청, 40개 카드 = 80요청) → `/products/batch` 청크 전환. 미사용 `mapLimit`(동시성 5 병렬) 제거
+- **코어 로직 추출**: upsert/가격 저장 로직을 `_upsert`/`_apply_price` 헬퍼로 추출 — 개별·배치 동일 동작 (name 정책, 절단, 가격 dedup, 일별 통계, 품절 자동 해제)
+
+### 성능 (T-94)
+- **DB 연결 풀 (T-94a)**: PostgreSQL(Neon) `QueuePool` — `pool_size=5, max_overflow=10, pool_pre_ping=True, pool_recycle=600`. 요청마다 TCP+TLS+인증을 새로 맺는 오버헤드 제거 ([PERF] 1~3s 지연 원인). SQLite는 기존 유지
+
+### 검증
+- pytest batch 6건 추가 (upsert/price, 가격 없는 upsert, 중복 dedup, 같은 가격 dedup, 부분 실패 격리, 빈 요청) + 기존 24건 → **30건 통과**
+- `node --check background.js` 통과
+
 ## v0.10.3 (2026-08-06) — [server] 서버 운영 개선: 로깅 + /health 강화 + 추천 쿼리 인덱스
 
 ### 운영 개선 (T-91)
