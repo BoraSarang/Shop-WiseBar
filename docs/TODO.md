@@ -11,7 +11,7 @@
 - [x] **T-98d**: 실검증 (연속 3회 10/10 통과) + 문서 갱신 (README/CHANGELOG)
 
 ## T-96 — 웨일 스토어 실등록 (무료, 우선 진행) (v0.10.x) — 🔵 진행
-- [~] **T-96a**: 스크린샷 준비 — 자동 캡처 스크립트(`scripts/store-capture/capture.js`) + 데모 데이터 자동 주입/삭제(서버 `DELETE /products/{id}` + 테스트) + 가이드(`docs/store/SCREENSHOT_GUIDE.md`) 완성. **사용자 실행으로 PNG 2장 생성 확인 남음**
+- [~] **T-96a**: 스크린샷 준비 — 자동 캡처 스크립트(`scripts/store-capture/capture.js`) + 데모 데이터 자동 주입/삭제(서버 `DELETE /products/{id}` + 테스트) + 가이드(`docs/store/SCREENSHOT_GUIDE.md`) 완성. **v0.10.7 재구성: 플로팅 화면(1280×800) + 팝업 2장(7일/30일 탭 구분, `captured_at` 확장) — 서버 배포 후 캡처 재실행 확인 남음**
 - [ ] **T-96b**: zip 패키징 + 리스팅 자료 확정 (STORE_LISTING.md 재사용)
 - [ ] **T-96c**: 웨일 개발자 등록(네이버 로그인, 무료) + 새 확장앱 업로드 + 리뷰 요청
 - [ ] **T-96d**: 심사 통과 확인 + README에 웨일 스토어 링크 반영

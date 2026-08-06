@@ -332,9 +332,9 @@ def upload_price(product_id: str, payload: PriceUploadIn, db: Session = Depends(
     product = db.get(Product, product_id)
     if product is None:
         raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1001", "message": "상품을 찾을 수 없습니다"})
-    now = datetime.now(timezone.utc).replace(microsecond=0)
+    now = payload.captured_at or datetime.now(timezone.utc).replace(microsecond=0)
     try:
-        _apply_price(db, product, payload.price, payload.source, payload.variant)
+        _apply_price(db, product, payload.price, payload.source, payload.variant, captured_at=now)
     except IntegrityError:
         # UNIQUE(product_id, captured_at) 충돌 — 같은 초에 다른 가격이 먼저 저장됨.
         # v0.9.4 — PostgreSQL은 flush 실패 후 세션이 requires-rollback 상태가 되므로

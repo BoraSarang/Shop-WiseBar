@@ -89,6 +89,39 @@ class TestPriceUpload:
         r = client.post("/api/v1/products/nope/prices", json={"price": 100})
         assert r.status_code == 404
 
+    def test_upload_with_captured_at_past(self, client, product_payload):
+        # v0.10.7 (T-96a): captured_at 지정 시 과거 시점 가격으로 저장 — 데모 시딩용
+        from datetime import datetime, timedelta, timezone
+
+        client.post("/api/v1/products", json=product_payload)
+        past = (datetime.now(timezone.utc) - timedelta(days=15)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        r = client.post(
+            "/api/v1/products/test%3Aproduct%3A1/prices",
+            json={"price": 10000, "captured_at": past},
+        )
+        assert r.status_code == 201
+        assert r.json()["captured_at"] is not None
+        prices = client.get("/api/v1/products/test%3Aproduct%3A1/prices").json()
+        assert prices[0]["price"] == 10000
+        # 저장된 captured_at이 과거 시점인지 확인 (오늘과 다름)
+        assert prices[0]["captured_at"].startswith(past[:10])
+
+    def test_upload_without_captured_at_now(self, client, product_payload):
+        # captured_at 미지정이면 기존 동작 그대로 (now)
+        from datetime import datetime, timezone
+
+        client.post("/api/v1/products", json=product_payload)
+        before = datetime.now(timezone.utc)
+        r = client.post("/api/v1/products/test%3Aproduct%3A1/prices", json={"price": 10000})
+        assert r.status_code == 201
+        saved = r.json()["captured_at"]
+        assert saved is not None
+        # 응답 시각이 now와 1분 이내 — 과거 시점 아님을 확인
+        from datetime import datetime as dt
+
+        saved_dt = dt.fromisoformat(saved.replace("Z", "+00:00"))
+        assert (saved_dt - before).total_seconds() < 60
+
 
 class TestStats:
     def test_stats_empty(self, client, product_payload):

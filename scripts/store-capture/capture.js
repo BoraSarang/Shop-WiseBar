@@ -14,9 +14,10 @@
 //   4. 상품 페이지를 탭으로 열기
 //   5. 팝업(chrome-extension://.../popup/popup.html)을 백그라운드 탭으로 열되
 //      상품 탭이 active로 유지되게 해 "현재 상품" 인식 보장
-//   6. 스크린샷 저장:
-//      - shop-wisebar-01.png : 현재 상품 탭 (팝업 그대로 320x600)
-//      - shop-wisebar-02.png : 핫딜 "7일" 탭
+//   6. 스크린샷 저장 (v0.10.7 — 플로팅 화면 추가, T-96a):
+//      - shop-wisebar-01.png : 상품 페이지 전체 1280x800 + 플로팅 버튼 (실사용 화면)
+//      - shop-wisebar-02.png : 팝업 320x600 (현재 상품 탭)
+//      - shop-wisebar-03.png : 팝업 320x600 (핫딜 "7일" 탭)
 //   7. 데모 데이터 자동 정리: 넣었던 demo 상품 전부 삭제 (DELETE /products/{id})
 //
 // 사전 준비:
@@ -57,27 +58,39 @@ async function apiFetch(path, opts = {}) {
 
 // 데모 상품 정의 — 핫딜 탭(5% 이상 하락) + 현재 상품 탭(가격 통계)을 채우기 위한 가상 상품.
 // url은 스마트스토어 형식이라 실제 클릭은 실패하지만 팝업 렌더링에는 문제없음.
+// v0.10.7 (T-96a): 기간별 화면 구분을 위해 두 시점(하락 전 priceDays / 하락 후 dropDays)을 지정.
+//   - 7일 상품(priceDays=5, dropDays=3) : 두 포인트 모두 7일 cutoff 내 → 7일/30일 탭 노출 (02 화면)
+//   - 30일 상품(priceDays=20, dropDays=15): 7일 cutoff 이후 포인트 없음 → 30일 탭에만 노출 (03 화면 구분)
 const DEMO_PRODUCTS = [
-  { id: "demo:hdmi:1", mall: "naver", name: "4K HDMI 케이블 2m", price: 12900, drop: 9900, image: null },
-  { id: "demo:stand:2", mall: "naver", name: "노트북 거치대 알루미늄", price: 38900, drop: 31900, image: null },
-  { id: "demo:key:3", mall: "naver", name: "기계식 키보드 (적축)", price: 89000, drop: 74900, image: null },
-  { id: "demo:mouse:4", mall: "naver", name: "무선 마우스 슬림", price: 27900, drop: 23500, image: null },
-  { id: "demo:light:5", mall: "naver", name: "USB LED 무드등", price: 15900, drop: 12900, image: null },
+  { id: "demo:hdmi:1", mall: "naver", name: "4K HDMI 케이블 2m", price: 12900, drop: 9900, image: null, priceDays: 5, dropDays: 3 },
+  { id: "demo:stand:2", mall: "naver", name: "노트북 거치대 알루미늄", price: 38900, drop: 31900, image: null, priceDays: 5, dropDays: 3 },
+  { id: "demo:light:5", mall: "naver", name: "USB LED 무드등", price: 15900, drop: 12900, image: null, priceDays: 5, dropDays: 3 },
+  { id: "demo:key:3", mall: "naver", name: "기계식 키보드 (적축)", price: 89000, drop: 74900, image: null, priceDays: 20, dropDays: 15 },
+  { id: "demo:mouse:4", mall: "naver", name: "무선 마우스 슬림", price: 27900, drop: 23500, image: null, priceDays: 20, dropDays: 15 },
 ];
 
 const DEMO_IDS = DEMO_PRODUCTS.map((p) => p.id);
 
-// 가격 2개(현재가→하락가)를 1.1s 간격으로 업로드 — 같은 초 UNIQUE 충돌 회피 + 5% 이상 하락 이력 생성
+// 가격 2개(하락 전 priceDays일 전 → 하락 후 dropDays일 전)를 captured_at으로 등록.
+// 상품은 가격 없이 upsert (배치 price 필드 생략) — 두 포인트 모두 과거 시점이라
+// days 필터(cutoff 이후 포인트 유무)로 7일/30일 탭 목록이 달라진다.
 async function seedDemoProduct(p) {
   const url = `https://smartstore.naver.com/demo/products/${p.id}`;
   await apiFetch("/products/batch", {
     method: "POST",
-    body: { items: [{ product_id: p.id, mall: p.mall, url, name: p.name, price: p.price }] },
+    body: { items: [{ product_id: p.id, mall: p.mall, url, name: p.name }] },
   });
   await new Promise((r) => setTimeout(r, 1100));
+  const pastPrice = new Date(Date.now() - p.priceDays * 86400000).toISOString();
   await apiFetch(`/products/${encodeURIComponent(p.id)}/prices`, {
     method: "POST",
-    body: { price: p.drop },
+    body: { price: p.price, captured_at: pastPrice },
+  });
+  await new Promise((r) => setTimeout(r, 1100));
+  const pastDrop = new Date(Date.now() - p.dropDays * 86400000).toISOString();
+  await apiFetch(`/products/${encodeURIComponent(p.id)}/prices`, {
+    method: "POST",
+    body: { price: p.drop, captured_at: pastDrop },
   });
   await new Promise((r) => setTimeout(r, 1100));
 }
@@ -264,6 +277,28 @@ try {
   await productPage.goto(productUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
   await productPage.waitForTimeout(4000); // 가격 DOM + 콘텐츠 스크립트 로드 대기
 
+  // ── 스크린샷 1: 상품 페이지 전체 1280x800 (플로팅 버튼이 보이는 실사용 화면, v0.10.7) ──
+  // 텍스트 전용 모델 검증 대응: 플로팅 버튼(#swb-root .swb-fab) 존재 여부를 로그로 확인
+  let floatingVisible = false;
+  try {
+    floatingVisible = await productPage.evaluate(() => {
+      const fab = document.querySelector("#swb-root .swb-fab");
+      if (!fab) return false;
+      const r = fab.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+  } catch {}
+  console.log(
+    floatingVisible
+      ? "✓ 플로팅 버튼 표시 확인 (상품 페이지)"
+      : "⚠ 플로팅 버튼이 감지되지 않음 — 상품 페이지 로드/콘텐츠 스크립트 지연일 수 있음"
+  );
+  await productPage.screenshot({
+    path: path.join(OUT_DIR, "shop-wisebar-01.png"),
+    fullPage: false, // 뷰포트 1280x800 그대로 — 스토어 요구 해상도
+  });
+  console.log("✓ 저장: docs/screenshots/store/shop-wisebar-01.png (상품 페이지 + 플로팅)");
+
   // 팝업 탭 열기 — "commit"까지만 기다린 뒤 상품 탭을 다시 앞으로.
   // popup.js의 chrome.tabs.query({active:true})가 상품 탭을 잡도록 하기 위함.
   const popupUrl = `chrome-extension://${extId}/popup/popup.html`;
@@ -291,21 +326,33 @@ try {
   });
   console.log("▸ 팝업 상태:", JSON.stringify(dump, null, 2));
 
-  // ── 스크린샷 1: 현재 상품 탭 (팝업 그대로 320x600) ──
+  // ── 스크린샷 2: 현재 상품 탭 (팝업 그대로 320x600) ──
   const popupBody = await popupPage.$("body");
   if (!popupBody) throw new Error("popup body를 찾을 수 없습니다.");
-  await popupBody.screenshot({ path: path.join(OUT_DIR, "shop-wisebar-01.png") });
-  console.log("✓ 저장: docs/screenshots/store/shop-wisebar-01.png (상품 탭)");
+  await popupBody.screenshot({ path: path.join(OUT_DIR, "shop-wisebar-02.png") });
+  console.log("✓ 저장: docs/screenshots/store/shop-wisebar-02.png (현재 상품 탭)");
 
-  // ── 스크린샷 2: 핫딜 "7일" 탭 ──
+  // ── 스크린샷 3: 핫딜 "30일" 탭 (v0.10.7 — 7일과 화면 구분) ──
+  // 7일이 기본 active라 02와 03이 같아지는 문제 해결 — 데모가 dropDays=15 상품을 포함해
+  // 30일 탭에는 5개, 7일 탭에는 3개가 표시되어 화면이 달라짐
   try {
-    await popupPage.click("button[data-days='7']");
+    await popupPage.click("button[data-days='30']");
     await popupPage.waitForTimeout(2500);
   } catch (e) {
-    console.log("⚠ 핫딜 7일 버튼 클릭 실패 (그대로 진행):", e.message);
+    console.log("⚠ 핫딜 30일 버튼 클릭 실패 (그대로 진행):", e.message);
   }
-  await popupBody.screenshot({ path: path.join(OUT_DIR, "shop-wisebar-02.png") });
-  console.log("✓ 저장: docs/screenshots/store/shop-wisebar-02.png (핫딜 탭)");
+  const dump30 = await popupPage.evaluate(() => {
+    const $ = (id) => document.getElementById(id);
+    return {
+      deals: Array.from(document.querySelectorAll(".deal-item .watch-name")).map(
+        (el) => el.textContent.trim()
+      ),
+      dealEmptyVisible: !$("dealEmpty")?.classList.contains("hidden"),
+    };
+  });
+  console.log("▸ 팝업 상태(30일):", JSON.stringify(dump30, null, 2));
+  await popupBody.screenshot({ path: path.join(OUT_DIR, "shop-wisebar-03.png") });
+  console.log("✓ 저장: docs/screenshots/store/shop-wisebar-03.png (핫딜 30일 탭)");
 
   // 실제 창 확인을 위해 잠시 유지 후 종료
   console.log("✓ 3초 후 브라우저를 닫습니다. 화면을 확인하세요.");

@@ -1,5 +1,23 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.10.7 (2026-08-06) — [store+server] 웨일 심사용 스크린샷 재구성 (T-96a, 플로팅 화면 추가)
+
+### 도구 (T-96a)
+- **스크린샷 3장 구성**: `scripts/store-capture/capture.js` 개편
+  - `shop-wisebar-01.png` — **1280×800 상품 페이지 전체 + 플로팅 버튼** (실사용 화면, 심사용 메인)
+  - `shop-wisebar-02.png` — 팝업 320×600 현재 상품 탭 (핫딜 7일 기본 노출)
+  - `shop-wisebar-03.png` — 팝업 320×600 **핫딜 30일 탭** (기존엔 7일이 기본 active라 02와 동일했음)
+  - 실행 로그에 `✓ 플로팅 버튼 표시 확인` + `▸ 팝업 상태(30일):` 덤프 추가 (텍스트 전용 모델 검증 대응)
+- **문제 수정**: 기존 `01/02.png`는 둘 다 팝업 화면으로 완전 동일(픽셀 diff 0) + 플로팅 화면 부재 →
+  상품 페이지 전체 캡처 + 기간 탭 구분으로 재구성
+
+### 서버 (T-96a)
+- **`PriceUploadIn.captured_at` 추가** — 데모 시딩이 과거 시점 가격을 등록 가능
+  (`server/app/schemas.py`, `server/app/routers/products.py`)
+- 데모 하락을 `captured_at`으로 시점 지정 — 7일 하락 3개(priceDays=5/dropDays=3) + 30일 하락 2개(priceDays=20/dropDays=15)
+  → `/recommendations`가 days 필터로 **7일 탭 3개 / 30일 탭 5개**를 구분 노출 (로컬 검증 완료)
+- pytest `test_products.py` 2건 추가 (captured_at 과거/현재) → **36건 전체 통과**
+
 ## v0.10.6 (2026-08-06) — [extension+server] 확장 E2E 자동화 (T-98)
 
 ### 도구 (T-98)
