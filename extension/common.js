@@ -9,14 +9,16 @@ const SWB_CONFIG = {
 };
 
 // 공용 API — 타임아웃 + 콜드스타트 자동 재시도 (v0.7.1)
+// v0.11.0 (T-99k) — options.timeoutMs / options.maxAttempts 지원 (배치 POST용 90s·재시도 2회)
 async function SWB_API(path, options = {}) {
   const url = `${SWB_CONFIG.server}${SWB_CONFIG.api}${path}`;
   const method = (options.method || "GET").toUpperCase();
-  const maxAttempts = method === "GET" ? SWB_CONFIG.coldStartRetry + 1 : 1;
+  const timeoutMs = options.timeoutMs || SWB_CONFIG.requestTimeoutMs;
+  const maxAttempts = options.maxAttempts || (method === "GET" ? SWB_CONFIG.coldStartRetry + 1 : 1);
   let lastErr;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), SWB_CONFIG.requestTimeoutMs);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const res = await fetch(url, {
         ...options,
@@ -52,12 +54,13 @@ const MallParser = {
       const m = path.match(/\/vp\/products\/(\d+)/);
       return m ? { mall, productID: m[1], url: urlString } : null;
     }
-    // 네이버 브랜드 / 스마트스토어 (접두사 규약 유지: brand:/store:)
+    // 네이버 브랜드 / 네이버+ 스토어 (접두사 규약 유지: brand:/store:)
+    // v0.11.0 — 네이버+ 스토어 주소 변경 반영: smartstore + shopping 모두 지원
     if (host.includes("brand.naver.com")) {
       const m = path.match(/^\/([a-zA-Z0-9_-]+)\/products\/(\d+)/);
       return m ? { mall, productID: `brand:${m[1]}:${m[2]}`, url: urlString } : null;
     }
-    if (host.includes("smartstore.naver.com")) {
+    if (host.includes("smartstore.naver.com") || host.includes("shopping.naver.com")) {
       const m = path.match(/^\/([a-zA-Z0-9_-]+)\/products\/(\d+)/);
       return m ? { mall, productID: `store:${m[1]}:${m[2]}`, url: urlString } : null;
     }
@@ -96,7 +99,7 @@ const MallParser = {
     if (host.includes("search.shopping.naver.com")) {
       return { mall: "naver", kind: /\/catalog\/\d+/.test(path) ? "product" : "listing" };
     }
-    if (host.includes("brand.naver.com") || host.includes("smartstore.naver.com")) {
+    if (host.includes("brand.naver.com") || host.includes("smartstore.naver.com") || host.includes("shopping.naver.com")) {
       return { mall: "naver", kind: /\/[^/]+\/products\/\d+/.test(path) ? "product" : "listing" };
     }
     if (host.includes("oliveyoung.co.kr")) {

@@ -26,7 +26,7 @@ const PROFILE_SRC = path.join(ROOT, "docs/screenshots/store/.whale-profile");
 const PORT = process.env.SWB_E2E_PORT || "8765";
 const SERVER = `http://127.0.0.1:${PORT}`;
 const API = `${SERVER}/api/v1`;
-// 기본 상품: 올리브영 (네이버 스마트스토어는 자동화 브라우저 접속 시 429 봇 차단 가능성 —
+// 기본 상품: 올리브영 (네이버+ 스토어는 자동화 브라우저 접속 시 429 봇 차단 가능성 —
 // E2E 안정성을 위해 봇 차단이 없는 올리브영 상세 페이지를 기본 사용)
 const PRODUCT_URL =
   process.argv[2] ||
@@ -71,7 +71,7 @@ const DEMO_PRODUCTS = [
 const DEMO_IDS = DEMO_PRODUCTS.map((p) => p.id);
 
 async function seedDemoProduct(p) {
-  const url = `https://smartstore.naver.com/demo/products/${p.id}`;
+  const url = `https://shopping.naver.com/demo/products/${p.id}`;
   await apiFetch("/products/batch", {
     method: "POST",
     body: { items: [{ product_id: p.id, mall: p.mall, url, name: p.name, price: p.price }] },
@@ -105,7 +105,7 @@ function parseProductId(urlString) {
       const m = pathStr.match(/\/vp\/products\/(\d+)/);
       return m ? { mall: "coupang", id: m[1] } : null;
     }
-    if (host.includes("smartstore.naver.com")) {
+    if (host.includes("shopping.naver.com") || host.includes("smartstore.naver.com")) {
       const m = pathStr.match(/^\/([a-zA-Z0-9_-]+)\/products\/(\d+)/);
       return m ? { mall: "naver", id: `store:${m[1]}:${m[2]}` } : null;
     }

@@ -3,7 +3,7 @@
 // 사용법:
 //   node capture.js [상품URL]
 //   예) node capture.js "https://www.coupang.com/vp/products/1804998758"
-//   예) node capture.js "https://smartstore.naver.com/main/products/1000000000"
+//   예) node capture.js "https://shopping.naver.com/main/products/1000000000"
 //   URL 미지정 시 기본 예시 URL 사용 (데이터가 없으면 팝업 상단이 비어 보일 수 있음)
 //
 // 동작:
@@ -57,7 +57,7 @@ async function apiFetch(path, opts = {}) {
 }
 
 // 데모 상품 정의 — 핫딜 탭(5% 이상 하락) + 현재 상품 탭(가격 통계)을 채우기 위한 가상 상품.
-// url은 스마트스토어 형식이라 실제 클릭은 실패하지만 팝업 렌더링에는 문제없음.
+// url은 네이버+ 스토어 형식이라 실제 클릭은 실패하지만 팝업 렌더링에는 문제없음.
 // v0.10.7 (T-96a): 기간별 화면 구분을 위해 두 시점(하락 전 priceDays / 하락 후 dropDays)을 지정.
 //   - 7일 상품(priceDays=5, dropDays=3) : 두 포인트 모두 7일 cutoff 내 → 7일/30일 탭 노출 (02 화면)
 //   - 30일 상품(priceDays=20, dropDays=15): 7일 cutoff 이후 포인트 없음 → 30일 탭에만 노출 (03 화면 구분)
@@ -75,7 +75,7 @@ const DEMO_IDS = DEMO_PRODUCTS.map((p) => p.id);
 // 상품은 가격 없이 upsert (배치 price 필드 생략) — 두 포인트 모두 과거 시점이라
 // days 필터(cutoff 이후 포인트 유무)로 7일/30일 탭 목록이 달라진다.
 async function seedDemoProduct(p) {
-  const url = `https://smartstore.naver.com/demo/products/${p.id}`;
+  const url = `https://shopping.naver.com/demo/products/${p.id}`;
   await apiFetch("/products/batch", {
     method: "POST",
     body: { items: [{ product_id: p.id, mall: p.mall, url, name: p.name }] },
@@ -186,7 +186,7 @@ function extIdFromPreferences(userDataDir) {
 
 const args = process.argv.slice(2);
 const productUrl =
-  args[0] || "https://smartstore.naver.com/gamewoori/products/13360049393";
+  args[0] || "https://shopping.naver.com/gamewoori/products/13360049393";
 
 // MallParser 규칙을 축약 재현 — URL에서 productID 추출 (popup.js가 인식하는 값과 동일해야 함)
 function parseProductId(urlString) {
@@ -198,7 +198,7 @@ function parseProductId(urlString) {
       const m = path.match(/\/vp\/products\/(\d+)/);
       return m ? { mall: "coupang", id: m[1] } : null;
     }
-    if (host.includes("smartstore.naver.com")) {
+    if (host.includes("shopping.naver.com") || host.includes("smartstore.naver.com")) {
       const m = path.match(/^\/([a-zA-Z0-9_-]+)\/products\/(\d+)/);
       return m ? { mall: "naver", id: `store:${m[1]}:${m[2]}` } : null;
     }
@@ -306,6 +306,73 @@ try {
     fullPage: false, // 뷰포트 1280x800 그대로 — 스토어 요구 해상도
   });
   console.log("✓ 저장: docs/screenshots/store/shop-wisebar-01.png (상품 페이지 + 플로팅)");
+
+  // ── 플로팅 메뉴 펼침 좌표 덤프 (v0.11.0 후속 — 텍스트 전용 모델 대응) ──
+  // FAB 클릭 → 메뉴 6개 아이콘의 화면 좌표를 덤프해 화면 밖/겹침 여부를 텍스트로 검증.
+  try {
+    const menuDump = await productPage.evaluate(() => {
+      const host = document.querySelector("#swb-root");
+      if (!host || !host.shadowRoot) return null;
+      const fab = host.shadowRoot.querySelector(".swb-fab");
+      const menu = host.shadowRoot.querySelector(".swb-menu");
+      if (!fab || !menu) return null;
+      fab.click();
+      const items = [];
+      menu.querySelectorAll(".swb-mi").forEach((b) => {
+        const r = b.getBoundingClientRect();
+        items.push({
+          key: b.dataset.key,
+          label: (b.querySelector(".swb-mi-label") || { textContent: "" }).textContent || "",
+          x: Math.round(r.x), y: Math.round(r.y),
+          w: Math.round(r.width), h: Math.round(r.height),
+          inViewport: r.left >= 0 && r.top >= 0 && r.right <= window.innerWidth && r.bottom <= window.innerHeight,
+        });
+      });
+      return { viewport: { w: window.innerWidth, h: window.innerHeight }, items };
+    });
+    await productPage.waitForTimeout(400); // 펼침 애니메이션(0.22s) 대기 후 좌표 재측정
+    const menuDump2 = await productPage.evaluate(() => {
+      // 주의: fab.click()을 또 호출하면 toggleMenu가 메뉴를 닫는다. 여기서는 좌표만 읽는다.
+      const host = document.querySelector("#swb-root");
+      if (!host || !host.shadowRoot) return null;
+      const menu = host.shadowRoot.querySelector(".swb-menu");
+      if (!menu) return null;
+      const items = [];
+      menu.querySelectorAll(".swb-mi").forEach((b) => {
+        const r = b.getBoundingClientRect();
+        items.push({
+          key: b.dataset.key,
+          label: (b.querySelector(".swb-mi-label") || { textContent: "" }).textContent || "",
+          x: Math.round(r.x), y: Math.round(r.y),
+          w: Math.round(r.width), h: Math.round(r.height),
+          inViewport: r.left >= 0 && r.top >= 0 && r.right <= window.innerWidth && r.bottom <= window.innerHeight,
+        });
+      });
+      return { items };
+    });
+    const dump = menuDump2 || menuDump;
+    if (dump && dump.items && dump.items.length) {
+      console.log("▸ 플로팅 메뉴 펼침 좌표 (v0.11.0 후속):");
+      dump.items.forEach((it) =>
+        console.log(`  ${String(it.key).padEnd(6)} ${it.label.padEnd(8)} (${it.x},${it.y}) ${it.w}x${it.h} ${it.inViewport ? "✓화면내" : "⚠화면밖"}`)
+      );
+      const bad = dump.items.filter((it) => !it.inViewport);
+      console.log(bad.length
+        ? `  ⚠ 화면 밖 아이콘 ${bad.length}개: ${bad.map((b) => b.key).join(", ")}`
+        : "  ✓ 모든 메뉴 아이콘이 화면 내부에 위치");
+    } else {
+      console.log("⚠ 플로팅 메뉴 덤프 불가 — FAB/메뉴 미발견");
+    }
+    await productPage.evaluate(() => {
+      const host = document.querySelector("#swb-root");
+      if (host && host.shadowRoot) {
+        const fab = host.shadowRoot.querySelector(".swb-fab");
+        if (fab) fab.click(); // 펼친 메뉴 닫기
+      }
+    });
+  } catch (e) {
+    console.log(`⚠ 플로팅 메뉴 덤프 실패: ${e.message}`);
+  }
 
   // 팝업 탭 열기 — "commit"까지만 기다린 뒤 상품 탭을 다시 앞으로.
   // popup.js의 chrome.tabs.query({active:true})가 상품 탭을 잡도록 하기 위함.

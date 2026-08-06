@@ -20,7 +20,8 @@
 
 | 패턴 | 용도 |
 |------|------|
-| `*://smartstore.naver.com/*` | 네이버 스마트스토어 가격 수집 |
+| `*://smartstore.naver.com/*` | 네이버+ 스토어 가격 수집 (구 스마트스토어, 하위 호환) |
+| `*://shopping.naver.com/*` | 네이버+ 스토어 가격 수집 |
 | `*://brand.naver.com/*` | 네이버 브랜드 가격 수집 |
 | `*://search.shopping.naver.com/*` | 네이버 쇼핑 검색/카탈로그 수집 |
 | `*://www.coupang.com/*` | 쿠팡 수집 |
@@ -30,7 +31,7 @@
 
 ## 3. content_scripts 매치
 
-`*://smartstore.naver.com/*`, `*://brand.naver.com/*`, `*://search.shopping.naver.com/*`, `*://www.coupang.com/*`, `*://*.oliveyoung.co.kr/*`
+`*://smartstore.naver.com/*`, `*://shopping.naver.com/*`, `*://brand.naver.com/*`, `*://search.shopping.naver.com/*`, `*://www.coupang.com/*`, `*://*.oliveyoung.co.kr/*`
 → `common.js` + `content.js` + `swb-ui.js` (document_idle)
 
 ## 4. 심사 체크리스트 (AGENTS.md 21.1)

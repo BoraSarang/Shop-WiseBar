@@ -3,58 +3,61 @@
 <head>
 <meta charset="UTF-8">
 <title>똑바 설정</title>
+<link rel="stylesheet" href="swb-tokens.css">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
-  body { background: #f5f6fa; color: #1c1c1e; padding: 24px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--swb-font); }
+  body { background: var(--swb-bg); color: var(--swb-text); padding: var(--swb-space-6); }
   .wrap { max-width: 480px; margin: 0 auto; }
-  .head { background: #2d4ae0; color: #fff; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
-  .head h1 { font-size: 17px; font-weight: 700; }
-  .head p { font-size: 12px; opacity: 0.85; margin-top: 4px; }
-  .card { background: #fff; border-radius: 12px; padding: 6px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 16px; }
-  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid #f0f0f0; }
+  .head { background: var(--swb-primary); color: #fff; border-radius: var(--swb-radius-lg); padding: 18px 20px; margin-bottom: var(--swb-space-4); }
+  .head h1 { font-size: var(--swb-fs-lg); font-weight: 700; }
+  .head p { font-size: var(--swb-fs-sm); opacity: 0.85; margin-top: 4px; }
+  .card { background: var(--swb-surface); border-radius: var(--swb-radius-lg); padding: 6px 20px; box-shadow: var(--swb-shadow-md); margin-bottom: var(--swb-space-4); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: var(--swb-space-3); padding: 13px 0; border-bottom: 1px solid var(--swb-border); }
   .row:last-child { border-bottom: none; }
-  .label { font-size: 13px; color: #555; }
-  .val { font-size: 13px; font-weight: 600; color: #2d4ae0; word-break: break-all; text-align: right; }
-  .status { font-size: 12px; margin-top: 2px; }
-  .ok { color: #2dd4bf; }
-  .fail { color: #e5484d; }
+  .label { font-size: var(--swb-fs-base); color: var(--swb-text-secondary); }
+  .val { font-size: var(--swb-fs-base); font-weight: 600; color: var(--swb-primary); word-break: break-all; text-align: right; }
+  .status { font-size: var(--swb-fs-sm); margin-top: 2px; }
+  .ok { color: var(--swb-success); }
+  .fail { color: var(--swb-danger); }
   .btn {
-    background: #f2f4ff; color: #2d4ae0; border: none; cursor: pointer;
-    font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 8px;
+    background: var(--swb-primary-soft); color: var(--swb-primary); border: none; cursor: pointer;
+    font-size: var(--swb-fs-sm); font-weight: 600; padding: 5px 10px; border-radius: var(--swb-radius-md);
   }
-  .btn:hover { background: #e2e7ff; }
-  .foot { font-size: 11px; color: #aaa; text-align: center; padding: 8px 0 20px; }
-  .label-sub { display: block; font-size: 11px; color: #aaa; font-weight: 400; margin-top: 2px; }
+  .btn:hover { background: var(--swb-primary-soft-2); }
+  .foot { font-size: var(--swb-fs-xs); color: var(--swb-text-faint); text-align: center; padding: 8px 0 20px; }
+  .label-sub { display: block; font-size: var(--swb-fs-xs); color: var(--swb-text-faint); font-weight: 400; margin-top: 2px; }
   /* 토글 스위치 */
   .switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
   .switch input { opacity: 0; width: 0; height: 0; }
   .slider {
     position: absolute; cursor: pointer; inset: 0;
-    background: #ccc; border-radius: 24px; transition: .2s;
+    background: var(--swb-text-faint); border-radius: var(--swb-radius-pill); transition: .2s;
   }
   .slider::before {
     content: ""; position: absolute; height: 18px; width: 18px;
-    left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s;
+    left: 3px; top: 3px; background: var(--swb-surface); border-radius: 50%; transition: .2s;
   }
-  .switch input:checked + .slider { background: #2d4ae0; }
+  .switch input:checked + .slider { background: var(--swb-primary); }
   .switch input:checked + .slider::before { transform: translateX(18px); }
   kbd {
-    background: #f0f0f2; border: 1px solid #d8d8dc; border-bottom-width: 2px;
-    border-radius: 5px; padding: 1px 6px; font-size: 11px; font-family: inherit;
+    background: var(--swb-surface-soft); border: 1px solid var(--swb-border-strong); border-bottom-width: 2px;
+    border-radius: 5px; padding: 1px 6px; font-size: var(--swb-fs-xs); font-family: inherit;
   }
   .err-box {
-    background: #fff1f0; border: 1px solid #f3c6c3; border-radius: 10px;
-    padding: 12px 14px; margin: 12px 0 14px; font-size: 12px; color: #b3403a;
+    background: var(--swb-danger-soft); border: 1px solid #f3c6c3; border-radius: 10px;
+    padding: 12px 14px; margin: 12px 0 14px; font-size: var(--swb-fs-sm); color: #b3403a;
   }
-  .err-box p { margin-bottom: 8px; }
-  .err-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .err-box p { margin-bottom: var(--swb-space-2); }
+  .err-actions { display: flex; flex-wrap: wrap; gap: var(--swb-space-2); }
   .btn-link {
-    background: #fff; color: #2d4ae0; border: 1px solid #d8dcf3;
-    text-decoration: none; font-size: 12px; font-weight: 600;
-    padding: 6px 10px; border-radius: 8px; display: inline-block;
+    background: var(--swb-surface); color: var(--swb-primary); border: 1px solid var(--swb-primary-border);
+    text-decoration: none; font-size: var(--swb-fs-sm); font-weight: 600;
+    padding: 6px 10px; border-radius: var(--swb-radius-md); display: inline-block;
   }
-  .btn-link:hover { background: #f2f4ff; }
-
+  .btn-link:hover { background: var(--swb-primary-soft); }
+  button:focus-visible, a:focus-visible, input:focus-visible {
+    outline: 2px solid var(--swb-primary); outline-offset: 2px;
+  }
 </style>
 </head>
 <body>
@@ -107,7 +110,7 @@
 
   <div class="card">
     <div class="row">
-      <span class="label">디버그 패널 표시<small class="label-sub">켜면 팝업에 디버그 버튼(🛠)을 보여줍니다</small></span>
+      <span class="label">디버그 패널 표시<small class="label-sub">켜면 팝업에 디버그 버튼을 보여줍니다</small></span>
       <label class="switch">
         <input type="checkbox" id="debugEnabled">
         <span class="slider"></span>

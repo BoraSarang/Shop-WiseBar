@@ -3,15 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <title>똑바</title>
+  <link rel="stylesheet" href="../swb-tokens.css">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <header>
     <h1>똑바</h1>
     <span class="header-desc">찜한 상품 가격이 내려가면 알려드려요</span>
-    <span id="status" class="status"></span>
-    <button id="debugBtn" class="debug-open" title="디버그 창 열기" aria-label="디버그 창 열기">🛠</button>
+    <button id="debugBtn" class="debug-open" title="디버그 창 열기" aria-label="디버그 창 열기">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+    </button>
   </header>
+
+  <div id="status" class="status-bar" role="status" aria-live="polite"></div>
 
   <section id="current" class="current">
     <div class="current-head">
@@ -20,7 +24,7 @@
         <span id="currentPrice" class="current-price"></span>
         <div id="mallLinks" class="mall-links hidden">
           <a href="https://www.coupang.com/" target="_blank">쿠팡</a>
-          <a href="https://smartstore.naver.com/" target="_blank">네이버 스마트스토어</a>
+          <a href="https://shopping.naver.com/" target="_blank">네이버+ 스토어</a>
           <a href="https://www.oliveyoung.co.kr/" target="_blank">올리브영</a>
         </div>
       </div>

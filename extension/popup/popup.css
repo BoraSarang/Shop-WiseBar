@@ -1,4 +1,4 @@
-/* 똑바 팝업 스타일 */
+/* 똑바 팝업 스타일 — 디자인 토큰(../swb-tokens.css) 기반, v0.11.0 */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -8,18 +8,18 @@ html, body {
 
 body {
   width: 320px;
-  font-family: -apple-system, "Apple SD Gothic Neo", sans-serif;
-  font-size: 13px;
-  color: #1c1c1e;
-  background: #fff;
+  font-family: var(--swb-font);
+  font-size: var(--swb-fs-base);
+  color: var(--swb-text);
+  background: var(--swb-surface);
   display: flex;
   flex-direction: column;
   overflow-y: auto; /* v0.9.5 — 메인 스크롤 (찜 목록 제거 후 섹션이 화면을 벗어나면 스크롤) */
 }
 
-/* v0.9.5 — 얇은 스크롤바 (기본 OS 스크롤바가 투박해 대체) */
+/* v0.9.5 — 얇은 스크롤바 */
 body::-webkit-scrollbar { width: 6px; }
-body::-webkit-scrollbar-thumb { background: #c7cede; border-radius: 3px; }
+body::-webkit-scrollbar-thumb { background: var(--swb-scroll-thumb); border-radius: 3px; }
 body::-webkit-scrollbar-track { background: transparent; }
 
 header {
@@ -27,20 +27,36 @@ header {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 10px 10px;
-  background: #2d4ae0;
+  padding: 10px;
+  background: var(--swb-primary);
   color: #fff;
-  position: sticky;  /* v0.7.3 — 스크롤해도 항상 최상단 고정 */
+  position: sticky; /* v0.7.3 — 스크롤해도 항상 최상단 고정 */
   top: 0;
   z-index: 20;
 }
+
+header h1 { font-size: var(--swb-fs-md); font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+
+.header-desc { font-size: var(--swb-fs-xs); opacity: 0.85; margin-left: var(--swb-space-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; }
+
+/* ── 상태 표시 (본문 최상단, v0.11.0 헤더에서 분리) ─── */
+.status-bar {
+  font-size: var(--swb-fs-xs);
+  color: var(--swb-primary);
+  background: var(--swb-primary-soft);
+  padding: 6px var(--swb-space-4);
+  text-align: center;
+  flex-shrink: 0;
+}
+.status-bar:empty { display: none; }
+.status-bar.err { color: var(--swb-danger); background: var(--swb-danger-soft); }
 
 /* ── 로딩 인디케이터 (v0.7.3) ─────────────────────────── */
 .spinner {
   display: inline-block;
   width: 14px; height: 14px;
-  border: 2px solid #dfe3f8;
-  border-top-color: #2d4ae0;
+  border: 2px solid var(--swb-primary-border);
+  border-top-color: var(--swb-primary);
   border-radius: 50%;
   vertical-align: -2px;
   margin-right: 6px;
@@ -51,69 +67,57 @@ header {
 
 .row-loading {
   display: flex; align-items: center; gap: 6px;
-  padding: 10px 8px; font-size: 12px; color: #888;
+  padding: 10px 8px; font-size: var(--swb-fs-sm); color: var(--swb-text-muted);
 }
 
-.row-error { color: #e5484d; }
-
-header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
-
-.header-desc { font-size: 11px; opacity: 0.85; margin-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; }
-
-.status { font-size: 11px; opacity: 0.85; margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 110px; }
-
-.alerts { padding: 10px 14px 12px; background: #fff8f6; border-bottom: 1px solid #fbe3dd; flex-shrink: 0; }
-
-.alerts h2 { font-size: 12px; color: #e5484d; margin-bottom: 6px; }
-
-.alert-list { list-style: none; max-height: 132px; overflow-y: auto; }
+.row-error { color: var(--swb-danger); }
 
 /* ── 오늘의 핫딜 (v0.7.2) ─────────────────────────── */
-.deals { padding: 12px 14px; background: #f4f7ff; border-bottom: 1px solid #e0e7ff; flex-shrink: 0; }
+.deals { padding: var(--swb-space-3) var(--swb-space-4); background: var(--swb-primary-soft); border-bottom: 1px solid var(--swb-primary-border); flex-shrink: 0; }
 
 .deals-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 
-.deals h2 { font-size: 12px; color: #2d4ae0; }
+.deals h2 { font-size: var(--swb-fs-sm); color: var(--swb-primary); }
 
-.deals-days { display: flex; gap: 4px; }
+.deals-days { display: flex; gap: var(--swb-space-1); }
 
 .deal-day-btn {
-  font-size: 10px; font-weight: 700; color: #5a6be0;
-  background: #fff; border: 1px solid #d5ddfb; border-radius: 10px;
+  font-size: var(--swb-fs-xxs); font-weight: 700; color: var(--swb-primary);
+  background: var(--swb-surface); border: 1px solid var(--swb-primary-border); border-radius: var(--swb-radius-lg);
   padding: 2px 8px; cursor: pointer;
 }
 
-.deal-day-btn.active { background: #2d4ae0; color: #fff; border-color: #2d4ae0; }
+.deal-day-btn.active { background: var(--swb-primary); color: #fff; border-color: var(--swb-primary); }
 
 .deal-list { list-style: none; } /* v0.9.5 — 내부 스크롤 제거, 메인 스크롤로 전체 표시 */
 
 .deal-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 8px; border-radius: 8px; background: #fff; cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 6px;
+  display: flex; align-items: center; gap: var(--swb-space-2);
+  padding: 7px 8px; border-radius: var(--swb-radius-md); background: var(--swb-surface); cursor: pointer;
+  box-shadow: var(--swb-shadow-sm); margin-bottom: 6px;
 }
 
-.deal-item:hover { background: #f7f8fa; }
+.deal-item:hover { background: var(--swb-surface-soft); }
 
 .deal-item .watch-thumb { width: 32px; height: 32px; }
 
 .deal-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 
-.deal-price { font-size: 12px; font-weight: 700; }
+.deal-price { font-size: var(--swb-fs-sm); font-weight: 700; }
 
-.deal-before { font-size: 10px; font-weight: 400; color: #999; text-decoration: line-through; }
+.deal-before { font-size: var(--swb-fs-xxs); font-weight: 400; color: var(--swb-text-muted); text-decoration: line-through; }
 
 .deal-pct {
-  font-size: 11px; font-weight: 800; color: #fff; background: #e5484d;
+  font-size: var(--swb-fs-xs); font-weight: 800; color: #fff; background: var(--swb-danger);
   padding: 2px 6px; border-radius: 5px; flex-shrink: 0;
 }
 
-.current { padding: 12px 14px; border-bottom: 1px solid #eee; flex-shrink: 0; }
+.current { padding: var(--swb-space-3) var(--swb-space-4); border-bottom: 1px solid var(--swb-border); flex-shrink: 0; }
 
-.current-head { display: flex; flex-direction: column; gap: 8px; }
+.current-head { display: flex; flex-direction: column; gap: var(--swb-space-2); }
 
 .current-info {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; min-width: 0;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--swb-space-2); min-width: 0;
 }
 
 .current-name {
@@ -122,35 +126,35 @@ header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink:
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.current-price { font-size: 12px; font-weight: 800; color: #2d4ae0; flex-shrink: 0; }
+.current-price { font-size: var(--swb-fs-sm); font-weight: 800; color: var(--swb-primary); flex-shrink: 0; }
 
 /* v0.9.1 — 비지원 페이지 안내: 문구는 좌측, 링크는 아래 줄 중앙 정렬 */
-.current-name.center { text-align: center; flex-basis: 100%; }
+.current-name.center { text-align: center; flex-basis: 100%; white-space: normal; line-height: 1.5; }
 
-.current-stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.current-stats { display: flex; align-items: center; gap: var(--swb-space-2); flex-wrap: wrap; }
 
 .deal-badge {
-  font-size: 10px; font-weight: 800; color: #fff;
-  background: #2d4ae0; border-radius: 10px; padding: 2px 8px;
+  font-size: var(--swb-fs-xxs); font-weight: 800; color: #fff;
+  background: var(--swb-primary); border-radius: var(--swb-radius-lg); padding: 2px 8px;
   white-space: nowrap;
 }
-.deal-badge.hot { background: #e5484d; }
-.deal-badge.low { background: #2d4ae0; }
-.deal-badge.warn { background: #8a8f98; }
+.deal-badge.hot { background: var(--swb-danger); }
+.deal-badge.low { background: var(--swb-primary); }
+.deal-badge.warn { background: var(--swb-warn); }
 
-.stats-text { font-size: 11px; color: #888; }
+.stats-text { font-size: var(--swb-fs-xs); color: var(--swb-text-muted); }
 
 .trend-stats {
-  font-size: 11px; color: #2d4ae0; background: #f2f4ff;
-  border-radius: 8px; padding: 5px 10px; margin-top: 6px; font-weight: 600;
+  font-size: var(--swb-fs-xs); color: var(--swb-primary); background: var(--swb-primary-soft);
+  border-radius: var(--swb-radius-md); padding: 5px 10px; margin-top: 6px; font-weight: 600;
 }
 
-.current-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+.current-actions { display: flex; flex-wrap: wrap; gap: var(--swb-space-2); align-items: center; justify-content: center; }
 
 .current-hint {
-  font-size: 11px; font-weight: 700;
-  color: #2d4ae0; background: #eef1ff;
-  border-radius: 12px; padding: 3px 10px;
+  font-size: var(--swb-fs-xs); font-weight: 700;
+  color: var(--swb-primary); background: var(--swb-primary-soft-2);
+  border-radius: var(--swb-radius-pill); padding: 3px 10px;
   white-space: nowrap;
 }
 
@@ -159,31 +163,29 @@ header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink:
   flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 6px;
 }
 .mall-links a {
-  font-size: 11px; font-weight: 700; color: #2d4ae0; text-decoration: none;
-  background: #eef1ff; border-radius: 12px; padding: 3px 10px;
+  font-size: var(--swb-fs-xs); font-weight: 700; color: var(--swb-primary); text-decoration: none;
+  background: var(--swb-primary-soft-2); border-radius: var(--swb-radius-pill); padding: 3px 10px;
   white-space: nowrap;
 }
-.mall-links a:hover { background: #dfe5ff; }
+.mall-links a:hover { background: var(--swb-primary-border); }
 
 .btn {
   border: none;
-  border-radius: 6px;
+  border-radius: var(--swb-radius-sm);
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: var(--swb-fs-sm);
   cursor: pointer;
   white-space: nowrap;
 }
 
-.btn-primary { background: #2d4ae0; color: #fff; }
-.btn-primary.active { background: #e5484d; }
-.btn-ghost { background: #f1f3f5; color: #333; }
-.btn-ghost:hover { background: #e2e5e9; }
+.btn-primary { background: var(--swb-primary); color: #fff; }
+.btn-primary.active { background: var(--swb-danger); }
 
 /* ── 연관 상품·핫딜 공용 썸네일 (v0.9.1) ─────────────── */
 .watch-thumb {
   width: 36px; height: 36px;
-  border-radius: 6px;
-  background: #eee center/cover no-repeat;
+  border-radius: var(--swb-radius-sm);
+  background: var(--swb-border) center/cover no-repeat;
   flex-shrink: 0;
   position: relative;
   display: flex; align-items: flex-end; justify-content: flex-end;
@@ -203,91 +205,88 @@ header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink:
   font-size: 8px; font-weight: 800; color: #fff; font-style: normal;
 }
 
-.watch-badge.b-fallback.b-naver { background: #03c75a; }
-.watch-badge.b-fallback.b-coupang { background: #0074e9; }
-.watch-badge.b-fallback.b-oliveyoung { background: #56a99c; }
-
-.watch-name {
-  font-size: 12px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.watch-badge.b-fallback.b-naver { background: var(--swb-mall-naver); }
+.watch-badge.b-fallback.b-coupang { background: var(--swb-mall-coupang); }
+.watch-badge.b-fallback.b-oliveyoung { background: var(--swb-mall-oliveyoung); }
 
 .target-row {
   flex-basis: 100%; /* 찜 버튼 아래 두 번째 줄로 (v0.9.1) */
   display: flex; flex-wrap: wrap; flex-direction: column; align-items: stretch;
   justify-content: center; /* v0.9.2 — 중앙 정렬 */
-  margin-top: 8px; padding: 8px 10px;
-  background: #f7f8fa; border-radius: 8px;
+  margin-top: var(--swb-space-2); padding: 8px 10px;
+  background: var(--swb-surface-soft); border-radius: var(--swb-radius-md);
 }
 .target-status {
-  font-size: 11px; color: #999; text-align: right; /* v0.9.2 — 오른쪽 정렬 */
+  font-size: var(--swb-fs-xs); color: var(--swb-text-muted); text-align: right; /* v0.9.2 — 오른쪽 정렬 */
   margin-bottom: 4px;
 }
-.target-status.on { color: #2d4ae0; font-weight: 600; }
+.target-status.on { color: var(--swb-primary); font-weight: 600; }
 .target-controls {
   display: flex; justify-content: flex-end; /* v0.9.2 — 오른쪽 정렬 */
   align-items: center; gap: 5px;
 }
 .target-input {
   width: 100px; padding: 5px 6px;
-  border: 1px solid #dde1e6; border-radius: 6px;
-  font-size: 12px; text-align: right;
+  border: 1px solid var(--swb-border-strong); border-radius: var(--swb-radius-sm);
+  font-size: var(--swb-fs-sm); text-align: right;
   flex-shrink: 1; min-width: 0;
 }
-.target-input:focus { outline: none; border-color: #2d4ae0; }
-.target-save { background: #2d4ae0; color: #fff; }
-.target-clear { background: #eceff4; color: #555; }
+.target-input:focus { outline: none; border-color: var(--swb-primary); }
+.target-save { background: var(--swb-primary); color: #fff; }
+.target-clear { background: var(--swb-surface-soft); color: var(--swb-text-secondary); }
 .target-clear:disabled { opacity: .45; cursor: default; }
-.target-row .btn { padding: 5px 7px; font-size: 11px; flex-shrink: 0; }
+.target-row .btn { padding: 5px 7px; font-size: var(--swb-fs-xs); flex-shrink: 0; }
 
 /* 접이식 토글 (함께 본 상품, v0.9.2) */
 .list-toggle {
   border: none; background: none; cursor: pointer;
-  font-size: 13px; color: #999; padding: 0 2px;
+  font-size: var(--swb-fs-base); color: var(--swb-text-muted); padding: 0 2px;
 }
 
-.list-toggle:hover { color: #2d4ae0; }
+.list-toggle:hover { color: var(--swb-primary); }
 
-.empty { padding: 24px 14px; text-align: center; color: #aaa; line-height: 1.6; }
-
-.detail { padding: 12px 14px; border-bottom: 1px solid #eee; }
-
-.detail-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-
-.detail-title { font-weight: 600; }
-
-.detail-info { margin-top: 8px; font-size: 12px; color: #555; line-height: 1.5; }
+.empty { padding: var(--swb-space-6) var(--swb-space-4); text-align: center; color: var(--swb-text-faint); line-height: 1.6; }
 
 .hidden { display: none; }
 
 /* v0.9.1 — 연관 상품 추천 */
-.related { border-bottom: 1px solid #eee; background: #fff; }
+.related { border-bottom: 1px solid var(--swb-border); background: var(--swb-surface); }
 .related-head {
   display: flex; align-items: center; gap: 6px;
-  padding: 12px 14px 4px;
+  padding: var(--swb-space-3) var(--swb-space-4) 4px;
 }
-.related-head h2 { font-size: 12px; color: #333; }
-.related-hint { font-size: 11px; color: #999; margin-left: auto; white-space: nowrap; }
+.related-head h2 { font-size: var(--swb-fs-sm); color: var(--swb-text-secondary); }
+.related-hint { font-size: var(--swb-fs-xs); color: var(--swb-text-muted); margin-left: auto; white-space: nowrap; }
 .related.collapsed .related-list,
 .related.collapsed .related-loading { display: none; }
-.related-list { padding: 4px 14px 10px; }
+.related-list { padding: 4px var(--swb-space-4) 10px; }
 .related-item {
   display: flex; align-items: center; gap: 10px;
   padding: 7px 4px; cursor: pointer;
 }
-.related-item:hover { background: #f7f8fa; border-radius: 8px; }
+.related-item:hover { background: var(--swb-surface-soft); border-radius: var(--swb-radius-md); }
 .related-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .related-name {
-  font-size: 12px; color: #333; line-height: 1.35;
+  font-size: var(--swb-fs-sm); color: var(--swb-text-secondary); line-height: 1.35;
   max-height: 2.6em; overflow: hidden;
 }
-.related-price { font-size: 12px; font-weight: 700; color: #2d4ae0; }
+.related-price { font-size: var(--swb-fs-sm); font-weight: 700; color: var(--swb-primary); }
 
 /* v0.9.3 — 디버그 창 열기 버튼 (팝업 헤더) */
 .debug-open {
   border: none; background: rgba(255,255,255,.18);
-  color: #fff; font-size: 14px; line-height: 1;
-  padding: 4px 7px; border-radius: 6px; cursor: pointer;
-  margin-left: 8px; flex-shrink: 0;
+  color: #fff; line-height: 1;
+  padding: 4px 7px; border-radius: var(--swb-radius-sm); cursor: pointer;
+  margin-left: var(--swb-space-2); flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
 }
 .debug-open:hover { background: rgba(255,255,255,.32); }
+.debug-open svg { width: 14px; height: 14px; }
+
+/* ── 접근성 (v0.11.0) ─────────────────────────────── */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--swb-primary);
+  outline-offset: 2px;
+}

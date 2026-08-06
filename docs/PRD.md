@@ -23,7 +23,7 @@
 
 ## 3. 사용자 스토리
 
-1. 사용자가 크롬에서 네이버 스마트스토어/쿠팡/올리브영 상품 페이지를 열면 → 익스텐션이 가격/제목/이미지를 추출해 서버로 업로드 (수동 조작 없음)
+1. 사용자가 크롬에서 네이버+ 스토어/쿠팡/올리브영 상품 페이지를 열면 → 익스텐션이 가격/제목/이미지를 추출해 서버로 업로드 (수동 조작 없음)
 2. 익스텐션 팝업에서 상품을 "찜"하고 목표가를 설정
 3. 서버가 주기적으로(방문 수집 + 올리브영 크롤러) 가격을 갱신
 4. 가격이 하락했거나 목표가에 도달하면 → 브라우저 알림으로 통지
@@ -53,7 +53,7 @@
 
 | 몰 | URL 패턴 | productID |
 |----|----------|-----------|
-| 네이버 스마트스토어 | `smartstore.naver.com/{store}/products/{id}` | `store:{store}:{id}` |
+| 네이버+ 스토어 | `shopping.naver.com/{store}/products/{id}` | `store:{store}:{id}` |
 | 네이버 브랜드 | `brand.naver.com/{store}/products/{id}` | `brand:{store}:{id}` |
 | 네이버 쇼핑 카탈로그 | `search.shopping.naver.com/catalog/{id}` | `c:{id}` |
 | 쿠팡 | `coupang.com/vp/products/{id}` | `{id}` (몰=쿠팡) |

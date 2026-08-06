@@ -37,7 +37,7 @@
 
 | 몰 | URL | productID 규약 |
 |----|-----|----------------|
-| 네이버 스마트스토어 | `smartstore.naver.com/{store}/products/{id}` | `store:{store}:{id}` |
+| 네이버+ 스토어 | `shopping.naver.com/{store}/products/{id}` | `store:{store}:{id}` |
 | 네이버 브랜드 | `brand.naver.com/{store}/products/{id}` | `brand:{store}:{id}` |
 | 네이버 쇼핑 카탈로그 | `search.shopping.naver.com/catalog/{id}` | `c:{id}` |
 | 쿠팡 | `coupang.com/vp/products/{id}` | `{id}` |

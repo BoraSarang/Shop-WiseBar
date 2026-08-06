@@ -1,0 +1,62 @@
+/* 똑바(Shop WiseBar) 디자인 토큰 — v0.11.0
+ * 팝업/옵션/온보딩은 <link>로, swb-ui.js(shadow DOM)는 :host에 동일 값 주입 후 사용.
+ * 색상/타이포/간격/라운드/그림자 변경은 이 파일에서만 관리한다.
+ */
+:root {
+  /* ── 색상 ───────────────────────────────────────── */
+  --swb-primary: #2d4ae0;              /* 브랜드/활성/가격 강조 */
+  --swb-primary-strong: #3a5aef;       /* hover */
+  --swb-primary-soft: #f2f4ff;         /* 연한 파랑 배경 (카드/칩) */
+  --swb-primary-soft-2: #eef1ff;       /* 조금 진한 연파랑 (힌트/칩) */
+  --swb-primary-border: #d5ddfb;       /* 탭 보더 */
+  --swb-danger: #e5484d;               /* 하락/찜해제/핫딜 % */
+  --swb-danger-soft: #fff8f6;          /* 품절/알림 배경 */
+  --swb-warn: #8a8f98;                 /* 경고 배지 */
+  --swb-success: #2dd4bf;              /* 옵션 서버 정상 */
+
+  --swb-text: #1c1c1e;                 /* 기본 텍스트 */
+  --swb-text-secondary: #555;          /* 보조 텍스트 */
+  --swb-text-muted: #8a8f98;           /* 약한 텍스트/배지 warn */
+  --swb-text-faint: #aaa;              /* 빈 상태/푸터 */
+  --swb-border: #eee;                  /* 구분선 */
+  --swb-border-strong: #dde1e6;        /* 입력 테두리 */
+  --swb-surface: #ffffff;              /* 카드/배경 */
+  --swb-surface-soft: #f7f8fa;         /* 목표가 행 등 */
+  --swb-bg: #f5f6fa;                   /* 페이지 배경(옵션/온보딩) */
+
+  --swb-mall-naver: #03c75a;           /* 네이버 */
+  --swb-mall-coupang: #0074e9;         /* 쿠팡 */
+  --swb-mall-oliveyoung: #56a99c;      /* 올리브영 */
+
+  --swb-scroll-thumb: #c7cede;         /* 얇은 스크롤바 */
+
+  /* ── 타이포 ─────────────────────────────────────── */
+  --swb-font: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --swb-fs-xxs: 10px;
+  --swb-fs-xs: 11px;
+  --swb-fs-sm: 12px;
+  --swb-fs-base: 13px;
+  --swb-fs-md: 15px;
+  --swb-fs-lg: 17px;
+  --swb-fs-xl: 20px;
+
+  /* ── 간격 (4px 그리드) ───────────────────────────── */
+  --swb-space-1: 4px;
+  --swb-space-2: 8px;
+  --swb-space-3: 12px;
+  --swb-space-4: 16px;
+  --swb-space-5: 20px;
+  --swb-space-6: 24px;
+
+  /* ── 라운드 ─────────────────────────────────────── */
+  --swb-radius-sm: 6px;
+  --swb-radius-md: 8px;
+  --swb-radius-lg: 12px;
+  --swb-radius-pill: 999px;
+
+  /* ── 그림자 ─────────────────────────────────────── */
+  --swb-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --swb-shadow-md: 0 2px 10px rgba(0, 0, 0, 0.05);
+  --swb-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.22);
+  --swb-shadow-brand: 0 4px 14px rgba(45, 74, 224, 0.45);
+}
