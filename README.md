@@ -13,11 +13,12 @@
   <a href="https://borasarang.github.io/Shop-WiseBar/">랜딩 페이지</a> ·
   <a href="releases/latest">릴리스</a> ·
   <a href="docs/PRD.md">PRD</a> ·
-  <a href="docs/DESIGN.md">기술 설계</a>
+  <a href="docs/DESIGN.md">기술 설계</a> ·
+  <a href="docs/store/STORE_LISTING.md">스토어 리스팅</a>
 </p>
 
 <p align="center">
-  <b>Chrome</b> MV3 확장
+  <b>Chrome</b> MV3 확장 · <b>웨일(Whale)</b> 스토어 등록 진행 중 (v0.12.2)
 </p>
 
 ---
@@ -29,7 +30,7 @@
 
 - 방문한 상품의 가격을 **자동으로 기록** — 별도 버튼을 눌러 저장할 필요 없음 (10분 쿨다운)
 - **찜 + 목표가 설정** → 가격이 내리거나 목표가에 도달하면 **브라우저 알림**
-- **가격 추이 그래프**로 지금이 구매 타이밍인지 판단
+- **가격 추이 그래프**로 지금이 구매 타이밍인지 판단 (7일/2주/1달)
 - **함께 본 상품 · 오늘의 핫딜** 추천
 - 익명 기기ID 기반이라 **계정·개인정보 없이** 시작
 
@@ -45,6 +46,11 @@
 
 ## 설치 방법
 
+### 웨일 스토어 (심사 등록 진행 중 — T-96)
+
+- [웨일 스토어](https://store.whale.naver.com/)에 **똑바** 등록 심사가 진행 중입니다 (v0.12.2).
+- 승인 후 스토어에서 "똑바"로 검색해 설치할 수 있습니다.
+
 ### Chrome / Edge / Whale (개발자 모드)
 
 1. 이 저장소를 `git clone` 하거나 **Code → Download ZIP**으로 받습니다.
@@ -52,14 +58,15 @@
 3. **압축해제된 확장 프로그램을 로드합니다**를 눌러 `extension/` 폴더를 선택합니다.
 4. 상품 페이지(네이버·쿠팡·올리브영)로 이동하면 똑바 버튼이 나타납니다.
 
-> Chrome 엣지· 웨일에서도 manifest 그대로 로드할 수 있습니다 (MV3).
+> Chrome·엣지·웨일 모두 manifest 그대로 로드할 수 있습니다 (MV3).
 
 ## 기능
 
 - **자동 가격 수집** — 네이버/쿠팡은 확장이 유일한 자동 수집 채널입니다 (서버는 캡차/Akamai로 직접 수집 불가). 많은 사용자가 방문할수록 서버 데이터가 누적됩니다.
-- **찜 목록 & 팝업 가격 추이** — 캔버스 기반 가격 이력 그래프
+- **찜 목록 & 팝업 가격 추이** — 캔버스 기반 가격 이력 그래프, 목표가 설정/해제
 - **알림** — 하락 / 목표가 도달 두 종류 (팝업에서 최근 알림 확인)
-- **플로팅 패널** — 상품 페이지 우하단 FAB에서 가격 추이, 핫딜, 알림, 찜 목록을 바로 확인
+- **플로팅 패널** — 상품 페이지 우하단 FAB 클릭 시 메뉴 5개: 오늘의 핫딜 · 알림 · 가격 추이 · 찜 목록 · 설정
+- **팝업** — 현재 상품 정보/가격 추이 + 오늘의 핫딜(1일/7일/30일) + 함께 본 상품
 
 ## 아키텍처
 
@@ -89,6 +96,18 @@ cd server && .venv/bin/uvicorn app.main:app --port 8000
 
 - Chrome `chrome://extensions` → 개발자 모드 → `extension/` 로드
 - 서버 URL은 `extension/common.js`의 `SWB_CONFIG`에서 단일 관리 (업데이트로 자동 반영)
+
+### 스토어 패키징 / 스크린샷
+
+```bash
+# 스토어 배포 zip 생성 (dist/shop-wisebar-v{version}.zip)
+./scripts/webstore-publish.sh --dry-run
+
+# 웨일 심사용 스크린샷 5장 자동 캡처 + 온보딩 이미지 자동 갱신 (macOS + 웨일)
+cd scripts/store-capture && node capture.js
+```
+
+- 상세: `docs/store/SCREENSHOT_GUIDE.md`, `docs/store/STORE_LISTING.md`
 
 ### 브랜치/커밋 규약
 
