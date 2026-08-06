@@ -17,30 +17,76 @@ const SWB_UI = (() => {
   let trendStatsCache = null; // v0.10.0 — 7일/30일/역대 요약
 
   const CSS = `
-    :host { all: initial; }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+    :host {
+      all: initial;
+      --swb-primary: #2d4ae0;
+      --swb-primary-strong: #3a5aef;
+      --swb-primary-soft: #f2f4ff;
+      --swb-primary-soft-2: #eef1ff;
+      --swb-primary-border: #d5ddfb;
+      --swb-danger: #e5484d;
+      --swb-danger-soft: #fff8f6;
+      --swb-danger-soft-2: #fdeeea;
+      --swb-warn: #8a8f98;
+      --swb-alert-target: #6741d9;
+      --swb-text: #1c1c1e;
+      --swb-text-secondary: #555;
+      --swb-text-muted: #8a8f98;
+      --swb-text-faint: #aaa;
+      --swb-border: #eee;
+      --swb-border-strong: #dde1e6;
+      --swb-surface: #ffffff;
+      --swb-surface-soft: #f7f8fa;
+      --swb-mall-naver: #03c75a;
+      --swb-mall-coupang: #0074e9;
+      --swb-mall-oliveyoung: #56a99c;
+      --swb-scroll-thumb: #c7cede;
+      --swb-font: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      --swb-fs-xxs: 10px;
+      --swb-fs-xs: 11px;
+      --swb-fs-sm: 12px;
+      --swb-fs-base: 13px;
+      --swb-fs-md: 15px;
+      --swb-fs-lg: 17px;
+      --swb-fs-xl: 20px;
+      --swb-space-1: 4px;
+      --swb-space-2: 8px;
+      --swb-space-3: 12px;
+      --swb-space-4: 16px;
+      --swb-space-5: 20px;
+      --swb-space-6: 24px;
+      --swb-radius-sm: 6px;
+      --swb-radius-md: 8px;
+      --swb-radius-lg: 12px;
+      --swb-radius-pill: 999px;
+      --swb-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+      --swb-shadow-md: 0 2px 10px rgba(0, 0, 0, 0.05);
+      --swb-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.22);
+      --swb-shadow-brand: 0 4px 14px rgba(45, 74, 224, 0.45);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--swb-font); }
     .swb-fab {
       position: fixed; right: 20px; bottom: calc(25vh - 23px); z-index: 2147483647;
       width: 46px; height: 46px; border-radius: 50%;
-      background: #2d4ae0; color: #fff; border: none; cursor: pointer;
-      box-shadow: 0 4px 14px rgba(45, 74, 224, 0.45);
+      background: var(--swb-primary); color: #fff; border: none; cursor: pointer;
+      box-shadow: var(--swb-shadow-brand);
       display: flex; align-items: center; justify-content: center;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    .swb-fab:hover { box-shadow: 0 6px 18px rgba(45, 74, 224, 0.55); }
+    .swb-fab:hover { box-shadow: var(--swb-shadow-brand); }
     .swb-fab.open { transform: rotate(180deg) scale(1.06); }
     .swb-fab svg { width: 22px; height: 22px; }
     .swb-tooltip {
       position: fixed; z-index: 2147483647; pointer-events: none;
-      background: #fff; color: #2d4ae0; font-size: 12px; font-weight: 700;
-      padding: 4px 10px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      background: var(--swb-surface); color: var(--swb-primary); font-size: var(--swb-fs-sm); font-weight: 700;
+      padding: 4px 10px; border-radius: var(--swb-radius-md); box-shadow: 0 4px 14px rgba(0,0,0,0.18);
       opacity: 0; transform: translateX(-6px); transition: opacity 0.15s ease, transform 0.15s ease;
       white-space: nowrap;
     }
     .swb-tooltip.show { opacity: 1; transform: translateX(0); }
     .swb-menu {
       position: fixed; z-index: 2147483647; width: 0; height: 0;
-      right: calc(20px + 23px); bottom: 25vh; /* FAB 중심을 원점(0,0)으로 */
+      right: calc(20px + 23px); bottom: 25vh; /* FAB 중심을 원점(0,0)으로 (v0.11.0 후속: 25vh 복원) */
       opacity: 0; pointer-events: none;
       transition: opacity 0.18s ease;
     }
@@ -49,21 +95,21 @@ const SWB_UI = (() => {
       position: absolute; left: 0; top: 0; margin-left: -20px; margin-top: -20px;
       display: flex; align-items: center; justify-content: center;
       width: 40px; height: 40px; border-radius: 50%;
-      background: #fff; color: #2d4ae0; border: none; cursor: pointer;
+      background: var(--swb-surface); color: var(--swb-primary); border: none; cursor: pointer;
       box-shadow: 0 4px 12px rgba(0,0,0,0.18);
       transition: transform 0.22s ease, background 0.15s ease, color 0.15s ease, opacity 0.18s ease;
       opacity: 0; transform: translate(var(--mx, 0px), var(--my, 0px)) scale(0.4);
     }
     .swb-menu.open .swb-mi { opacity: 1; transform: translate(var(--mx, 0px), var(--my, 0px)) scale(1); }
-    .swb-mibadge { position: absolute; top: 0; right: 0; min-width: 15px; height: 15px; border-radius: 8px; background: #e5484d; color: #fff; font-size: 9px; font-weight: 800; align-items: center; justify-content: center; padding: 0 3px; }
-    .swb-mi:hover { background: #2d4ae0; color: #fff; }
-    .swb-mi.active { background: #e5484d; color: #fff; }
-    .swb-mi.active:hover { background: #e5484d; }
+    .swb-mibadge { position: absolute; top: 0; right: 0; min-width: 15px; height: 15px; border-radius: 8px; background: var(--swb-danger); color: #fff; font-size: var(--swb-fs-xxs); font-weight: 800; align-items: center; justify-content: center; padding: 0 3px; }
+    .swb-mi:hover { background: var(--swb-primary); color: #fff; }
+    .swb-mi.active { background: var(--swb-danger); color: #fff; }
+    .swb-mi.active:hover { background: var(--swb-danger); }
     .swb-mi svg { width: 18px; height: 18px; }
     .swb-mi-label {
       position: absolute; right: calc(100% + 8px); white-space: nowrap;
-      font-size: 11px; font-weight: 600; color: #333;
-      background: #fff; padding: 3px 8px; border-radius: 6px;
+      font-size: var(--swb-fs-xs); font-weight: 600; color: var(--swb-text-secondary);
+      background: var(--swb-surface); padding: 3px 8px; border-radius: var(--swb-radius-sm);
       box-shadow: 0 2px 8px rgba(0,0,0,0.14); opacity: 0; transform: translateX(4px);
       transition: opacity 0.12s ease, transform 0.12s ease; pointer-events: none;
       top: 50%; margin-top: -12px;
@@ -75,55 +121,55 @@ const SWB_UI = (() => {
     .swb-panel {
       position: fixed; right: calc(20px + 46px + 12px); top: 75vh; z-index: 2147483647;
       width: 320px; max-height: calc(100vh - 24px);
-      background: #fff; border-radius: 12px;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+      background: var(--swb-surface); border-radius: var(--swb-radius-lg);
+      box-shadow: var(--swb-shadow-lg);
       overflow-y: auto; display: flex; flex-direction: column;
-      color: #1c1c1e; font-size: 13px;
+      color: var(--swb-text); font-size: var(--swb-fs-base);
     }
     .swb-panel.hidden { display: none; }
     .swb-head {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 14px; background: #2d4ae0; color: #fff;
+      display: flex; align-items: center; gap: var(--swb-space-2);
+      padding: 10px var(--swb-space-4); background: var(--swb-primary); color: #fff;
     }
     .swb-head-icon { display: flex; align-items: center; }
     .swb-head-icon svg { width: 16px; height: 16px; }
-    .swb-head-back { background: none; border: none; color: #fff; font-size: 15px; cursor: pointer; padding: 0 2px; line-height: 1; }
-    .swb-head-title { flex: 1; font-weight: 600; font-size: 13px; }
+    .swb-head-back { background: none; border: none; color: #fff; font-size: var(--swb-fs-md); cursor: pointer; padding: 0 2px; line-height: 1; }
+    .swb-head-title { flex: 1; font-weight: 600; font-size: var(--swb-fs-base); }
     .swb-close { background: none; border: none; color: #fff; font-size: 16px; cursor: pointer; line-height: 1; padding: 2px; }
     .swb-view { display: none; }
     .swb-view.active { display: block; }
-    .swb-body { padding: 12px 14px 8px; }
-    .swb-title-area { padding: 12px 14px 0; }
-    .swb-title { font-weight: 600; font-size: 13px; line-height: 1.4; max-height: 2.8em; overflow: hidden; }
-    .swb-brand { font-size: 11px; opacity: 0.8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .swb-price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
-    .swb-now { font-size: 20px; font-weight: 800; }
-    .swb-delta { font-size: 12px; font-weight: 700; }
-    .swb-delta.down { color: #2d4ae0; }
-    .swb-delta.up { color: #e5484d; }
-    .swb-range { display: flex; gap: 4px; margin-bottom: 10px; }
+    .swb-body { padding: var(--swb-space-3) var(--swb-space-4) var(--swb-space-2); }
+    .swb-title-area { padding: var(--swb-space-3) var(--swb-space-4) 0; }
+    .swb-title { font-weight: 600; font-size: var(--swb-fs-base); line-height: 1.4; max-height: 2.8em; overflow: hidden; }
+    .swb-brand { font-size: var(--swb-fs-xs); opacity: 0.8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .swb-price-row { display: flex; align-items: baseline; gap: var(--swb-space-2); margin-bottom: var(--swb-space-2); }
+    .swb-now { font-size: var(--swb-fs-xl); font-weight: 800; }
+    .swb-delta { font-size: var(--swb-fs-sm); font-weight: 700; }
+    .swb-delta.down { color: var(--swb-primary); }
+    .swb-delta.up { color: var(--swb-danger); }
+    .swb-range { display: flex; gap: var(--swb-space-1); margin-bottom: 10px; }
     .swb-range-btn {
-      flex: 1; padding: 4px 0; font-size: 11px; font-weight: 600;
-      background: #f2f4ff; color: #2d4ae0; border: none; border-radius: 8px; cursor: pointer;
+      flex: 1; padding: 4px 0; font-size: var(--swb-fs-xs); font-weight: 600;
+      background: var(--swb-primary-soft); color: var(--swb-primary); border: none; border-radius: var(--swb-radius-md); cursor: pointer;
       transition: background 0.15s ease, color 0.15s ease;
     }
-    .swb-range-btn.active { background: #2d4ae0; color: #fff; }
+    .swb-range-btn.active { background: var(--swb-primary); color: #fff; }
     .swb-watch {
       position: relative;
       margin-left: auto; align-self: center;
       background: none; border: none; cursor: pointer;
-      color: #ccc; padding: 4px;
+      color: var(--swb-text-faint); padding: 4px;
       transition: color 0.15s ease, transform 0.15s ease;
     }
-    .swb-watch:hover { transform: scale(1.12); color: #e5484d; }
-    .swb-watch.active { color: #e5484d; }
+    .swb-watch:hover { transform: scale(1.12); color: var(--swb-danger); }
+    .swb-watch.active { color: var(--swb-danger); }
     .swb-watch.active svg { fill: currentColor; }
     .swb-watch svg { width: 20px; height: 20px; }
     .swb-watch-label {
       position: absolute; right: calc(100% + 8px); top: 50%;
       transform: translate(4px, -50%);
-      white-space: nowrap; font-size: 11px; font-weight: 600; color: #333;
-      background: #fff; padding: 3px 8px; border-radius: 6px;
+      white-space: nowrap; font-size: var(--swb-fs-xs); font-weight: 600; color: var(--swb-text-secondary);
+      background: var(--swb-surface); padding: 3px 8px; border-radius: var(--swb-radius-sm);
       box-shadow: 0 2px 8px rgba(0,0,0,0.14); opacity: 0;
       transition: opacity 0.12s ease, transform 0.12s ease; pointer-events: none;
     }
@@ -131,161 +177,176 @@ const SWB_UI = (() => {
     .swb-target-row {
       display: flex; flex-direction: column; align-items: stretch;
       margin: 6px 0; padding: 8px 10px;
-      background: #f7f8fa; border-radius: 8px;
+      background: var(--swb-surface-soft); border-radius: var(--swb-radius-md);
     }
     /* v0.9.6 — 찜 해제 시 목표가 행 숨김 (hidden 클래스 규칙 누락으로 flex 유지되던 버그) */
     .swb-target-row.hidden { display: none; }
     .swb-target-status {
-      font-size: 11px; color: #999; text-align: right; margin-bottom: 4px;
+      font-size: var(--swb-fs-xs); color: var(--swb-text-muted); text-align: right; margin-bottom: 4px;
     }
-    .swb-target-status.on { color: #2d4ae0; font-weight: 600; }
+    .swb-target-status.on { color: var(--swb-primary); font-weight: 600; }
     .swb-target-controls {
       display: flex; justify-content: flex-end; align-items: center; gap: 5px;
     }
     .swb-target-input {
       width: 100px; padding: 5px 6px; flex-shrink: 1; min-width: 0;
-      border: 1px solid #dde1e6; border-radius: 6px;
-      font-size: 12px; text-align: right; background: #fff;
+      border: 1px solid var(--swb-border-strong); border-radius: var(--swb-radius-sm);
+      font-size: var(--swb-fs-sm); text-align: right; background: var(--swb-surface);
     }
-    .swb-target-input:focus { outline: none; border-color: #2d4ae0; }
+    .swb-target-input:focus { outline: none; border-color: var(--swb-primary); }
     .swb-target-save {
-      border: none; border-radius: 6px; padding: 5px 7px; font-size: 11px;
-      cursor: pointer; background: #2d4ae0; color: #fff; flex-shrink: 0;
+      border: none; border-radius: var(--swb-radius-sm); padding: 5px 7px; font-size: var(--swb-fs-xs);
+      cursor: pointer; background: var(--swb-primary); color: #fff; flex-shrink: 0;
     }
     .swb-target-clear {
-      border: none; border-radius: 6px; padding: 5px 7px; font-size: 11px;
-      cursor: pointer; background: #eceff4; color: #555; flex-shrink: 0;
+      border: none; border-radius: var(--swb-radius-sm); padding: 5px 7px; font-size: var(--swb-fs-xs);
+      cursor: pointer; background: var(--swb-surface-soft); color: var(--swb-text-secondary); flex-shrink: 0;
     }
     .swb-target-clear:disabled { opacity: .45; cursor: default; }
     .swb-watch:hover .swb-watch-label { opacity: 1; transform: translate(0, -50%); }
     .swb-chart-wrap { position: relative; }
     canvas.swb-chart { width: 100%; height: 140px; display: block; }
-    .swb-xaxis { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 2px; }
-    .swb-stats { display: flex; gap: 12px; margin-top: 8px; font-size: 11px; color: #888; }
-    .swb-stats b { color: #333; }
+    .swb-xaxis { display: flex; justify-content: space-between; font-size: var(--swb-fs-xxs); color: var(--swb-text-faint); margin-top: 2px; }
+    .swb-stats { display: flex; gap: var(--swb-space-3); margin-top: var(--swb-space-2); font-size: var(--swb-fs-xs); color: var(--swb-text-muted); }
+    .swb-stats b { color: var(--swb-text-secondary); }
     .swb-trend-stats {
-      margin-top: 8px; padding: 5px 10px; border-radius: 8px;
-      background: #eef1ff; color: #2d4ae0; font-size: 11px; font-weight: 700;
+      margin-top: var(--swb-space-2); padding: 5px 10px; border-radius: var(--swb-radius-md);
+      background: var(--swb-primary-soft-2); color: var(--swb-primary); font-size: var(--swb-fs-xs); font-weight: 700;
       line-height: 1.5;
     }
     .swb-deal {
-      display: inline-block; margin: 8px 0 0; padding: 3px 8px; border-radius: 8px;
-      font-size: 11px; font-weight: 800; color: #fff; background: #2d4ae0;
+      display: inline-block; margin: var(--swb-space-2) 0 0; padding: 3px 8px; border-radius: var(--swb-radius-md);
+      font-size: var(--swb-fs-xs); font-weight: 800; color: #fff; background: var(--swb-primary);
     }
-    .swb-deal.hot { background: #e5484d; }
-    .swb-deal.warn { background: #8a8f98; }
+    .swb-deal.hot { background: var(--swb-danger); }
+    .swb-deal.warn { background: var(--swb-warn); }
     .swb-deal.hidden { display: none; }
-    .swb-related { margin-top: 10px; border-top: 1px solid #eef0f4; padding-top: 8px; }
+    .swb-related { margin-top: 10px; border-top: 1px solid var(--swb-border); padding-top: var(--swb-space-2); }
     .swb-related.hidden { display: none; } /* v0.9.6 — 관계 데이터 없을 때 숨김 (규칙 누락 버그) */
-    .swb-rel-title { font-size: 11px; font-weight: 700; color: #444; margin-bottom: 6px; }
+    .swb-rel-title { font-size: var(--swb-fs-xs); font-weight: 700; color: var(--swb-text-secondary); margin-bottom: 6px; }
     .swb-rel-li {
-      display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 8px;
+      display: flex; align-items: center; gap: var(--swb-space-2); padding: 5px 6px; border-radius: var(--swb-radius-md);
       cursor: pointer; transition: background 0.12s ease;
     }
-    .swb-rel-li:hover { background: #f2f5ff; }
-    .swb-rel-name { flex: 1; font-size: 11px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .swb-rel-price { font-size: 11px; font-weight: 700; color: #2d4ae0; }
-    .swb-rel-loading { font-size: 11px; color: #aaa; padding: 4px 6px; }
-    .swb-rel-empty { font-size: 11px; color: #aaa; padding: 4px 6px; }
-    .swb-foot { padding: 8px 14px 12px; font-size: 11px; color: #aaa; }
-    .swb-list { padding: 6px 14px 12px; max-height: 340px; overflow-y: auto; }
-    .swb-list-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px 0; }
-    .swb-list-count { font-size: 12px; font-weight: 700; color: #444; }
-    .swb-mall-filter { display: flex; gap: 4px; }
-    .swb-mf-btn { font-size: 10px; font-weight: 700; color: #666; background: #f1f3f5; border: none; border-radius: 9px; padding: 2px 7px; cursor: pointer; }
-    .swb-mf-btn.active { background: #2d4ae0; color: #fff; }
-    .swb-deals-head { padding: 8px 14px 0; display: flex; justify-content: flex-end; }
-    .swb-deals-days { display: flex; gap: 4px; }
-    .swb-deal-btn { font-size: 10px; font-weight: 700; color: #666; background: #f1f3f5; border: none; border-radius: 9px; padding: 2px 7px; cursor: pointer; }
-    .swb-deal-btn.active { background: #2d4ae0; color: #fff; }
-    .swb-deals { padding: 6px 14px 12px; max-height: 380px; overflow-y: auto; }
-    .swb-deal-li { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; background: #f4f7ff; margin-bottom: 6px; cursor: pointer; }
-    .swb-deal-li:hover { background: #e8eeff; }
+    .swb-rel-li:hover { background: var(--swb-primary-soft); }
+    .swb-rel-name { flex: 1; font-size: var(--swb-fs-xs); color: var(--swb-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .swb-rel-price { font-size: var(--swb-fs-xs); font-weight: 700; color: var(--swb-primary); }
+    .swb-rel-loading { font-size: var(--swb-fs-xs); color: var(--swb-text-faint); padding: 4px 6px; }
+    .swb-rel-empty { font-size: var(--swb-fs-xs); color: var(--swb-text-faint); padding: 4px 6px; }
+    .swb-foot { padding: var(--swb-space-2) var(--swb-space-4) var(--swb-space-3); font-size: var(--swb-fs-xs); color: var(--swb-text-faint); }
+    .swb-list { padding: 6px var(--swb-space-4) var(--swb-space-3); max-height: 340px; overflow-y: auto; }
+    .swb-list-head { display: flex; align-items: center; justify-content: space-between; padding: var(--swb-space-2) var(--swb-space-4) 0; }
+    .swb-list-count { font-size: var(--swb-fs-sm); font-weight: 700; color: var(--swb-text-secondary); }
+    .swb-mall-filter { display: flex; gap: var(--swb-space-1); }
+    .swb-mf-btn { font-size: var(--swb-fs-xxs); font-weight: 700; color: var(--swb-primary); background: var(--swb-surface); border: 1px solid var(--swb-primary-border); border-radius: var(--swb-radius-lg); padding: 2px 8px; cursor: pointer; }
+    .swb-mf-btn.active { background: var(--swb-primary); color: #fff; border-color: var(--swb-primary); }
+    .swb-deals-head { padding: var(--swb-space-2) var(--swb-space-4) 0; display: flex; justify-content: flex-end; }
+    .swb-deals-days { display: flex; gap: var(--swb-space-1); }
+    .swb-deal-btn { font-size: var(--swb-fs-xxs); font-weight: 700; color: var(--swb-primary); background: var(--swb-surface); border: 1px solid var(--swb-primary-border); border-radius: var(--swb-radius-lg); padding: 2px 8px; cursor: pointer; }
+    .swb-deal-btn.active { background: var(--swb-primary); color: #fff; border-color: var(--swb-primary); }
+    .swb-deals { padding: 6px var(--swb-space-4) var(--swb-space-3); max-height: 380px; overflow-y: auto; }
+    .swb-deal-li { display: flex; align-items: center; gap: var(--swb-space-2); padding: 7px 8px; border-radius: var(--swb-radius-md); background: var(--swb-primary-soft); margin-bottom: 6px; cursor: pointer; }
+    .swb-deal-li:hover { background: var(--swb-primary-soft-2); }
     .swb-deal-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-    .swb-deal-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .swb-deal-price { font-size: 12px; font-weight: 700; }
-    .swb-deal-before { font-size: 10px; font-weight: 400; color: #999; text-decoration: line-through; margin-left: 4px; }
-    .swb-deal-pct { font-size: 11px; font-weight: 800; color: #fff; background: #e5484d; padding: 2px 6px; border-radius: 5px; flex-shrink: 0; }
-    .swb-alerts { padding: 6px 14px 12px; max-height: 380px; overflow-y: auto; }
-    .swb-alert-li { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; background: #fff8f6; margin-bottom: 6px; cursor: pointer; }
-    .swb-alert-li:hover { background: #fdeeea; }
-    .swb-alert-badge { font-size: 10px; font-weight: 800; color: #fff; background: #2d4ae0; padding: 2px 6px; border-radius: 5px; flex-shrink: 0; }
-    .swb-alert-badge.t-target { background: #6741d9; }
-    .swb-alert-badge.t-soldout { background: #e5484d; }
-    .swb-alert-badge.t-drop { background: #2d4ae0; }
+    .swb-deal-name { font-size: var(--swb-fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .swb-deal-price { font-size: var(--swb-fs-sm); font-weight: 700; }
+    .swb-deal-before { font-size: var(--swb-fs-xxs); font-weight: 400; color: var(--swb-text-muted); text-decoration: line-through; margin-left: 4px; }
+    .swb-deal-pct { font-size: var(--swb-fs-xs); font-weight: 800; color: #fff; background: var(--swb-danger); padding: 2px 6px; border-radius: 5px; flex-shrink: 0; }
+    .swb-alerts { padding: 6px var(--swb-space-4) var(--swb-space-3); max-height: 380px; overflow-y: auto; }
+    .swb-alert-li { display: flex; align-items: center; gap: var(--swb-space-2); padding: 7px 8px; border-radius: var(--swb-radius-md); background: var(--swb-danger-soft); margin-bottom: 6px; cursor: pointer; }
+    .swb-alert-li:hover { background: var(--swb-danger-soft-2); }
+    .swb-alert-badge { font-size: var(--swb-fs-xxs); font-weight: 800; color: #fff; background: var(--swb-primary); padding: 2px 6px; border-radius: 5px; flex-shrink: 0; }
+    .swb-alert-badge.t-target { background: var(--swb-alert-target); }
+    .swb-alert-badge.t-soldout { background: var(--swb-danger); }
+    .swb-alert-badge.t-drop { background: var(--swb-primary); }
     .swb-alert-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-    .swb-alert-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .swb-alert-meta { font-size: 11px; color: #e5484d; font-weight: 600; }
+    .swb-alert-name { font-size: var(--swb-fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .swb-alert-meta { font-size: var(--swb-fs-xs); color: var(--swb-danger); font-weight: 600; }
     .swb-li {
       display: flex; align-items: center; gap: 10px; width: 100%;
       padding: 10px 0; border: none; background: none; cursor: pointer;
-      border-bottom: 1px solid #f0f0f0; text-align: left;
+      border-bottom: 1px solid var(--swb-border); text-align: left;
     }
     .swb-li:last-child { border-bottom: none; }
     .swb-li-thumb {
-      position: relative; width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
-      background: #f2f4ff center/cover no-repeat;
+      position: relative; width: 44px; height: 44px; border-radius: var(--swb-radius-md); flex-shrink: 0;
+      background: var(--swb-primary-soft) center/cover no-repeat;
       display: flex; align-items: center; justify-content: center;
-      font-size: 15px; font-weight: 800; color: #2d4ae0;
+      font-size: var(--swb-fs-md); font-weight: 800; color: var(--swb-primary);
     }
     .swb-li-badge {
       position: absolute; right: 2px; bottom: 2px;
       width: 16px; height: 16px; border-radius: 50%;
-      background: #fff; display: flex; align-items: center; justify-content: center;
+      background: var(--swb-surface); display: flex; align-items: center; justify-content: center;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
     .swb-li-badge img { width: 11px; height: 11px; border-radius: 3px; }
     .swb-li-badge.b-fallback {
       font-size: 8px; font-weight: 800; color: #fff; font-style: normal;
     }
-    .swb-li-badge.b-fallback.b-naver { background: #03c75a; }
-    .swb-li-badge.b-fallback.b-coupang { background: #0074e9; }
-    .swb-li-badge.b-fallback.b-oliveyoung { background: #56a99c; }
+    .swb-li-badge.b-fallback.b-naver { background: var(--swb-mall-naver); }
+    .swb-li-badge.b-fallback.b-coupang { background: var(--swb-mall-coupang); }
+    .swb-li-badge.b-fallback.b-oliveyoung { background: var(--swb-mall-oliveyoung); }
     .swb-li-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    .swb-li-name { font-size: 12px; color: #333; line-height: 1.35; max-height: 2.6em; overflow: hidden; }
+    .swb-li-name { font-size: var(--swb-fs-sm); color: var(--swb-text-secondary); line-height: 1.35; max-height: 2.6em; overflow: hidden; }
     .swb-li-price-row {
       display: flex; align-items: center; justify-content: space-between; gap: 6px; /* v0.9.2 */
     }
-    .swb-li-price { font-size: 12px; font-weight: 700; color: #2d4ae0; }
-    .swb-li-check { font-size: 10px; color: #aaa; margin-left: auto; text-align: right; white-space: nowrap; }
+    .swb-li-price { font-size: var(--swb-fs-sm); font-weight: 700; color: var(--swb-primary); }
+    .swb-li-check { font-size: var(--swb-fs-xxs); color: var(--swb-text-faint); margin-left: auto; text-align: right; white-space: nowrap; }
     .swb-li-check.stale {
-      align-self: flex-start; color: #e5484d; background: #fff3f2;
-      border-radius: 8px; padding: 1px 8px; font-weight: 700;
+      align-self: flex-start; color: var(--swb-danger); background: var(--swb-danger-soft);
+      border-radius: var(--swb-radius-md); padding: 1px 8px; font-weight: 700;
     }
     .swb-li-check.sold-out {
-      align-self: flex-start; color: #e5484d; background: #fff3f2;
-      border-radius: 8px; padding: 1px 8px; font-weight: 800;
+      align-self: flex-start; color: var(--swb-danger); background: var(--swb-danger-soft);
+      border-radius: var(--swb-radius-md); padding: 1px 8px; font-weight: 800;
     }
-    .swb-li-check.target { color: #2d4ae0; font-weight: 600; }
+    .swb-li-check.target { color: var(--swb-primary); font-weight: 600; }
     /* v0.9.2 — 품절/확인필요 행 배경 */
-    .swb-li.sold-out { background: #fff8f6; }
-    .swb-li.sold-out:hover { background: #fdf1ee; }
+    .swb-li.sold-out { background: var(--swb-danger-soft); }
+    .swb-li.sold-out:hover { background: var(--swb-danger-soft-2); }
     .swb-li.stale { background: #fffdfd; }
-    .swb-li.stale:hover { background: #f7f8fa; }
-    .swb-li-del { background: none; border: none; color: #ccc; font-size: 14px; cursor: pointer; padding: 4px; }
-    .swb-li-del:hover { color: #e5484d; }
+    .swb-li.stale:hover { background: var(--swb-surface-soft); }
+    .swb-li-del { background: none; border: none; color: var(--swb-text-faint); font-size: 14px; cursor: pointer; padding: 4px; }
+    .swb-li-del:hover { color: var(--swb-danger); }
     .swb-confirm {
       position: fixed; inset: 0; z-index: 2147483647;
       background: rgba(0, 0, 0, 0.35);
       display: flex; align-items: center; justify-content: center;
     }
     .swb-confirm-box {
-      width: 260px; background: #fff; border-radius: 12px;
-      padding: 18px 16px 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+      width: 260px; background: var(--swb-surface); border-radius: var(--swb-radius-lg);
+      padding: 18px var(--swb-space-4) var(--swb-space-3); box-shadow: var(--swb-shadow-lg);
     }
-    .swb-confirm-msg { font-size: 13px; color: #333; line-height: 1.5; margin-bottom: 14px; word-break: break-all; }
-    .swb-confirm-actions { display: flex; gap: 8px; }
+    .swb-confirm-msg { font-size: var(--swb-fs-base); color: var(--swb-text-secondary); line-height: 1.5; margin-bottom: 14px; word-break: break-all; }
+    .swb-confirm-actions { display: flex; gap: var(--swb-space-2); }
     .swb-confirm-actions button {
-      flex: 1; padding: 7px 0; border: none; border-radius: 8px;
-      font-size: 12px; font-weight: 700; cursor: pointer;
+      flex: 1; padding: 7px 0; border: none; border-radius: var(--swb-radius-md);
+      font-size: var(--swb-fs-sm); font-weight: 700; cursor: pointer;
     }
-    .swb-confirm-no { background: #f2f4ff; color: #2d4ae0; }
-    .swb-confirm-yes { background: #e5484d; color: #fff; }
-    .swb-loading { padding: 24px 14px; text-align: center; color: #aaa; }
-    .swb-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #dfe3f8; border-top-color: #2d4ae0; border-radius: 50%; vertical-align: -2px; margin-right: 6px; animation: swb-spin .8s linear infinite; }
+    .swb-confirm-no { background: var(--swb-primary-soft); color: var(--swb-primary); }
+    .swb-confirm-yes { background: var(--swb-danger); color: #fff; }
+    .swb-loading { padding: var(--swb-space-6) var(--swb-space-4); text-align: center; color: var(--swb-text-faint); }
+    .swb-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--swb-primary-border); border-top-color: var(--swb-primary); border-radius: 50%; vertical-align: -2px; margin-right: 6px; animation: swb-spin .8s linear infinite; }
     @keyframes swb-spin { to { transform: rotate(360deg); } }
-    .swb-error { padding: 24px 14px; text-align: center; color: #e5484d; line-height: 1.6; }
-    .swb-empty { padding: 24px 14px; text-align: center; color: #aaa; }
+    .swb-error { padding: var(--swb-space-6) var(--swb-space-4); text-align: center; color: var(--swb-danger); line-height: 1.6; }
+    .swb-empty { padding: var(--swb-space-6) var(--swb-space-4); text-align: center; color: var(--swb-text-faint); }
+    /* v0.11.0 — 접근성: 키보드 포커스 링 */
+    .swb-fab:focus-visible,
+    .swb-mi:focus-visible,
+    .swb-close:focus-visible,
+    .swb-head-back:focus-visible,
+    .swb-watch:focus-visible,
+    .swb-range-btn:focus-visible,
+    .swb-mf-btn:focus-visible,
+    .swb-deal-btn:focus-visible,
+    .swb-li:focus-visible,
+    .swb-li-del:focus-visible,
+    .swb-confirm-actions button:focus-visible {
+      outline: 2px solid var(--swb-primary);
+      outline-offset: 2px;
+    }
   `;
 
   const ICON = {
@@ -469,20 +530,16 @@ const SWB_UI = (() => {
   }
 
   function buildMenu(menu) {
-    // v0.9.4 — FAB 중심(원점=0,0) 기준 직각 배치: 위=핫딜·알림, 왼쪽=가격추이·찜목록, 아래=설정·사용법 (+디버그)
-    // 위/아래는 x=0(FAB 세로축), 왼쪽만 x=-60 열. 위/아래 아이콘 간격 72px = 라벨(아이템 아래/위 표시)이
-    // 이웃 아이콘과 겹치지 않을 공간 확보 (48px이면 라벨 높이 20px+마진 때문에 겹침)
-    // dir=라벨 방향 (above=아이템 아래, below=아이템 위, left=아이템 왼쪽)
-    // v0.9.4 — 위 그룹(핫딜/알림) 라벨은 left로: 아이템 위로 나가면 위쪽 이웃 아이콘과 겹침
-    // (알림 위로 나가던 핫딜 라벨이 알림 아이콘과 겹침). 왼쪽 배치는 왼쪽 열(trend/list)과
-    // y 범위가 달라 충돌 없음
+    // v0.11.0 후속 — FAB 25vh 복원(메뉴 원점=FAB 중심 일치) + 배치 재구성.
+    // FAB 중심을 원점(0,0)으로 위/왼쪽/아래 3방향. 가격 추이는 FAB 바로 왼쪽(같은 높이)에 배치해
+    // 클릭 즉시 가장 가까운 위치에 노출. 모든 열 아이콘 간격 48px로 통일(라벨-아이콘 겹침 회피).
+    // 사용법(help) 메뉴 제거 — 온보딩에서 안내. 아래 열(설정/디버그)은 라벨 dir=above(아이콘 아래).
     const items = [
       { key: "deals", label: "오늘의 핫딜", icon: ICON.deal, x: 0, y: -60, dir: "left" },
-      { key: "alerts", label: "알림", icon: ICON.bell, x: 0, y: -132, dir: "left" },
-      { key: "trend", label: "가격 추이", icon: ICON.trend, x: -60, y: -24, dir: "left" },
-      { key: "list", label: "찜 목록", icon: ICON.watch, x: -60, y: 24, dir: "left" },
+      { key: "alerts", label: "알림", icon: ICON.bell, x: 0, y: -108, dir: "left" },
+      { key: "trend", label: "가격 추이", icon: ICON.trend, x: -60, y: 0, dir: "left" },
+      { key: "list", label: "찜 목록", icon: ICON.watch, x: -60, y: 48, dir: "left" },
       { key: "set", label: "설정", icon: ICON.settings, x: 0, y: 60, dir: "above" },
-      { key: "help", label: "사용법", icon: ICON.info, x: 0, y: 132, dir: "above" },
     ];
     // v0.9.3 — 디버그 패널 표시(debugEnabled)가 켜져 있을 때만 디버그 메뉴 노출 (추가는 syncDebugMenu가 처리)
     renderMenuItems();
@@ -542,7 +599,7 @@ const SWB_UI = (() => {
         e.stopPropagation();
         onMenuItem("debug");
       });
-      placeMenuItem(btn, 0, 204, "above"); // FAB 세로축 아래, 사용법(132)보다 아래
+      placeMenuItem(btn, 0, 108, "above"); // FAB 세로축 아래, 설정(60)보다 아래 (간격 48px 통일)
       menu.appendChild(btn);
     });
   }
@@ -583,14 +640,15 @@ const SWB_UI = (() => {
     if (tip) tip.classList.remove("show");
   }
 
-  // 패널 위치: 기본은 플로팅 버튼 왼쪽 중앙(화면 75vh), 하단이 넘치면 위로 이동
+  // 패널 위치: FAB(오른쪽 20px, 하단 25vh-23px, 46px) 바로 위에 정렬, 하단이 넘치면 위로 이동
   function positionPanel() {
     const panel = shadow.querySelector(".swb-panel");
     if (!panel || panel.classList.contains("hidden")) return;
     const vh = window.innerHeight;
     const h = panel.getBoundingClientRect().height;
-    const desired = vh * 0.75 - h / 2; // 아이콘 중앙 정렬
-    const maxTop = vh - h - 12;        // 브라우저 하단 12px 여유
+    const fabTop = vh - (vh * 0.25 - 23) - 46; // FAB 상단 y (FAB 하단=25vh-23, 높이 46)
+    const desired = fabTop - h;   // 패널 하단 = FAB 상단
+    const maxTop = vh - h - 12;   // 브라우저 하단 12px 여유
     panel.style.top = Math.max(12, Math.min(desired, maxTop)) + "px";
   }
 
@@ -636,11 +694,6 @@ const SWB_UI = (() => {
     if (key === "set") {
       closeAll();
       chrome.runtime.sendMessage({ type: "OPEN_OPTIONS" }); // openOptionsPage는 content script에서 직접 호출 불가 — background 경유
-      return;
-    }
-    if (key === "help") {
-      closeAll();
-      chrome.runtime.sendMessage({ type: "OPEN_TAB", url: chrome.runtime.getURL("onboarding.html") });
       return;
     }
     toggleMenu();
@@ -885,35 +938,28 @@ try {
     relBox.classList.remove("hidden");
   }
 
-  // 일별 시리즈: 기간(일) 동안 날짜별 가격, 결측일은 직전 가격 유지,
-  // 첫 기록 이전 날짜는 첫 기록 가격으로 채움 (새 상품 → 7일 그래프가 평평하게 시작)
+  // 일별 시리즈: 기간(일) 내 실제 기록일만 {t(ms), price}[]로 반환 (결측 보간 없음 — v0.12.0).
+  // 2일 기록이면 2포인트로 정직하게 렌더링. 오늘은 페이지 현재 가격(nowPrice) 우선 병합.
   function dailySeries(points, days, nowPrice) {
     const today = new Date();
     const keyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const keys = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      keys.push(keyOf(d));
-    }
+    const start = new Date(today);
+    start.setDate(today.getDate() - (days - 1));
+    const startKey = keyOf(start);
     const byDay = {};
     (points || []).forEach((pt) => {
       const d = new Date(pt.captured_at);
-      if (!isNaN(d)) byDay[keyOf(d)] = Number(pt.price);
+      if (isNaN(d)) return;
+      const k = keyOf(d);
+      if (k < startKey) return; // 기간 밖 제외
+      byDay[k] = { t: d.getTime(), price: Number(pt.price) };
     });
-    if (nowPrice) byDay[keyOf(today)] = nowPrice; // 오늘은 페이지 현재 가격 우선
-
-    const raw = keys.map((k) => (k in byDay ? byDay[k] : null));
-    let last = null;
-    const fwd = raw.map((v) => (v !== null ? (last = v) : last)); // 중간 결측 = 직전 가격 유지
-    let first = null;
-    for (let i = fwd.length - 1; i >= 0; i--) {
-      if (fwd[i] !== null) {
-        first = fwd[i];
-        break;
-      }
+    if (nowPrice) {
+      const k = keyOf(today);
+      if (k >= startKey) byDay[k] = { t: today.getTime(), price: nowPrice };
     }
-    return { series: fwd.map((v) => (v === null ? first : v)), recordDays: keys.filter((k) => k in byDay).length };
+    const arr = Object.keys(byDay).sort().map((k) => byDay[k]);
+    return { points: arr, recordDays: arr.length };
   }
 
   function setRange(days) {
@@ -940,8 +986,8 @@ try {
     const xEnd = panel.querySelector(".x-end");
     const bodyEl = panel.querySelector(".swb-view-trend .swb-body");
 
-    const { series, recordDays } = dailySeries(pointsCache, rangeDays, nowPriceCache);
-    drawChart(canvas, series);
+    const { points, recordDays } = dailySeries(pointsCache, rangeDays, nowPriceCache);
+    drawChart(canvas, points);
 
     const today = new Date();
     const start = new Date(today);
@@ -952,7 +998,7 @@ try {
 
     const nowPrice = nowPriceCache;
     nowEl.textContent = nowPrice != null ? `${nowPrice.toLocaleString()}원` : "—";
-    const first = series[0];
+    const first = points.length ? points[0].price : null;
     if (recordDays <= 1) {
       deltaEl.textContent = "첫 기록";
       deltaEl.className = "swb-delta";
@@ -967,7 +1013,7 @@ try {
       deltaEl.className = "swb-delta";
     }
 
-    const valid = series.filter((v) => v != null);
+    const valid = points.map((p) => p.price);
     if (valid.length) {
       stMin.textContent = `${Math.min(...valid).toLocaleString()}원`;
       stMax.textContent = `${Math.max(...valid).toLocaleString()}원`;
@@ -1032,11 +1078,11 @@ try {
 
     if (min != null && cur <= min) {
       deal.className = "swb-deal";
-      deal.textContent = "역대 최저가 🎉";
+      deal.textContent = "역대 최저가";
     } else if (cur < avg) {
       const pct = (((avg - cur) / avg) * 100).toFixed(1);
       deal.className = "swb-deal hot";
-      deal.textContent = `평균보다 ${pct}% 저렴 🔥`;
+      deal.textContent = `평균보다 ${pct}% 저렴`;
     } else if (cur > avg) {
       const pct = (((cur - avg) / avg) * 100).toFixed(1);
       deal.className = "swb-deal warn";
@@ -1323,74 +1369,167 @@ try {
     }
   }
 
-  function drawChart(canvas, prices) {
+  // v0.12.0 — 가격 추이 그래프 전면 재설계
+  //  - 실제 날짜 스케일 X축 (기록일 min~max 시간 범위 매핑, 하단 날짜 라벨)
+  //  - Y축 데이터 range의 상하 10% 버퍼 + pad → 최대값이 꼭대기에 안 붙음
+  //  - min==max(동일가격) → 캔버스 중앙 단일 점 + "변동 없음" (하단 납작 방지)
+  //  - 그리드 3줄 + 평균점선 + 최저점선 + DPR 선명도
+  function drawChart(canvas, points) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = 292;
+    const h = 140;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
     const ctx = canvas.getContext("2d");
-    const w = canvas.width;
-    const h = canvas.height;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    prices = prices.filter((v) => v != null);
-    if (!prices.length) return;
 
+    points = points.filter((p) => p && typeof p.price === "number");
+    if (!points.length) {
+      ctx.fillStyle = "#aaa";
+      ctx.font = "11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("기록 없음", w / 2, h / 2);
+      return;
+    }
+    points.sort((a, b) => a.t - b.t);
+
+    const padL = 8, padR = 8, padT = 18, padB = 20;
+    const prices = points.map((p) => p.price);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     const range = max - min || 1;
-    const pad = 8;
-    const xOf = (i) => pad + (i / (prices.length - 1)) * (w - pad * 2);
-    const yOf = (p) => h - pad - ((p - min) / range) * (h - pad * 2);
 
-    // v0.9.1 — 최저가 표시선 (점선 + 라벨)
-    if (prices.length > 1 && min !== max) {
-      const yMin = yOf(min);
-      ctx.setLineDash([4, 3]);
-      ctx.strokeStyle = "#4dabf7";
-      ctx.lineWidth = 1;
+    // Y축 — 상단 30px / 하단 32px 고정 여유 + 데이터 range의 8% 값 여유.
+    // 최대값이 꼭대기·하단에 안 붙도록 값이 캔버스 세로 중앙부에 여유 있게 배치 (v0.12.0)
+    const plotTop = padT + 12;
+    const plotB = h - padB - 12;
+    const valTop = max + range * 0.08;
+    const valBot = Math.max(0, min - range * 0.08);
+    const yOf = (p) => plotTop + ((valTop - p) / (valTop - valBot)) * (plotB - plotTop);
+
+    const first = points[0];
+    const last = points[points.length - 1];
+    const fmtDate = (t) => `${new Date(t).getMonth() + 1}/${new Date(t).getDate()}`;
+
+    // 단일 기록 — 하단 납작 방지, 중앙 배치 + "변동 없음"
+    if (points.length === 1) {
+      const cx = w / 2, cy = h / 2;
       ctx.beginPath();
-      ctx.moveTo(pad, yMin);
-      ctx.lineTo(w - pad, yMin);
+      ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+      ctx.fillStyle = "#2d4ae0";
+      ctx.fill();
+      ctx.fillStyle = "#555";
+      ctx.font = "11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("변동 없음", cx, cy - 12);
+      ctx.fillText(`${first.price.toLocaleString()}원`, cx, cy + 18);
+      ctx.fillStyle = "#aaa";
+      ctx.font = "9px sans-serif";
+      ctx.fillText(fmtDate(first.t), cx, h - 6);
+      return;
+    }
+
+    // 그리드 (min/mid/max — 점선)
+    ctx.strokeStyle = "#eceff3";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    [min, (min + max) / 2, max].forEach((v) => {
+      const y = yOf(v);
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(w - padR, y);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    // X축 — 기록일 실제 시간 범위 매핑
+    const t0 = first.t, t1 = last.t;
+    const xOf = (t) => (t1 === t0 ? w / 2 : padL + ((t - t0) / (t1 - t0)) * (w - padL - padR));
+
+    // 평균선 (회색 점선)
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    ctx.strokeStyle = "#c8cdd5";
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(padL, yOf(avg));
+    ctx.lineTo(w - padR, yOf(avg));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 최저선 (파란 점선 + 라벨) — v0.9.1 유지
+    if (min !== max) {
+      const yMin = yOf(min);
+      ctx.strokeStyle = "#4dabf7";
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(padL, yMin);
+      ctx.lineTo(w - padR, yMin);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = "#4dabf7";
       ctx.font = "10px sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText(`최저 ${min.toLocaleString()}원`, pad, Math.max(10, yMin - 3));
+      ctx.fillText(`최저 ${min.toLocaleString()}원`, padL, Math.max(10, yMin - 4));
     }
 
-    if (prices.length === 1) {
+    // 선 — 하락 구간 파란 굵은 선, 상승/평탄 구간 회색 얇은 선 (v0.9.1 유지)
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1];
+      const b = points[i];
+      const down = b.price < a.price;
+      ctx.strokeStyle = down ? "#2d4ae0" : "#c8cdd5";
+      ctx.lineWidth = down ? 2.2 : 1.4;
       ctx.beginPath();
-      ctx.arc(w / 2, h - pad, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = "#2d4ae0";
+      ctx.moveTo(xOf(a.t), yOf(a.price));
+      ctx.lineTo(xOf(b.t), yOf(b.price));
+      ctx.stroke();
+    }
+
+    // 데이터 포인트 점
+    ctx.fillStyle = "#2d4ae0";
+    points.forEach((p) => {
+      ctx.beginPath();
+      ctx.arc(xOf(p.t), yOf(p.price), 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // 최저/최고 마커 — 좌표가 겹치면 회색 1점 (v0.12.0 겹침 방지)
+    const minIdx = prices.indexOf(min);
+    const maxIdx = prices.indexOf(max);
+    const mx = xOf(points[minIdx].t);
+    const my = yOf(min);
+    const hx = xOf(points[maxIdx].t);
+    const hy = yOf(max);
+    if (Math.abs(mx - hx) < 6 && Math.abs(my - hy) < 6) {
+      ctx.beginPath();
+      ctx.arc(mx, my, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#8a8f98";
       ctx.fill();
     } else {
-      // v0.9.1 — 하락 구간 파란 굵은 선, 상승/평탄 구간 회색 얇은 선
-      for (let i = 1; i < prices.length; i++) {
-        const down = prices[i] < prices[i - 1];
-        ctx.strokeStyle = down ? "#2d4ae0" : "#c8cdd5";
-        ctx.lineWidth = down ? 2.2 : 1.4;
-        ctx.beginPath();
-        ctx.moveTo(xOf(i - 1), yOf(prices[i - 1]));
-        ctx.lineTo(xOf(i), yOf(prices[i]));
-        ctx.stroke();
-      }
-      // 최저점/최고점 마커 (v0.9.1)
-      const minIdx = prices.indexOf(min);
-      const maxIdx = prices.indexOf(max);
+      ctx.beginPath();
+      ctx.arc(mx, my, 3.5, 0, Math.PI * 2);
       ctx.fillStyle = "#4dabf7";
-      ctx.beginPath();
-      ctx.arc(xOf(minIdx), yOf(min), 3.5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "#e5484d";
       ctx.beginPath();
-      ctx.arc(xOf(maxIdx), yOf(max), 3.5, 0, Math.PI * 2);
+      ctx.arc(hx, hy, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#e5484d";
       ctx.fill();
     }
 
-    const last = prices[prices.length - 1];
-    ctx.fillStyle = "#888";
+    // 가격 라벨 — 우상단 마지막 가격
     ctx.font = "11px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(`${prices[0].toLocaleString()}원`, pad, h - 3);
     ctx.textAlign = "right";
-    ctx.fillText(`${last.toLocaleString()}원`, w - pad, 12);
+    ctx.fillStyle = "#555";
+    ctx.fillText(`${last.price.toLocaleString()}원`, w - padR, 12);
+
+    // 날짜 라벨 — 하단 양쪽 (첫/마지막 기록일)
+    ctx.fillStyle = "#aaa";
+    ctx.font = "9px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(fmtDate(first.t), padL, h - 6);
+    ctx.textAlign = "right";
+    ctx.fillText(fmtDate(last.t), w - padR, h - 6);
   }
 
   function removeUI() {
