@@ -8,7 +8,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Device, PriceDailyStat, PricePoint, Product, Watch
+from app.models import (
+    Alert,
+    Device,
+    PriceDailyStat,
+    PricePoint,
+    Product,
+    ProductRelation,
+    Watch,
+)
 from app.schemas import (
     BatchItemIn,
     PricePointOut,
@@ -408,3 +416,25 @@ def delete_price_points(
         product.last_price = newest.price if newest is not None else None
     db.commit()
     return {"product_id": product_id, "price": price, "deleted": result.rowcount}
+
+
+@router.delete("/products/{product_id}", status_code=204)
+def delete_product(product_id: str, db: Session = Depends(get_db)) -> None:
+    """상품 전체 삭제 (관리용, T-96a 데모 데이터 정리) — FK 참조 테이블부터 정리 후 삭제.
+    watches/alerts는 device와 상품을 동시에 참조하므로 관계 레코드만 삭제."""
+    product = db.get(Product, product_id)
+    if product is None:
+        return  # 이미 없으면 204 (idempotent)
+    # 참조 무결성: 자식 테이블부터 삭제 (제품→watch/alert/daily_stat/relation/price_point 순)
+    db.execute(delete(Watch).where(Watch.product_id == product_id))
+    db.execute(delete(Alert).where(Alert.product_id == product_id))
+    db.execute(delete(PriceDailyStat).where(PriceDailyStat.product_id == product_id))
+    db.execute(
+        delete(ProductRelation).where(
+            (ProductRelation.source_product_id == product_id)
+            | (ProductRelation.target_product_id == product_id)
+        )
+    )
+    db.execute(delete(PricePoint).where(PricePoint.product_id == product_id))
+    db.delete(product)
+    db.commit()

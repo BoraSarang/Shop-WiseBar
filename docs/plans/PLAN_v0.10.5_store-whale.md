@@ -16,10 +16,11 @@
 ## 3. 구현 단계 (사용자 브라우저/계정 참여 필요)
 
 ### T-96a 스크린샷 준비
-- [ ] 확장 로드: Chrome/Whale → `chrome://extensions` → 개발자 모드 → `압축해제된 확장 로드` → `extension/` 폴더
-- [ ] 네이버/쿠팡 상품 페이지 방문 → 가격 이력이 쌓인 상태로 팝업 열기
-- [ ] ① 트렌드 그래프 + 최저가 요약 ② 핫딜 탭 — 1280×800 창으로 2장 캡처
-- [ ] 저장: `docs/screenshots/store/shop-wisebar-{01,02}.png`
+- [x] 자동 캡처 스크립트: `scripts/store-capture/capture.js` (웨일 + 확장 로드 → 데모 데이터 주입 → 팝업 캡처 2장 → 자동 정리)
+- [x] 데모 데이터 자동 주입/삭제: 서버 `DELETE /products/{id}` 추가 (T-96a, `server/tests/test_demo_cleanup.py` — 34건 전체 통과)
+- [x] 캡처 가이드: `docs/store/SCREENSHOT_GUIDE.md` (방법 A 자동 / 방법 B 수동)
+- [ ] 사용자 실행: `cd scripts/store-capture && npm install && node capture.js` → `docs/screenshots/store/shop-wisebar-{01,02}.png` 생성 확인
+- [ ] 스토어 요구 해상도 확인 + 필요 시 리사이즈 (가이드 참조)
 
 ### T-96b zip + 리스팅 확정
 - [x] `./scripts/webstore-publish.sh --dry-run` — zip 생성 + manifest 검증 통과 (v0.10.2, 76KB)

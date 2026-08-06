@@ -1,0 +1,12 @@
+{
+  "name": "shop-wisebar-store-capture",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node capture.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.62.1"
+  }
+}

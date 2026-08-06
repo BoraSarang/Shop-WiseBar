@@ -32,3 +32,10 @@ landing/icons/
 
 # 스토어 배포 패키징 산출물
 dist/
+
+# 스크린샷 캡처 부산물 (웨일 임시 프로필 — 커밋 금지)
+docs/screenshots/store/.whale-profile/
+docs/screenshots/store/*-tmp.png
+
+# 스크린샷 캡처 도구
+scripts/store-capture/node_modules/
