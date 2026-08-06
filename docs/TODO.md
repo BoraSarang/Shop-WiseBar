@@ -2,6 +2,11 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-95 — 코드 리뷰: 버그 수정 + 리팩토링 (v0.10.4 후속) — ✅ 완료 (2026-08-06)
+- [x] **T-95a**: 배치 `_apply_price` — pending Product 재조회 버그 수정 (autoflush=False에서 None → 500). 실제 충돌 테스트 추가 (test_batch_conflict.py 2건)
+- [x] **T-95b**: `upload_price` vs `_apply_price` 가격 저장 로직 중복 → 코어 통합 (captured_at 파라미터로 재시도 지원)
+- [x] **T-95c**: `get_alerts` N+1 제거(selectinload, 12→8쿼리) + version 중복(0.2.0→config APP_VERSION) + 회귀(32건) + CHANGELOG
+
 ## T-93 — 일괄 업로드 API + 확장 배치 전환 (v0.10.4) — ✅ 완료 (2026-08-06)
 - [x] **T-93a**: 서버 `POST /products/batch` 라우터 + schema — 단일 트랜잭션 upsert+price
 - [x] **T-93b**: 확장 `uploadRelatedItems` → 배치 청크 전환 (80요청 → 2~4요청)

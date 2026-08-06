@@ -223,35 +223,38 @@ def _upsert(db: Session, product_id: str, mall: str, url: str, name: str | None,
 # v0.10.4 (T-93) — 가격 저장 코어. 배치에서도 재사용. 커밋은 호출자가.
 # 개별 upload_price와 동일 dedup/통계 로직 — 단, IntegrityError(같은 초 다른 가격)는
 # 배치에서 항목 단위 스킵으로 처리되므로 여기서는 재시도하지 않고 그대로 propagate.
-def _apply_price(db: Session, product_id: str, price: int, source: str, variant: str | None) -> None:
-    now = datetime.now(timezone.utc).replace(microsecond=0)
+# T-95a (v0.10.4 후속): db.get 재조회 제거 — SessionLocal은 autoflush=False라 batch에서
+# _upsert가 방금 add한(pending) Product를 재조회하면 None → AttributeError 500 (가격 dedup 시 항상).
+# T-95b: captured_at 파라미터 추가 — upload_price의 +1s 재시도가 코어 재사용 (별도 중복 제거)
+def _apply_price(db: Session, product: Product, price: int, source: str, variant: str | None,
+                 captured_at: datetime | None = None) -> None:
+    now = captured_at or datetime.now(timezone.utc).replace(microsecond=0)
     today = now.date()
     variant_cond = PricePoint.variant.is_(None) if variant is None else PricePoint.variant == variant
     last = db.scalar(
         select(PricePoint)
-        .where(PricePoint.product_id == product_id, variant_cond)
+        .where(PricePoint.product_id == product.id, variant_cond)
         .order_by(PricePoint.captured_at.desc())
         .limit(1)
     )
     if last is None or last.price != price:
         point = PricePoint(
-            product_id=product_id, price=price, source=source,
+            product_id=product.id, price=price, source=source,
             variant=variant, captured_at=now,
         )
         db.add(point)
         db.flush()  # UNIQUE 충돌 시 IntegrityError propagate
-    product = db.get(Product, product_id)
     product.last_price = price
     product.last_checked_at = now
     if product.sold_out_at is not None:
         product.sold_out_at = None  # v0.9.1 — 가격 캡처 = 판매 중 → 품절 자동 해제
     stat = db.scalar(
         select(PriceDailyStat)
-        .where(PriceDailyStat.product_id == product_id, PriceDailyStat.stat_date == today)
+        .where(PriceDailyStat.product_id == product.id, PriceDailyStat.stat_date == today)
     )
     if stat is None:
         stat = PriceDailyStat(
-            product_id=product_id, stat_date=today,
+            product_id=product.id, stat_date=today,
             open_price=price, close_price=price,
             low_price=price, high_price=price,
             point_count=1, updated_at=now,
@@ -298,7 +301,7 @@ def upsert_batch(payload: ProductBatchIn, db: Session = Depends(get_db)) -> Prod
             try:
                 product = _upsert(db, item.product_id, item.mall, item.url, item.name, item.image, item.source)
                 if item.price and item.price > 0:
-                    _apply_price(db, item.product_id, item.price, item.source or "extension", None)
+                    _apply_price(db, product, item.price, item.source or "extension", None)
                     price_count += 1
                 items.append(_product_out_basic(product))
                 upserted += 1
@@ -315,80 +318,30 @@ def upload_price(product_id: str, payload: PriceUploadIn, db: Session = Depends(
 
     v0.6.0 — 로우 데이터 dedup + 일별 통계:
       - 같은 variant의 직전 가격과 같으면 price_points INSERT 생략 (가격 변화 시점만 로우 기록)
-      - 방문(수집)은 항상 price_daily_stats 당일 행에 집계 (open/close/low/high/point_count)"""
+      - 방문(수집)은 항상 price_daily_stats 당일 행에 집계 (open/close/low/high/point_count)
+    v0.10.1 — 같은 초 다른 가격은 +1s 밀어 저장 (UNIQUE 충돌 시 가격 유실 방지)
+    T-95b — dedup/통계는 _apply_price 코어로 통합 (개별·배치 동일 로직)"""
     product = db.get(Product, product_id)
     if product is None:
         raise HTTPException(status_code=404, detail={"code": "E-SRV-DB-1001", "message": "상품을 찾을 수 없습니다"})
-    # 초 단위 절단: UNIQUE(product_id, captured_at)가 같은 초 중복(동시 캡처)을 막는 방어선이 되도록
     now = datetime.now(timezone.utc).replace(microsecond=0)
-    today = now.date()
-
-    variant_cond = PricePoint.variant.is_(None) if payload.variant is None else PricePoint.variant == payload.variant
-    last = db.scalar(
-        select(PricePoint)
-        .where(PricePoint.product_id == product_id, variant_cond)
-        .order_by(PricePoint.captured_at.desc())
-        .limit(1)
-    )
-
-    # dedup: 가격 변화 없으면 로우 INSERT 생략, 통계만 갱신
-    inserted = False
-    if last is None or last.price != payload.price:
-        point = PricePoint(
-            product_id=product_id, price=payload.price, source=payload.source,
-            variant=payload.variant, captured_at=now,
-        )
-        db.add(point)
-        try:
-            db.flush()
-            inserted = True
-        except IntegrityError:
-            # UNIQUE(product_id, variant, captured_at) 충돌 — 같은 초에 다른 가격이 먼저 저장됨.
-            # v0.9.4 이전엔 "동시 캡처(같은 가격 중복 POST)"라고 보고 성공으로 끝내 두 번째
-            #          가격이 유실됐다. (v0.10.1 테스트로 발견 — 같은 초 연속 업로드 시 데이터 손실)
-            # v0.9.4 — PostgreSQL은 flush 실패 후 세션이 requires-rollback 상태가 되므로
-            #          rollback 없이 commit을 이어가면 500. 즉시 rollback 후 재시도가 안전.
-            db.rollback()
-            # 같은 가격 dedup은 위(248행)에서 이미 거름 → 여기 도달한 충돌은 "다른 가격"이다.
-            # 같은 초 아래에서 UNIQUE를 통과하려면 1초 뒤로 밀어 저장한다 (가격 유실 방지).
-            point = PricePoint(
-                product_id=product_id, price=payload.price, source=payload.source,
-                variant=payload.variant, captured_at=now + timedelta(seconds=1),
-            )
-            db.add(point)
-            db.flush()
-            inserted = True
-
-    product.last_price = payload.price
-    product.last_checked_at = now
-    if product.sold_out_at is not None:
-        product.sold_out_at = None  # v0.9.1 — 가격 캡처 = 판매 중 → 품절 자동 해제
-
-    # 일별 통계 upsert
-    stat = db.scalar(
-        select(PriceDailyStat)
-        .where(PriceDailyStat.product_id == product_id, PriceDailyStat.stat_date == today)
-    )
-    if stat is None:
-        stat = PriceDailyStat(
-            product_id=product_id, stat_date=today,
-            open_price=payload.price, close_price=payload.price,
-            low_price=payload.price, high_price=payload.price,
-            point_count=1, updated_at=now,
-        )
-        db.add(stat)
-    else:
-        stat.close_price = payload.price
-        stat.low_price = min(stat.low_price, payload.price)
-        stat.high_price = max(stat.high_price, payload.price)
-        stat.point_count += 1
-        stat.updated_at = now
-
+    try:
+        _apply_price(db, product, payload.price, payload.source, payload.variant)
+    except IntegrityError:
+        # UNIQUE(product_id, captured_at) 충돌 — 같은 초에 다른 가격이 먼저 저장됨.
+        # v0.9.4 — PostgreSQL은 flush 실패 후 세션이 requires-rollback 상태가 되므로
+        #          rollback 없이 commit을 이어가면 500. 즉시 rollback 후 재시도가 안전.
+        # 같은 가격 dedup은 _apply_price에서 이미 거름 → 여기 도달한 충돌은 "다른 가격"이다.
+        # 같은 초 아래에서 UNIQUE를 통과하려면 1초 뒤로 밀어 저장한다 (가격 유실 방지).
+        db.rollback()
+        # rollback으로 expire된 product를 재조회 (None이면 실서버에서 삭제된 경우 — 그대로 500)
+        product = db.get(Product, product_id)
+        if product is None:
+            raise
+        now = now + timedelta(seconds=1)
+        _apply_price(db, product, payload.price, payload.source, payload.variant, captured_at=now)
     db.commit()
-    if not inserted:
-        return PricePointOut(price=payload.price, source=payload.source, variant=payload.variant, captured_at=now)
-    db.refresh(point)
-    return PricePointOut(price=point.price, source=point.source, variant=point.variant, captured_at=point.captured_at)
+    return PricePointOut(price=payload.price, source=payload.source, variant=payload.variant, captured_at=now)
 
 
 @router.post("/products/{product_id}/sold-out")

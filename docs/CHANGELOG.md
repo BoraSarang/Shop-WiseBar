@@ -1,5 +1,21 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.10.4-post (2026-08-06) — [server] 코드 리뷰 후속: 버그 수정 + 리팩토링 (T-95)
+
+### 버그 수정 (T-95a)
+- **배치 가격 dedup 시 500**: `_apply_price`가 `db.get(Product)`로 재조회하는데 SessionLocal이 `autoflush=False`라 batch에서 `_upsert`가 방금 추가한(pending) 상품을 못 찾아 `None` → `AttributeError` 500. 가격이 직전과 같은 재캡처에서 항상 발생. → 전달받은 Product 객체를 직접 사용하도록 수정
+- **실제 충돌 테스트 추가**: 기존 `test_batch_partial_failure_continues`는 주석과 달리 실제 UNIQUE 충돌을 만들지 않았음 → `tests/test_batch_conflict.py`로 실제 충돌 경로(savepoint 스킵 + 세션 오염 없음) 검증
+
+### 리팩토링 (T-95b)
+- `upload_price`(개별)의 dedup/일별 통계 로직이 `_apply_price`(배치)와 중복 → 코어로 통합. `captured_at` 파라미터 추가로 같은 초 충돌 +1s 재시도(v0.10.1) 유지
+
+### 성능/정리 (T-95c)
+- `GET /devices/{id}/alerts`: `w.product` lazy load N+1(12쿼리) → `selectinload`로 8쿼리 (watch 수만큼 추가 쿼리 제거)
+- `/health` version이 하드코딩 0.2.0으로 고정 → `config.APP_VERSION`(0.10.4)으로 통일
+
+### 검증
+- pytest **32건 통과** (신규 실제 충돌 테스트 2건 포함)
+
 ## v0.10.4 (2026-08-06) — [server] 연관 상품 일괄 업로드 + DB 연결 풀
 
 ### 성능 (T-93)

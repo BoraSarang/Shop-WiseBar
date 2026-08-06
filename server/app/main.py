@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.config import settings
+from app.config import APP_VERSION, settings
 from app.database import Base, engine
 from app.logging_setup import setup_logging, started_at
 from app.routers import devices, products, recommendations, relations, watches
@@ -12,7 +12,7 @@ from app.routers.recommendations import INDEX_SQLS
 
 app = FastAPI(
     title="ShopWiseBar API",
-    version="0.2.0",
+    version=APP_VERSION,
     description="중앙 상품 DB + 가격 이력 + 관심 상품 알림 API",
 )
 

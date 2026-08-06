@@ -56,8 +56,7 @@ class TestBatch:
         assert prices[0]["price"] == 5000
 
     def test_batch_partial_failure_continues(self, client):
-        """첫 항목이 UNIQUE 충돌이어도 나머지는 저장 (항목 단위 격리)"""
-        # 사전에 같은 상품을 같은 초에 다른 가격으로 2번 개별 저장 → UNIQUE(product_id, captured_at) 충돌 준비
+        """배치 응답 형식 — 2건 모두 정상 저장 (실제 UNIQUE 충돌 경로는 test_batch_conflict.py 참조)"""
         items = [_item("b:crash", price=7000), _item("b:ok", price=1000, name="정상")]
         r = client.post("/api/v1/products/batch", json={"items": items})
         assert r.status_code == 201

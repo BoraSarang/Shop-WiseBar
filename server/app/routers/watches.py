@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
 from app.models import Alert, Device, PricePoint, Product, Watch
@@ -169,7 +169,8 @@ def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depe
     _get_device_or_404(db, device_id)
     if since is not None:
         since = _naive(since)
-    watches = db.scalars(select(Watch).where(Watch.device_id == device_id)).all()
+    # T-95c — selectinload로 Product N+1 제거 (watch 수만큼 개별 쿼리 방지, 폴링 성능)
+    watches = db.scalars(select(Watch).where(Watch.device_id == device_id).options(selectinload(Watch.product))).all()
     alerts: list[AlertOut] = []
     for w in watches:
         # 품절 감지 (v0.9.1) — since 이후 품절 시작 시 1회 (확장 폴링이 since를 갱신하므로 반복 없음)
