@@ -3,9 +3,13 @@
 ## v0.12.2 (2026-08-06) — [store+extension] 웨일 스토어 패키징 + 리스팅 확정 (T-96b)
 
 - `extension/manifest.json` version **0.11.0 → 0.12.2** (확장에 반영된 v0.12.x 변경 포함)
-- `scripts/webstore-publish.sh --dry-run` 실행 → `dist/shop-wisebar-v0.12.2.zip` 생성 (80KB)
+- `scripts/webstore-publish.sh --dry-run` 실행 → `dist/shop-wisebar-v0.12.2.zip` 생성 (336KB)
   - JS 문법 검증 + manifest 필수 필드/CSP/권한 검증 통과, node_modules/시크릿/DB 제외 확인
+  - 미사용 파일 정리: `icons_backup_20260803/`·`make_icons.py` 삭제 (manifest 미참조)
 - `docs/store/STORE_LISTING.md` — Chrome Web Store → **웨일 스토어 기준**으로 확정 (등록 URL, 버전 0.12.2, 등록 절차, MV3 호환 명시)
+- **온보딩 페이지 개선**: 스토어 스크린샷 5장(축소본 `extension/onboarding/step-01~05.jpg`)을 단계별로 배치, 최신 UI 반영(설정=확장 설정 페이지, FAB 오른쪽 하단 25%, 네이버 쇼핑 검색 태그). `capture.js`에 온보딩 이미지 자동 재생성 단계 추가
+- **README 갱신**: 웨일 스토어 등록 진행 배지·설치 방법·최신 기능·패키징 명령 반영
+- **GitHub Release v0.12.2 생성** (tag push → Release Extension 워크플로우, zip 첨부)
 - T-96c(업로드)에서 사용자 네이버 계정으로 진행 예정
 
 ## v0.12.3 (2026-08-06) — [store+script] 웨일 심사용 스크린샷 5장 확장 (T-96a)
