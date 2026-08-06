@@ -1,6 +1,7 @@
 # PLAN v0.10.4_server — 일괄 업로드 API + DB 연결 풀 (T-93, T-94)
 
-> 상태: 진행 중 (2026-08-06). 사용자 실사용 로그로 성능 문제 확인 → 일괄 업로드(A)는 필수, DB 연결 풀(B)은 수백 ms 단축.
+> 상태: 완료 (2026-08-06) — 배포 반영 확인 (`/health` version=0.10.4). T-95(코드 리뷰 후속)에서
+> 배치 가격 dedup 500 버그 수정 + 가격 저장 로직 통합 + 알림 N+1 제거 진행 → `c6a4274`.
 > 세션 단절 대비: 이 문서가 먼저, 코드는 그 다음.
 
 ## 1. 개요
@@ -35,10 +36,11 @@
 
 ## 4. 구현 단계
 
-- [ ] T-93a: 서버 `POST /products/batch` 라우터 + schema (`ProductBatchIn`) — 단일 트랜잭션 upsert+price
-- [ ] T-93b: 확장 `uploadRelatedItems` → 배치 청크 전환 (개별 80요청 → 2~4요청)
-- [ ] T-94a: `database.py` 연결 풀 (PostgreSQL QueuePool + pool_pre_ping)
-- [ ] T-94b: pytest (batch 엔드포인트 + 기존 개별 API 회귀) + CHANGELOG + 커밋
+- [x] T-93a: 서버 `POST /products/batch` 라우터 + schema (`ProductBatchIn`) — 단일 트랜잭션 upsert+price
+- [x] T-93b: 확장 `uploadRelatedItems` → 배치 청크 전환 (개별 80요청 → 2~4요청)
+- [x] T-94a: `database.py` 연결 풀 (PostgreSQL QueuePool + pool_pre_ping)
+- [x] T-94b: pytest (batch 엔드포인트 + 기존 개별 API 회귀) + CHANGELOG + 커밋
+- [x] T-95 (후속): 배치 dedup 500 수정 + upload_price/_apply_price 통합 + get_alerts N+1 제거 + version 통일
 
 ## 5. 테스트 계획
 
