@@ -227,6 +227,71 @@ async function captureProductInner(tab) {
 // 수집 시점: ①페이지 로드 직후 1회(현재 보이는 카드) ②사용자 스크롤로 새 카드 로드 시 (content.js가 감지)
 const relatedUploadedIds = new Set(); // 세션 내 중복 업로드 방지 (content.js Set과 이중 안전망)
 
+// ── 연관 상품 배치 전송 (v0.11.0 T-99k) ─────────────────
+// ①GET /health 워밍업(콜드스타트 선차단) ②POST /products/batch(90s·재시도 2회) ③relations
+// 워밍업이 실패해도 batch 재시도가 서버를 깨우므로 무시.
+async function sendBatchChunk(chunk, parentId) {
+  // Render 무료티어 sleep 대비 워밍업 — /health는 서버 루트에만 존재.
+  // api()(SWB_API)는 항상 /api/v1 접두사를 붙여 /api/v1/health 404(NOT_FOUND WARN)가 나므로 직접 fetch (v0.12.1)
+  const warm = new AbortController();
+  const warmTimer = setTimeout(() => warm.abort(), 30000);
+  await fetch(`${SWB_CONFIG.server}/health`, { signal: warm.signal }).catch(() => {});
+  clearTimeout(warmTimer);
+  const res = await api("/products/batch", {
+    method: "POST",
+    body: JSON.stringify({ items: chunk }),
+    timeoutMs: 90000,   // Render 콜드스타트 최대 ~60s + 재시도 대기 여유 (C)
+    maxAttempts: 2,     // 멱등 upsert라 재시도 허용 (B)
+  });
+  const relatedIds = (res?.items || []).filter((o) => o && o.product_id).map((o) => o.product_id);
+  if (parentId && relatedIds.length) {
+    try {
+      await api("/products/relations", {
+        method: "POST",
+        body: JSON.stringify({ source: parentId, targets: relatedIds.slice(0, 10) }),
+        timeoutMs: 60000,
+        maxAttempts: 2,
+      });
+    } catch (e) {
+      DebugLogger.warn("[똑바] 관계 저장 실패", e);
+    }
+  }
+  return { upserted: res?.upserted || 0, relatedIds };
+}
+
+// ── 연관 상품 오프라인 큐 (v0.11.0 T-99k / AGENTS.md 8.11) ──
+// 배치 POST 실패(서버 지연·SW 종료) 시 연관 카드를 storage에 보관 후, SW가 깨어날 때마다 재전송.
+const PENDING_RELATED_KEY = "pendingRelated";
+const PENDING_RELATED_MAX = 10; // 큐 최대 보관 건수 (초과 시 오래된 것부터 삭제)
+
+async function queueRelated(chunk, label, parentId) {
+  const { [PENDING_RELATED_KEY]: pending = [] } = await chrome.storage.local.get(PENDING_RELATED_KEY);
+  pending.push({ label, parentId, items: chunk, at: Date.now() });
+  while (pending.length > PENDING_RELATED_MAX) pending.shift();
+  await chrome.storage.local.set({ [PENDING_RELATED_KEY]: pending });
+  DebugLogger.warn(`[똑바] 연관 상품 ${chunk.length}개 오프라인 큐 보관 (총 ${pending.length}건)`);
+}
+
+// 큐 재전송 — 성공 건은 제거, 실패 건은 유지(다음 폴링에서 재시도). 큐 항목은 이미 보관본이므로 재보관 없음.
+async function flushPendingRelated() {
+  const { [PENDING_RELATED_KEY]: pending = [] } = await chrome.storage.local.get(PENDING_RELATED_KEY);
+  if (!pending.length) return;
+  const remaining = [];
+  for (const job of pending) {
+    try {
+      const r = await sendBatchChunk(job.items, job.parentId);
+      if (r.upserted > 0) {
+        DebugLogger.info(`[똑바] 오프라인 큐 재전송 성공 — ${job.label} (${r.upserted}개)`);
+        continue; // 성공 → 큐에서 제거
+      }
+    } catch (e) {
+      DebugLogger.warn("[똑바] 오프라인 큐 재전송 실패 (다음 폴링 재시도)", e);
+    }
+    remaining.push(job);
+  }
+  await chrome.storage.local.set({ [PENDING_RELATED_KEY]: remaining });
+}
+
 async function uploadRelatedItems(items, label, parentId) {
   // v0.10.4 (T-93) — 일괄 업로드: 개별 /products + /prices (상품당 2요청) 대신
   // POST /products/batch 1요청에 최대 40개 묶음. 40개 카드 캡처가 80개 요청이던 것을
@@ -246,18 +311,15 @@ async function uploadRelatedItems(items, label, parentId) {
       price: item.price && item.price > 0 ? item.price : undefined,
     }));
     try {
-      const res = await api("/products/batch", {
-        method: "POST",
-        body: JSON.stringify({ items: chunk }),
-      });
-      for (const out of res?.items || []) {
-        if (!out?.product_id) continue;
-        relatedUploadedIds.add(out.product_id);
-        relatedIds.push(out.product_id);
+      const r = await sendBatchChunk(chunk, null); // relations는 루프 후 일괄
+      for (const id of r.relatedIds) {
+        relatedUploadedIds.add(id);
+        relatedIds.push(id);
       }
-      upserted += res?.upserted || 0;
+      upserted += r.upserted;
     } catch (e) {
       DebugLogger.warn("[똑바] 연관 상품 일괄 업로드 실패", e);
+      await queueRelated(chunk, label, parentId); // (D) 오프라인 큐 보관
     }
   }
   // Phase 3 (v0.9.0): 상품 페이지 연관 카드 → 관계 그래프 저장 (목록 페이지는 parentId 없음)
@@ -266,6 +328,8 @@ async function uploadRelatedItems(items, label, parentId) {
       await api("/products/relations", {
         method: "POST",
         body: JSON.stringify({ source: parentId, targets: relatedIds.slice(0, 10) }),
+        timeoutMs: 60000,
+        maxAttempts: 2,
       });
     } catch (e) {
       DebugLogger.warn("[똑바] 관계 저장 실패", e);
@@ -316,6 +380,9 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(({ tabId, url }) => {
 
 // ── 알림 폴링 (서버 alerts → chrome.notifications) ──────
 async function pollAlerts() {
+  // v0.11.0 (T-99k) — SW가 깨어났을 때 오프라인 큐 먼저 재전송 (실패 시 유지, 다음 폴링 재시도)
+  await flushPendingRelated();
+
   const deviceId = await getDeviceId();
   const { lastAlertAt } = await chrome.storage.local.get("lastAlertAt");
   const since = lastAlertAt ? `?since=${encodeURIComponent(lastAlertAt)}` : "";
