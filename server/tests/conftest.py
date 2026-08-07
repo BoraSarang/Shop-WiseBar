@@ -37,6 +37,10 @@ def _clean_tables(test_engine):
     yield
     from sqlalchemy import inspect, text
 
+    # T-105 — 공개 핫딜 인메모리 캐시도 테스트 격리 (이전 테스트 결과 재사용 방지)
+    from app.routers.recommendations import _DEAL_CACHE
+
+    _DEAL_CACHE.clear()
     insp = inspect(test_engine)
     with test_engine.begin() as conn:
         # FK 제약 무시하고 전부 비움 (SQLite)

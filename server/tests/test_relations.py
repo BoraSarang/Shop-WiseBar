@@ -68,6 +68,36 @@ class TestRecommendations:
         recs = client.get("/api/v1/recommendations?limit=10&days=7").json()
         assert recs == []
 
+    # ── T-105: 공개 핫딜 피드 ─────────────────────────────
+    def test_public_deals_aggregates_all_devices(self, client):
+        """/deals/public — 다른 기기의 하락 상품도 전체 집계로 노출 + watchers 집계"""
+        pid = self._seed_drop(client, "deal:pub", [12000, 9000])  # 25% 하락
+        # 다른 기기가 이 상품을 찜 (watchers 집계용)
+        client.post("/api/v1/devices", json={"device_id": "dev-aaa"})
+        client.post("/api/v1/devices", json={"device_id": "dev-bbb"})
+        client.put("/api/v1/devices/dev-aaa/watches/" + pid, json={})
+        client.put("/api/v1/devices/dev-bbb/watches/" + pid, json={})
+        deals = client.get("/api/v1/deals/public?limit=10&days=7").json()
+        item = next((d for d in deals if d["product_id"] == pid), None)
+        assert item is not None, f"공개 피드에 하락 상품이 없음: {deals}"
+        assert item["reason"] == "drop"
+        assert item["watchers"] == 2  # dev-aaa + dev-bbb
+
+    def test_public_deals_no_device_filter(self, client):
+        """개인 /recommendations와 달리 공개 피드는 기기 무관 전체 캡처 사용"""
+        self._seed_drop(client, "deal:other", [15000, 10000])  # 33% 하락 (다른 기기 데이터)
+        deals = client.get("/api/v1/deals/public?limit=10&days=7").json()
+        ids = [d["product_id"] for d in deals]
+        assert "deal:other" in ids
+
+    def test_public_deals_cache_ok(self, client):
+        """같은 파라미터 두 번 호출 — 응답 구조 동일 (캐시 히트 여부는 파악 불가, 200 확인)"""
+        self._seed_drop(client, "deal:cache", [20000, 15000])
+        r1 = client.get("/api/v1/deals/public?limit=5&days=7").json()
+        r2 = client.get("/api/v1/deals/public?limit=5&days=7").json()
+        assert r1 == r2
+        assert any("watchers" in d for d in r1)
+
 
 def test_health(client):
     r = client.get("/health")

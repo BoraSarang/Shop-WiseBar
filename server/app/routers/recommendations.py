@@ -7,15 +7,19 @@
 #   ② 같은 product_id의 variant가 여러 개여도 1건만 노출
 #   ③ 응답에 reason 필드 (drop=가격 하락 / low=최저가 갱신) — 팝업 배지 표시용
 # PLATFORM: server
+import time
 from datetime import datetime, timedelta, timezone
 
-from app.datetimeutil import KST
-
-from fastapi import APIRouter, Depends
-from sqlalchemy import text
+from sqlalchemy import func, select, text
+from sqlalchemy.engine import Row
 from sqlalchemy.orm import Session
 
 from app.database import get_db, is_sqlite
+
+from app.datetimeutil import KST
+from app.models import Watch
+
+from fastapi import APIRouter, Depends
 
 router = APIRouter(tags=["recommendations"])
 
@@ -35,6 +39,39 @@ INDEX_SQLS = [
 @router.get("/recommendations", response_model=list)
 def get_recommendations(limit: int = 10, days: int = 7, db: Session = Depends(get_db)) -> list[dict]:
     """최근 days일 이내 ①하락폭 큰 상품 → ②역대 최저가 갱신 상품 (부족분 채움)"""
+    rows = _deals(db, limit, days)
+    return [_deal_out(r) for r in rows]
+
+
+# ── 공개 핫딜 피드 캐시 ─────────────────────────────────
+# T-105 (v0.12.3): 전체 사용자 집계 핫딜 — 모든 확장이 같은 값을 조회하므로
+# 5분 TTL 인메모리 캐시로 다수 동시 조회의 DB 부하를 줄인다. (익명 집계, 기기정보 미포함)
+_DEAL_CACHE: dict[str, tuple[float, list[dict]]] = {}
+_DEAL_CACHE_TTL = 300  # 5분
+
+
+@router.get("/deals/public", response_model=list)
+def get_public_deals(limit: int = 10, days: int = 7, db: Session = Depends(get_db)) -> list[dict]:
+    """전체 사용자 대상 공개 핫딜 피드 — 내가 아닌 모두가 캡처한 실측 하락/최저가 상품 (T-105).
+
+    다사자류 커뮤니티 피드 대응. 기존 /recommendations의 검증 로직(하락 5%·variant dedup·
+    추저가 보간)을 전체 범위로 적용하고, 각 상품을 최근 추적 중인 익명 기기 수(watchers)를 집계해
+    "N명이 찜" 배지로 사용한다. device/product id는 노출하지 않는다.
+    """
+    cache_key = f"{limit}:{days}"
+    now = time.time()
+    cached = _DEAL_CACHE.get(cache_key)
+    if cached and now - cached[0] < _DEAL_CACHE_TTL:
+        return cached[1]
+
+    rows = _deals(db, limit, days)
+    out = [_deal_out(r, public=True, db=db) for r in rows]
+    _DEAL_CACHE[cache_key] = (time.time(), out)
+    return out
+
+
+def _deals(db: Session, limit: int, days: int) -> list[Row]:
+    """기간 내 하락/추저가 상품 행 조회 — /recommendations, /deals/public 공용 (T-105)"""
     cutoff = datetime.now(timezone.utc).astimezone(KST) - timedelta(days=days)  # v0.12.2 (T-102) — KST 기준
     if is_sqlite:
         cutoff = cutoff.replace(tzinfo=None)  # SQLite는 naive 저장
@@ -154,26 +191,34 @@ def get_recommendations(limit: int = 10, days: int = 7, db: Session = Depends(ge
                 }
             )
 
-    return [
-        {
-            "product_id": row["id"],
-            "mall": row["mall"],
-            "url": row["url"],
-            "name": row["name"],
-            "image": row["image"],
-            "last_price": row["latest_price"],
-            "last_checked_at": row["last_checked_at"],
-            "is_watched": False,
-            "min_price": None,
-            "avg_price": None,
-            "price_count": 0,
-            "watch_count": 0,
-            "drop_amount": (row["prev_price"] - row["latest_price"]) if row.get("prev_price") is not None else 0,
-            "previous_price": row.get("prev_price"),
-            "drop_percent": round((row["prev_price"] - row["latest_price"]) * 100.0 / row["prev_price"], 1)
-            if row.get("prev_price") is not None
-            else 0,
-            "reason": row.get("_reason") or "drop",
-        }
-        for row in filled
-    ]
+    return filled
+
+
+def _deal_out(row: Row | dict, public: bool = False, db: Session | None = None) -> dict:
+    """행 → 팝업 핫딜 응답 변환. public=True면 최근 추적 중인 익명 기기 수(watchers) 집계 (T-105)"""
+    watchers = 0
+    if public and db is not None and row.get("id"):
+        watchers = db.scalar(
+            select(func.count(Watch.product_id)).where(Watch.product_id == row["id"])
+        ) or 0
+    return {
+        "product_id": row["id"],
+        "mall": row["mall"],
+        "url": row["url"],
+        "name": row["name"],
+        "image": row["image"],
+        "last_price": row["latest_price"],
+        "last_checked_at": row["last_checked_at"],
+        "is_watched": False,
+        "min_price": None,
+        "avg_price": None,
+        "price_count": 0,
+        "watch_count": 0,
+        "watchers": watchers,  # T-105 — 공개 피드 "N명이 찜"
+        "drop_amount": (row["prev_price"] - row["latest_price"]) if row.get("prev_price") is not None else 0,
+        "previous_price": row.get("prev_price"),
+        "drop_percent": round((row["prev_price"] - row["latest_price"]) * 100.0 / row["prev_price"], 1)
+        if row.get("prev_price") is not None
+        else 0,
+        "reason": row.get("_reason") or "drop",
+    }
