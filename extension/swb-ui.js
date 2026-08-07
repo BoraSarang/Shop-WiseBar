@@ -533,13 +533,13 @@ const SWB_UI = (() => {
 
   function buildMenu(menu) {
     // v0.11.0 후속 — FAB 25vh 복원(메뉴 원점=FAB 중심 일치) + 배치 재구성.
-    // FAB 중심을 원점(0,0)으로 위/왼쪽/아래 3방향. 가격 추이는 FAB 바로 왼쪽(같은 높이)에 배치해
+    // FAB 중심을 원점(0,0)으로 위/왼쪽/아래 3방향. 위쪽 열에는 전체 핫딜→가격 추이 순으로 세로 배치해
     // 클릭 즉시 가장 가까운 위치에 노출. 모든 열 아이콘 간격 48px로 통일(라벨-아이콘 겹침 회피).
     // 사용법(help) 메뉴 제거 — 온보딩에서 안내. 아래 열(설정/디버그)은 라벨 dir=above(아이콘 아래).
     const items = [
-      { key: "deals", label: "전체 핫딜", icon: ICON.deal, x: 0, y: -60, dir: "left" },
-      { key: "alerts", label: "알림", icon: ICON.bell, x: 0, y: -108, dir: "left" },
-      { key: "trend", label: "가격 추이", icon: ICON.trend, x: -60, y: 0, dir: "left" },
+      { key: "deals", label: "전체 핫딜", icon: ICON.deal, x: 0, y: -108, dir: "left" },
+      { key: "trend", label: "가격 추이", icon: ICON.trend, x: 0, y: -60, dir: "left" },
+      { key: "alerts", label: "알림", icon: ICON.bell, x: -60, y: 0, dir: "left" },
       { key: "list", label: "찜 목록", icon: ICON.watch, x: -60, y: 48, dir: "left" },
       { key: "set", label: "설정", icon: ICON.settings, x: 0, y: 60, dir: "above" },
     ];
