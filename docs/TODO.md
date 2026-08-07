@@ -2,6 +2,14 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-104 — 랜딩 페이지 리뉴얼 (다크 프리미엄 + 웨일 CTA) (v0.12.2) — ✅ 완료 (2026-08-07)
+> 웨일 스토어 게재(T-96d)에 맞춰 랜딩을 역동적으로 재구성. 다크 프리미엄 테마 + 스크롤/인터랙션 + 웨일 스토어 설치를 주 CTA로 승격.
+- [x] **T-104a**: `landing/assets/style.css` — 다크 프리미엄 전면 재작성 (배경 오브, 그라디언트 텍스트, 카드 호버, reveal 애니메이션, 반응형)
+- [x] **T-104b**: `landing/index.html` — 섹션 재구성 (히어로 샷·기능 6·데모 갤러리 4·실사용 단계 4·쇼핑몰·CTA) + 웨일 스토어 주 CTA 승격 + 설명문 다듬기
+- [x] **T-104c**: `landing/assets/app.js` 신규 — 네비 스크롤 상태, IntersectionObserver 페이드업, 배경 오브 마우스 패럴택스, prefers-reduced-motion 존중
+- [x] **T-104d**: `landing/assets/img/` — 스크린샷(shop-wisebar-01~05) + 온보딩(step-01~05) 사본 배치
+- [x] **T-104e**: 검증 — node --check + 로컬 서버 스냅샷 (데스크톱 1280/모바일 390) + 콘솔 오류 0 + 가로 오버플로 없음 + reveal 15/15
+
 ## T-103 — 서버 API 지연 개선 (SQLite WAL) + 성능 진단 (v0.12.3) — ✅ 완료 (2026-08-07)
 > 사용자 실사용 로그 분석: `/alerts`/`watches` 3~6초, `/products/batch` 최대 59초 지연. 로컬 실측으로 batch 40개 단일 0.14초/동시 부하 평균 95ms로 **코드 병목 아님** 확인. 주원인은 Render 무료티어 + Neon 서버리스 콜드스타트/슬립. 로컬 SQLite 동시 쓰기 Lock 대기 완화를 위해 WAL + busy_timeout(3s) 적용 (운영 PG엔 무해, `is_sqlite` 가드).
 - [x] **T-103a**: `server/app/database.py` — SQLite WAL 모드 + `busy_timeout=3000` + `synchronous=NORMAL` (`event.connect` PRAGMA)

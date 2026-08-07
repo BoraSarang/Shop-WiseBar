@@ -1,5 +1,14 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.12.2 (2026-08-07) — [landing] 랜딩 페이지 다크 프리미엄 리뉴얼 (T-104)
+
+- **디자인 전면**: 정적 라이트 톤 → **다크 프리미엄** (배경 오브 글로우, 그라디언트 텍스트·버튼, 카드 호버, 모바일 반응형)
+- **역동적 인터랙션** (`app.js` 신규): 네비 스크롤 상태, IntersectionObserver 섹션 페이드업, 배경 오브 마우스 패럴랙스, `prefers-reduced-motion` 존중
+- **웨일 스토어를 주 CTA로 승격**: 히어로·네비·푸터 모두 `store.whale.naver.com/detail/ecaggnboamlnefkmnpddpcoiaidkppog` 설치 버튼 (GitHub은 보조)
+- **섹션 재구성**: 히어로 비주얼 샷 · 기능 6종(설명 다듬기) · 상세 데모 갤러리(스크린샷) · 실사용 단계(온보딩) · 지원 쇼핑몰 · 설치 CTA
+- 이미지 사본 `landing/assets/img/`(`screen-01..05.png`, `step-01..04.jpg`) 추가 — 배포 워크플로우(`landing/**`)로 자동 커버
+- 검증: `node --check` + 로컬 서버 데스크톱/모바일 스냅샷 + 콘솔 오류 0 + 가로 오버플로 없음 + reveal 15/15
+
 ## v0.12.2 (2026-08-07) — [store+extension] 웨일 스토어 게재 완료 (T-96d)
 
 - **웨일 스토어 심사 통과 → 게재 확인**: [똑바 (Shop WiseBar)](https://store.whale.naver.com/detail/ecaggnboamlnefkmnpddpcoiaidkppog) v0.12.2 (2026-08-07, 최종 업데이트 2026. 8. 7.)
