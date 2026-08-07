@@ -1,5 +1,12 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.12.2 (2026-08-07) — [store+extension] 웨일 스토어 게재 완료 (T-96d)
+
+- **웨일 스토어 심사 통과 → 게재 확인**: [똑바 (Shop WiseBar)](https://store.whale.naver.com/detail/ecaggnboamlnefkmnpddpcoiaidkppog) v0.12.2 (2026-08-07, 최종 업데이트 2026. 8. 7.)
+- `extension/content.js:338` — 하드코딩된 배지 버전 로그 `v0.8.6` → `chrome.runtime.getManifest().version` 동적 출력으로 수정 (실제 버전 노출)
+- README 배지·웨일 스토어 섹션을 "등록 진행 중" → **"게재 완료"** 로 갱신 + 스토어 링크 반영
+- T-96 전체 완료 (T-96a 스크린샷 → T-96b 패키징 → T-96c 업로드/심사 → T-96d 게재 확인)
+
 ## v0.12.3 (2026-08-07) — [server] 서버 API 지연 개선 + 성능 진단 (T-103)
 
 - **사용자 실사용 로그 분석**: `/alerts`/`watches` 3~6초, `/products/batch` 최대 59초 지연 리포트

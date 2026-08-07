@@ -54,11 +54,11 @@
 - [x] **T-98c**: `run-e2e.sh` — 서버 기동/종료 + e2e.js 실행 + 정리 트랩 (exec로 서버 PID 정상 종료)
 - [x] **T-98d**: 실검증 (연속 3회 10/10 통과) + 문서 갱신 (README/CHANGELOG)
 
-## T-96 — 웨일 스토어 실등록 (무료, 우선 진행) (v0.10.x) — 🔵 진행 (심사 대기)
+## T-96 — 웨일 스토어 실등록 (무료, 우선 진행) (v0.10.x) — ✅ 완료 (2026-08-07)
 - [x] **T-96a**: 스크린샷 준비 — 자동 캡처 스크립트(`scripts/store-capture/capture.js`) + 데모 데이터 자동 주입/삭제(서버 `DELETE /products/{id}` + 테스트) + 가이드(`docs/store/SCREENSHOT_GUIDE.md`) 완성. **v0.10.7 재구성: 플로팅 화면(1280×800) + 팝업 2장(7일/30일 탭 구분, `captured_at` 확장). v0.12.3 5장 확장: 기본 URL 올리브영 교체 + ④플로팅 메뉴 펼침 ⑤가격 추이 패널 + 임시 과거 포인트(2일+) 추가/실데이터 보존 — 캡처 재실행 완료**
 - [x] **T-96b**: zip 패키징 + 리스팅 자료 확정 (STORE_LISTING.md 재사용) — manifest 버전 0.12.2 갱신, `webstore-publish.sh --dry-run` → `dist/shop-wisebar-v0.12.2.zip` 생성(336KB, 미사용 파일 제외 확인), STORE_LISTING.md 웨일 스토어 기준으로 확정. **온보딩 스크린샷 이미지 5장 추가 + capture.js 자동 재생성 + README 갱신 + GitHub Release v0.12.2 생성(zip 첨부)**
 - [x] **T-96c**: 웨일 개발자 등록(네이버 로그인, 무료) + 새 확장앱 업로드 + 리뷰 요청 — **완료 (2026-08-06, 사용자 계정으로 업로드 + 심사 요청). 팝업 스크린샷 2장 1280×800 캔버스 중앙 배치로 수정 후 재업로드** (T-96b에서 해결)
-- [ ] **T-96d**: 심사 통과 확인 + README에 웨일 스토어 링크 반영
+- [x] **T-96d**: 심사 통과 확인 + README에 웨일 스토어 링크 반영 — **게재 확인 (2026-08-07, [store.detail](https://store.whale.naver.com/detail/ecaggnboamlnefkmnpddpcoiaidkppog) v0.12.2) + README 배지·섹션 갱신**
 
 ## T-97 — Chrome Web Store 실등록 ($5, 최하위 보류) (v0.10.x) — ⏸ 보류 (추후 진행)
 > 우선순위 최하위 — 웨일 무료 등록 완료 후 여유가 있을 때 진행. 일회성 등록 수수료 $5 필요.

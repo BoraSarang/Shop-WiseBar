@@ -335,7 +335,7 @@ watchScrollForRelated();
 // 검색/목록 화면에서 내 찜 상품 카드에 "★ 찜 N원" 배지 오버레이
 // v0.8.6: viewport 고정(fixed) 오버레이 — 이미지가 컨테이너 위로 삐져나오거나
 // overflow:hidden인 카드 구조에서도 잘리지 않고 스크롤에도 따라붙음
-DebugLogger.info("[똑바] content.js v0.8.6 — badge top 12px");
+DebugLogger.info(`[똑바] content.js v${chrome.runtime.getManifest().version} — badge top 12px`);
 let watchedSet = new Set();
 let watchedMap = new Map();
 let badgeOverlays = []; // {card, el}
