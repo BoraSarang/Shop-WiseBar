@@ -251,6 +251,8 @@ const SWB_UI = (() => {
     .swb-deal-name { font-size: var(--swb-fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .swb-deal-price { font-size: var(--swb-fs-sm); font-weight: 700; }
     .swb-deal-before { font-size: var(--swb-fs-xxs); font-weight: 400; color: var(--swb-text-muted); text-decoration: line-through; margin-left: 4px; }
+    .swb-deal-meta { display: flex; gap: 4px; align-items: center; margin-top: 1px; }
+    .swb-deal-watch { font-size: var(--swb-fs-xxs); font-weight: 600; color: var(--swb-primary); }
     .swb-deal-pct { font-size: var(--swb-fs-xs); font-weight: 800; color: #fff; background: var(--swb-danger); padding: 2px 6px; border-radius: 5px; flex-shrink: 0; }
     .swb-alerts { padding: 6px var(--swb-space-4) var(--swb-space-3); max-height: 380px; overflow-y: auto; }
     .swb-alert-li { display: flex; align-items: center; gap: var(--swb-space-2); padding: 7px 8px; border-radius: var(--swb-radius-md); background: var(--swb-danger-soft); margin-bottom: 6px; cursor: pointer; }
@@ -535,7 +537,7 @@ const SWB_UI = (() => {
     // 클릭 즉시 가장 가까운 위치에 노출. 모든 열 아이콘 간격 48px로 통일(라벨-아이콘 겹침 회피).
     // 사용법(help) 메뉴 제거 — 온보딩에서 안내. 아래 열(설정/디버그)은 라벨 dir=above(아이콘 아래).
     const items = [
-      { key: "deals", label: "오늘의 핫딜", icon: ICON.deal, x: 0, y: -60, dir: "left" },
+      { key: "deals", label: "전체 핫딜", icon: ICON.deal, x: 0, y: -60, dir: "left" },
       { key: "alerts", label: "알림", icon: ICON.bell, x: 0, y: -108, dir: "left" },
       { key: "trend", label: "가격 추이", icon: ICON.trend, x: -60, y: 0, dir: "left" },
       { key: "list", label: "찜 목록", icon: ICON.watch, x: -60, y: 48, dir: "left" },
@@ -1128,13 +1130,13 @@ try {
     box.innerHTML = `<div class="swb-loading"><span class="swb-spinner"></span>불러오는 중…</div>`;
     let deals;
     try {
-      deals = await SWB_API(`/recommendations?limit=5&days=${dealDaysView}`);
+      deals = await SWB_API(`/deals/public?limit=5&days=${dealDaysView}`);
     } catch {
       box.innerHTML = `<div class="swb-error">서버에 연결할 수 없습니다 (E-EXT-NET-1001)</div>`;
       return;
     }
     if (!deals.length) {
-      box.innerHTML = `<div class="swb-empty">아직 하락 기록이 없습니다.<br>쇼핑을 하면 자동으로 쌓여요!</div>`;
+      box.innerHTML = `<div class="swb-empty">아직 전체 핫딜이 없습니다.<br>쇼핑을 하면 자동으로 쌓여요!</div>`;
       return;
     }
     box.innerHTML = "";
@@ -1142,6 +1144,7 @@ try {
       const m = mallMeta[d.mall] || null;
       const img = d.image ? ` style="background-image:url('${String(d.image).replace(/'/g, "\\'")}')"` : "";
       const badge = m ? `<em class="swb-li-badge ${m.cls}"><img src="${m.icon}" alt="${m.label}"></em>` : "";
+      const watcher = `<span class="swb-deal-watch">👀 ${d.watchers || 0}명이 찜</span>`;
       const row = document.createElement("div");
       row.className = "swb-deal-li";
       row.innerHTML = `
@@ -1149,6 +1152,7 @@ try {
         <span class="swb-deal-body">
           <span class="swb-deal-name"></span>
           <span class="swb-deal-price"></span>
+          <span class="swb-deal-meta">${watcher}</span>
         </span>
         <span class="swb-deal-pct">${d.reason === "low" ? "최저가" : `▼ ${d.drop_percent}%`}</span>`;
       const badgeImg = m ? row.querySelector(".swb-li-badge img") : null;

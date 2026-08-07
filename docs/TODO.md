@@ -8,9 +8,11 @@
 
 - [x] 서버: `GET /api/v1/deals/public` (익명 집계 + `watchers` + 5분 캐시) — `recommendations.py`
 - [x] pytest: 3종 (기기 무관 집계 / watchers=2 / 캐시) + 회귀 44건 통과
-- [x] 팝업: `loadDeals` → `/deals/public` 전환 + 탭 "전체 핫딜" + `watchers` "N명이 찜" 배지
-- [ ] 문서: CHANGELOG v0.12.3 / ENDPOINTS.md `/deals/public` 명세 반영
-- [ ] 검증 (node --check + 로컬 팝업 스냅샷) + 커밋/push
+- [x] 팝업: `loadDeals` → `/deals/public` 전환 + 탭 "전체 핫딜" + `watchers` "N명이 찜" 배지 (0명 포함)
+- [x] 팝업: 핫딜 리스트 내부 스크롤 (`max-height:320px`) — FULL 데이터 시 팝업 전체가 길어지는 것 방지
+- [x] 플로팅(FAB) 뷰어: "오늘의 핫딜" → "전체 핫딜", `/deals/public` 전환 + `👀 N명이 찜` 배지
+- [x] 문서: CHANGELOG v0.12.3 / ENDPOINTS.md `/deals/public` 명세 반영
+- [ ] 검증 (브라우저 스냅샷) + 커밋/push
 
 ## T-104 — 랜딩 페이지 리뉴얼 (다크 프리미엄 + 웨일 CTA) (v0.12.2) — ✅ 완료 (2026-08-07)
 > 웨일 스토어 게재(T-96d)에 맞춰 랜딩을 역동적으로 재구성. 다크 프리미엄 테마 + 스크롤/인터랙션 + 웨일 스토어 설치를 주 CTA로 승격.

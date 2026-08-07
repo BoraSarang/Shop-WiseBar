@@ -89,7 +89,7 @@ header h1 { font-size: var(--swb-fs-md); font-weight: 700; white-space: nowrap; 
 
 .deal-day-btn.active { background: var(--swb-primary); color: #fff; border-color: var(--swb-primary); }
 
-.deal-list { list-style: none; } /* v0.9.5 — 내부 스크롤 제거, 메인 스크롤로 전체 표시 */
+.deal-list { list-style: none; max-height: 320px; overflow-y: auto; } /* T-105 — 내부 스크롤 (핫딜 FULL 시 팝업 전체가 길어지는 것 방지) */
 
 .deal-item {
   display: flex; align-items: center; gap: var(--swb-space-2);

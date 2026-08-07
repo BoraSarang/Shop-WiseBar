@@ -3,7 +3,9 @@
 ## v0.12.3 (2026-08-07) — [extension][server] 공개 핫딜 피드 (T-105)
 - [server] `GET /api/v1/deals/public` 신설: 모든 사용자 실측 하락/최저가 상품 익명 집계. 5분 인메모리 캐시(`_DEAL_CACHE`), `watchers`(찜 수) 필드 추가. 기존 `/recommendations`는 개인(내 기기) 전용 유지.
 - [server] `watches.py` device 미등록 시 404 유지 (테스트에서 선행 등록).
-- [extension] 팝업 "오늘의 핫딜" 탭 → "전체 핫딜": `/deals/public` 조회 + `watchers` "👀 N명이 찜" 배지.
+- [extension] 팝업 "오늘의 핫딜" 탭 → "전체 핫딜": `/deals/public` 조회 + `watchers` "👀 N명이 찜" 배지 (0명 포함). 핫딜 리스트 내부 스크롤(`max-height:320px`)로 팝업 전체 600px 고정 유지.
+- [extension] 플로팅(FAB) 뷰어 deals 탭: 라벨 "오늘의 핫딜"→"전체 핫딜", `/recommendations`(개인) → `/deals/public`(공개) 전환 + "👀 N명이 찜" 배지.
+- [extension] manifest 버전 0.12.3.
 - [test] pytest 3종 추가(기기 무관 집계/watchers/캐시) + conftest 캐시 격리 — 총 44건 통과.
 - 에러코드: 기존 `E-EXT-NET-1001` 재사용. 신규 없음.
 
