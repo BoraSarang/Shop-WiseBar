@@ -111,7 +111,7 @@ async function loadDeals() {
     const m = mallMeta[d.mall] || null;
     const li = document.createElement("li");
     li.className = "deal-item";
-    const watchTag = d.watchers ? `<span class="deal-watchers">👀 ${d.watchers}명이 찜</span>` : "";
+    const watchTag = `<span class="deal-watchers">👀 ${d.watchers || 0}명이 찜</span>`;
     li.innerHTML = `
       <span class="watch-thumb"${d.image ? ` style="background-image:url('${String(d.image).replace(/'/g, "\\'")}')"` : ""}>${d.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
       <span class="deal-body">
