@@ -1,5 +1,16 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.12.3 (2026-08-07) — [server] 서버 API 지연 개선 + 성능 진단 (T-103)
+
+- **사용자 실사용 로그 분석**: `/alerts`/`watches` 3~6초, `/products/batch` 최대 59초 지연 리포트
+- **성능 진단 (로컬 실측)** — 코드 병목 아님 확인:
+  - batch 40개 단일: **0.14s**
+  - 동시성 8건(batch 4 + health 4): batch 평균 95ms / 최대 107ms, health ~12ms
+  - 동시 batch 쓰기 시 `database is locked` 500 (SQLite 단일 쓰기 한계 — 운영 PG엔 해당 없음)
+  - 결론: 프로덕션 지연 주원인은 **Render 무료티어 + Neon 서버리스 콜드스타트/슬립** (5분 폴링이 서버를 깨우며 3~6초)
+- **`server/app/database.py`** — SQLite에 WAL 모드 + `busy_timeout=3000` + `synchronous=NORMAL` (`event.connect` PRAGMA, `is_sqlite` 가드로 운영 PG엔 무해) → 로컬 동시성 Lock 대기 완화
+- **`.gitignore`** — `server/*.db-shm`/`server/*.db-wal` 추가 (WAL 부산물 추적 방지)
+
 ## v0.12.2 (2026-08-06) — [store] 웨일 스토어 심사 요청 완료 (T-96c)
 
 - 사용자 네이버 계정으로 웨일 스토어에 `dist/shop-wisebar-v0.12.2.zip` 업로드 + **심사 요청 완료**

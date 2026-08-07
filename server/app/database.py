@@ -1,6 +1,6 @@
 # DB 연결 — SQLAlchemy 2.x (SQLite 기본, DATABASE_URL로 교체 가능)
 # PLATFORM: server
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import settings
@@ -9,6 +9,9 @@ is_sqlite = settings.database_url.startswith("sqlite")
 _connect_args = {"check_same_thread": False} if is_sqlite else {}
 if is_sqlite:
     # 테스트/로컬 — SQLite는 자체 SingletonThreadPool 사용
+    # v0.12.2 — WAL 모드 + busy_timeout(3s)로 읽기/쓰기 동시성 Lock 지연 완화.
+    # WAL은 읽기가 쓰기 진행을 오래 막지 않아 다중 요청(알람 폴링+캡처 배치) 동시 부하 개선.
+    # PRAGMA는 아래 event.listens_for "connect"에서 적용 (autocommit 트랜잭션 무시).
     engine = create_engine(settings.database_url, connect_args=_connect_args)
 else:
     # v0.10.4 (T-94) — PostgreSQL(Neon 등) 연결 풀. 요청마다 TCP+TLS+인증을 새로 맺는
@@ -25,6 +28,17 @@ else:
         pool_recycle=600,
         connect_args={"sslmode": "require"} if "sslmode" not in settings.database_url else {},
     )
+
+
+@event.listens_for(engine, "connect")
+def _sqlite_pragmas(dbapi_connection, connection_record):  # noqa: ARG001
+    """SQLite 연결 시 PRAGMA 설정 — WAL 모드 + busy_timeout 대기 시간."""
+    if is_sqlite:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=3000")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

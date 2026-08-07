@@ -2,6 +2,13 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-103 — 서버 API 지연 개선 (SQLite WAL) + 성능 진단 (v0.12.3) — ✅ 완료 (2026-08-07)
+> 사용자 실사용 로그 분석: `/alerts`/`watches` 3~6초, `/products/batch` 최대 59초 지연. 로컬 실측으로 batch 40개 단일 0.14초/동시 부하 평균 95ms로 **코드 병목 아님** 확인. 주원인은 Render 무료티어 + Neon 서버리스 콜드스타트/슬립. 로컬 SQLite 동시 쓰기 Lock 대기 완화를 위해 WAL + busy_timeout(3s) 적용 (운영 PG엔 무해, `is_sqlite` 가드).
+- [x] **T-103a**: `server/app/database.py` — SQLite WAL 모드 + `busy_timeout=3000` + `synchronous=NORMAL` (`event.connect` PRAGMA)
+- [x] **T-103b**: `.gitignore` — `server/*.db-shm`/`server/*.db-wal` 추가 (WAL 부산물 추적 방지)
+- [x] **T-103c**: 성능 실측 — batch 40개 단일 0.14s / 동시성 8스레드 batch 평균 95ms 최대 107ms (운영 PG선 동시 쓰기 Lock 없음) → 결론: 콜드스타트가 주원인
+- [x] **T-103d**: CHANGELOG v0.12.3 (T-103) + 세션 로그
+
 ## T-102 — 시간대 통일 (KST 기준) (v0.12.2) — ✅ 완료 (2026-08-06)
 > 시간 처리 종합 검토: ①서버 일집계·통계가 UTC 기준(products.py `stat_date=now.date()`, stats cutoff/min_date) → 확장 그래프(KST)와 하루 어긋남 ②핫딜 cutoff UTC ③디버그 로그 GMT 표시. DB는 UTC 저장 유지 + 일 경계·통계·표시를 KST로 통일.
 - [x] **T-102a**: `server/app/datetimeutil.py` 신규 — `KST = timezone(timedelta(hours=9))` + `kst_date()`
