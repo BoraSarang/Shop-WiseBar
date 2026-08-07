@@ -105,7 +105,10 @@ header h1 { font-size: var(--swb-fs-md); font-weight: 700; white-space: nowrap; 
 
 .deal-price { font-size: var(--swb-fs-sm); font-weight: 700; }
 
-.deal-before { font-size: var(--swb-fs-xxs); font-weight: 400; color: var(--swb-text-muted); text-decoration: line-through; }
+.deal-before { font-size: var(--swb-fs-xxs); font-weight: 400; color: var(--swb-text-muted); text-decoration: line-through; margin-left: 6px; }
+
+.deal-meta { display: flex; gap: 4px; align-items: center; margin-top: 1px; }
+.deal-watchers { font-size: var(--swb-fs-xxs); font-weight: 600; color: var(--swb-primary); }
 
 .deal-pct {
   font-size: var(--swb-fs-xs); font-weight: 800; color: #fff; background: var(--swb-danger);

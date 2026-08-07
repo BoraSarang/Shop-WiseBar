@@ -1,5 +1,12 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.12.3 (2026-08-07) — [extension][server] 공개 핫딜 피드 (T-105)
+- [server] `GET /api/v1/deals/public` 신설: 모든 사용자 실측 하락/최저가 상품 익명 집계. 5분 인메모리 캐시(`_DEAL_CACHE`), `watchers`(찜 수) 필드 추가. 기존 `/recommendations`는 개인(내 기기) 전용 유지.
+- [server] `watches.py` device 미등록 시 404 유지 (테스트에서 선행 등록).
+- [extension] 팝업 "오늘의 핫딜" 탭 → "전체 핫딜": `/deals/public` 조회 + `watchers` "👀 N명이 찜" 배지.
+- [test] pytest 3종 추가(기기 무관 집계/watchers/캐시) + conftest 캐시 격리 — 총 44건 통과.
+- 에러코드: 기존 `E-EXT-NET-1001` 재사용. 신규 없음.
+
 ## v0.12.2 (2026-08-07) — [landing] 랜딩 페이지 다크 프리미엄 리뉴얼 (T-104)
 
 - **디자인 전면**: 정적 라이트 톤 → **다크 프리미엄** (배경 오브 글로우, 그라디언트 텍스트·버튼, 카드 호버, 모바일 반응형)

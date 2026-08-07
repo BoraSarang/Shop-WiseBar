@@ -82,8 +82,10 @@ function loadingRow(text = "불러오는 중…") {
   return `<li class="row-loading"><span class="spinner"></span>${text}</li>`;
 }
 
-// ── 오늘의 핫딜 ──────────────────────────────────────────
-// T-58 확장 (v0.7.2): /recommendations 기간별 하락폭 큰 상품
+// ── 전체 핫딜 ────────────────────────────────────────────
+// T-105 (v0.12.3): /deals/public — 모든 사용자의 실측 하락/최저가 상품 익명 집계 피드.
+// 기존 개인 /recommendations(내 기기만)와 달리 전체 사용자 데이터를 보여주며
+// watchers("N명이 찜")로 다사자류 커뮤니티 피드처럼 사회적 신뢰를 준다.
 let dealDays = 7;
 
 async function loadDeals() {
@@ -94,7 +96,7 @@ async function loadDeals() {
 
   let deals;
   try {
-    deals = await api(`/recommendations?limit=5&days=${dealDays}`);
+    deals = await api(`/deals/public?limit=5&days=${dealDays}`);
   } catch {
     listEl.innerHTML = loadingRow("핫딜을 불러오지 못했습니다 (E-EXT-NET-1001)").replace("row-loading", "row-loading row-error");
     return;
@@ -109,11 +111,13 @@ async function loadDeals() {
     const m = mallMeta[d.mall] || null;
     const li = document.createElement("li");
     li.className = "deal-item";
+    const watchTag = d.watchers ? `<span class="deal-watchers">👀 ${d.watchers}명이 찜</span>` : "";
     li.innerHTML = `
       <span class="watch-thumb"${d.image ? ` style="background-image:url('${String(d.image).replace(/'/g, "\\'")}')"` : ""}>${d.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
       <span class="deal-body">
         <span class="watch-name"></span>
         <span class="deal-price"></span>
+        <span class="deal-meta">${watchTag}</span>
       </span>
       <span class="deal-pct">${d.reason === "low" ? "최저가" : `▼ ${d.drop_percent}%`}</span>`;
     const badgeImg = m ? li.querySelector(".watch-badge img") : null;
