@@ -159,24 +159,27 @@ def admin_insight(days: int = 30, db: Session = Depends(get_db)) -> dict:
     ]
 
     # 가격 하락 TOP — 마지막 포인트 대 직전 max 가격 비교 (5%+ 하락만)
-    last_by_product: dict[str, PricePoint] = {}
-    for p in db.execute(select(PricePoint).order_by(PricePoint.captured_at.desc())).scalars():
-        if p.product_id not in last_by_product:
-            last_by_product[p.product_id] = p
+    # N+1 방지: 포인트를 단일 조회로 가져와 메모리에서 상품별 최신/직전최대 계산
+    rows = db.execute(
+        select(PricePoint.product_id, PricePoint.price, PricePoint.captured_at)
+        .order_by(PricePoint.captured_at.desc())
+    ).all()
+
+    # 상품별 가격 시리즈 (이미 최신 순 정렬 → list[0]이 마지막 포인트)
+    by_product: dict[int, list[int]] = {}
+    for pid, price, _cap in rows:
+        by_product.setdefault(pid, []).append(price)
 
     drops = []
-    for pid, lastp in last_by_product.items():
-        prev = db.scalar(
-            select(func.max(PricePoint.price)).where(
-                PricePoint.product_id == pid, PricePoint.captured_at < lastp.captured_at
-            )
-        )
-        if prev and lastp.price < prev and lastp.price / prev <= DROP_RATIO:
+    for pid, prices in by_product.items():
+        last_price = prices[0]
+        prev = max(prices[1:]) if len(prices) > 1 else None
+        if prev is not None and last_price < prev and last_price / prev <= DROP_RATIO:
             drops.append({
                 "product_id": pid,
-                "price": lastp.price,
+                "price": last_price,
                 "previous": prev,
-                "drop_pct": round((1 - lastp.price / prev) * 100, 1),
+                "drop_pct": round((1 - last_price / prev) * 100, 1),
             })
     drops.sort(key=lambda x: x["drop_pct"], reverse=True)
 
