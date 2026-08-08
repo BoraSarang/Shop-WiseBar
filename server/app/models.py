@@ -31,6 +31,7 @@ class Product(Base):
     mall: Mapped[str] = mapped_column(String(32), index=True)  # coupang | naver | oliveyoung
     url: Mapped[str] = mapped_column(String(1024))
     name: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    normalized_name: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)  # v0.13.0 — 크로스몰 매칭용 정규화 상품명
     image: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     last_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

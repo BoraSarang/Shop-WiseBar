@@ -8,6 +8,7 @@ from app.config import APP_VERSION, settings
 from app.database import Base, engine
 from app.logging_setup import setup_logging, started_at
 from app.routers import devices, products, recommendations, relations, watches
+from app.routers.products import _backfill_normalized_names
 from app.routers.recommendations import INDEX_SQLS
 
 app = FastAPI(
@@ -45,6 +46,16 @@ def on_startup() -> None:
             conn.execute(text(sql))
     # v0.9.1 — 신규 컬럼 마이그레이션 (create_all은 기존 테이블에 컬럼을 추가하지 않음)
     _ensure_columns(engine)
+    # v0.13.0 (T-106) — 기존 상품 normalized_name 백필 (1회, 신규 컬럼)
+    from app.database import SessionLocal
+
+    try:
+        with SessionLocal() as s:
+            updated = _backfill_normalized_names(s)
+            if updated:
+                s.commit()
+    except Exception:  # noqa: BLE001 — 백필 실패해도 서버 기동은 계속 (재시도 가능)
+        pass
 
 
 def _ensure_columns(engine) -> None:
@@ -55,11 +66,14 @@ def _ensure_columns(engine) -> None:
             cols = {r[1] for r in conn.execute(text("PRAGMA table_info(products)"))}
             if "sold_out_at" not in cols:
                 conn.execute(text("ALTER TABLE products ADD COLUMN sold_out_at TIMESTAMP"))
+            if "normalized_name" not in cols:  # v0.13.0 (T-106) — 크로스몰 매칭용
+                conn.execute(text("ALTER TABLE products ADD COLUMN normalized_name VARCHAR(512)"))
             cols = {r[1] for r in conn.execute(text("PRAGMA table_info(watches)"))}
             if "target_price" not in cols:
                 conn.execute(text("ALTER TABLE watches ADD COLUMN target_price INTEGER"))
         else:
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS sold_out_at TIMESTAMPTZ"))
+            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS normalized_name VARCHAR(512)"))
             conn.execute(text("ALTER TABLE watches ADD COLUMN IF NOT EXISTS target_price INTEGER"))
 
 

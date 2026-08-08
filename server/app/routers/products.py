@@ -23,12 +23,14 @@ from app.schemas import (
     PricePointOut,
     PriceStatsOut,
     PriceUploadIn,
+    ProductAlternativeOut,
     ProductBatchIn,
     ProductBatchOut,
     ProductOut,
     ProductUpsertIn,
     SoldOutIn,
 )
+from app.services.name_normalizer import normalize
 
 router = APIRouter(tags=["products"])
 
@@ -65,8 +67,59 @@ def _variant_last_price(db: Session, product_id: str, variant: str | None) -> in
     return newest
 
 
+def _match_alternatives(db: Session, product: Product) -> list[ProductAlternativeOut]:
+    """동일 상품(정규화명 동일) 다른 몰 + 가격 근접 상품 (v0.13.0, T-107).
+    내 상품 기준 diff_percent = (내 가격 - 상대 가격)/상대 가격 × 100 (양수 = 상대가 더 저렴)."""
+    if not product.normalized_name or not product.last_price:
+        return []
+    rival_price = product.last_price
+    lo = int(rival_price * 0.7)  # ±30%
+    hi = int(rival_price * 1.3)
+    rows = db.scalars(
+        select(Product)
+        .where(
+            Product.normalized_name == product.normalized_name,
+            Product.mall != product.mall,
+            Product.last_price.is_not(None),
+            Product.last_price >= lo,
+            Product.last_price <= hi,
+        )
+        .order_by(Product.last_price.asc())
+        .limit(6)
+    ).all()
+    if not rows:
+        return []
+    ids = [r.id for r in rows]
+    wc = dict(
+        db.execute(select(Watch.product_id, func.count(Watch.id)).where(Watch.product_id.in_(ids)).group_by(Watch.product_id)).all()
+    )
+    out: list[ProductAlternativeOut] = []
+    seen_malls: set[str] = set()
+    for r in rows:
+        if r.mall in seen_malls:
+            continue
+        seen_malls.add(r.mall)
+        if r.last_price is None:
+            continue
+        diff = round((rival_price - r.last_price) / r.last_price * 100)
+        out.append(
+            ProductAlternativeOut(
+                product_id=r.id,
+                mall=r.mall,
+                name=r.name,
+                image=r.image,
+                url=r.url,
+                last_price=r.last_price,
+                watch_count=wc.get(r.id, 0),
+                diff_percent=diff,
+            )
+        )
+    return out[:3]
+
+
 def _product_out(
-    product: Product, db: Session, device_id: str | None = None, variant: str | None = None
+    product: Product, db: Session, device_id: str | None = None, variant: str | None = None,
+    with_alternatives: bool = True,
 ) -> ProductOut:
     is_watched = False
     target_price: int | None = None
@@ -94,7 +147,26 @@ def _product_out(
         avg_price=avg_price,
         price_count=price_count,
         watch_count=watch_count,
+        alternatives=_match_alternatives(db, product) if with_alternatives else [],
     )
+
+
+def _backfill_normalized_names(db: Session) -> int:
+    """v0.13.0 (T-106) — 기존 상품의 normalized_name이 NULL이거나 이름이 갱신된 경우 재계산.
+    startup 시 1회 호출 (운영 규모 수 백~수천 — 배치로 무리 없음)."""
+    rows = db.scalars(
+        select(Product).where(
+            Product.name.is_not(None),
+            (Product.normalized_name.is_(None)) | (Product.normalized_name == ""),
+        )
+    ).all()
+    updated = 0
+    for p in rows:
+        norm = normalize(p.name)
+        if norm != p.normalized_name:
+            p.normalized_name = norm or None
+            updated += 1
+    return updated
 
 
 @router.get("/products", response_model=list[ProductOut])
@@ -105,7 +177,7 @@ def list_products(limit: int = 30, db: Session = Depends(get_db)) -> list[Produc
         .order_by(Product.created_at.desc(), Product.id.desc())
         .limit(limit)
     ).all()
-    return [_product_out(p, db) for p in products]
+    return [_product_out(p, db, with_alternatives=False) for p in products]
 
 
 @router.get("/products/{product_id}", response_model=ProductOut)
@@ -201,6 +273,8 @@ def _upsert(db: Session, product_id: str, mall: str, url: str, name: str | None,
     url = (url or "")[:1024]
     name = (name or "")[:512]
     image = (image or "")[:1024]
+    # v0.13.0 (T-106) — 상품명 정규화 (크로스몰 매칭용). name 변경 시 재계산
+    normalized_name = normalize(name) if name else None
     # 프로토콜-상대 URL("//cdn...") → https: 정규화 (팝업/확장 페이지에서 로드 가능하도록)
     if image and image.startswith("//"):
         image = f"https:{image}"
@@ -211,6 +285,7 @@ def _upsert(db: Session, product_id: str, mall: str, url: str, name: str | None,
             mall=mall,
             url=url,
             name=name,
+            normalized_name=normalized_name,
             image=image,
         )
         db.add(product)
@@ -222,6 +297,9 @@ def _upsert(db: Session, product_id: str, mall: str, url: str, name: str | None,
         #          카드 이름이 상세 페이지 이름을 덮어쓰는 회귀 방지 (네이버/올리브 포함)
         if name and (source == "detail" or not product.name):
             product.name = name
+            product.normalized_name = normalized_name
+        elif not product.normalized_name and normalized_name:
+            product.normalized_name = normalized_name  # 기존 데이터 백필 (이름 유지)
         if image:
             product.image = image
         if mall:

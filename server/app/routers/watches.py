@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
 from app.models import Alert, Device, PricePoint, Product, Watch
+from app.routers.products import _match_alternatives
 from app.schemas import AlertHistoryOut, AlertOut, AlertRecordIn, WatchIn, WatchOut
 
 router = APIRouter(tags=["watches"])
@@ -56,8 +57,9 @@ def remove_watch(device_id: str, product_id: str, db: Session = Depends(get_db))
 
 
 @router.get("/devices/{device_id}/watches", response_model=list[WatchOut])
-def list_watches(device_id: str, db: Session = Depends(get_db)) -> list[WatchOut]:
-    """관심 상품 목록 (상품명/url/최신 가격 포함)"""
+def list_watches(device_id: str, include_alternatives: bool = False, db: Session = Depends(get_db)) -> list[WatchOut]:
+    """관심 상품 목록 (상품명/url/최신 가격 포함).
+    v0.13.0 (T-107) — include_alternatives=true 시 각 찜 상품에 크로스몰 비교(alternatives) 포함."""
     _get_device_or_404(db, device_id)
     watches = db.scalars(select(Watch).where(Watch.device_id == device_id)).all()
     products = {
@@ -81,6 +83,7 @@ def list_watches(device_id: str, db: Session = Depends(get_db)) -> list[WatchOut
                 sold_out=p.sold_out_at is not None if p else False,
                 target_price=w.target_price,
                 created_at=w.created_at,
+                alternatives=_match_alternatives(db, p) if include_alternatives and p else [],
             )
         )
     return out

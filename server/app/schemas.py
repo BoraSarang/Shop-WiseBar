@@ -65,6 +65,21 @@ class ProductOut(BaseModel):
     avg_price: int | None = None
     price_count: int = 0
     watch_count: int = 0  # 이 상품을 추적 중인 기기 수 (계정 규모 지표)
+    # v0.13.0 (T-107) — 동일 상품 다른 몰 최저가 비교
+    alternatives: list["ProductAlternativeOut"] = []
+
+
+class ProductAlternativeOut(BaseModel):
+    """크로스몰 비교 — 정규화명 동일 + 다른 몰 + 가격 근접 (±30%) 상품 (v0.13.0)"""
+
+    product_id: str
+    mall: str
+    name: str | None
+    image: str | None
+    url: str
+    last_price: int | None
+    watch_count: int = 0
+    diff_percent: int | None = None  # 이 상품 기준 같은 몰 대비 가격 차 (%) — 양수=더 저렴
 
 
 class ProductBatchOut(BaseModel):
@@ -108,6 +123,8 @@ class WatchOut(BaseModel):
     sold_out: bool = False  # v0.9.1 — 품절 상태 (sold_out_at 유무)
     target_price: int | None = None  # v0.9.1 — 목표가
     created_at: datetime
+    # v0.13.0 (T-107) — include_alternatives 옵션 시 동일 상품 다른 몰 비교
+    alternatives: list["ProductAlternativeOut"] = []
 
 
 class AlertOut(BaseModel):
