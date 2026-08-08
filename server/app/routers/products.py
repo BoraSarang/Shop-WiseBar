@@ -192,6 +192,34 @@ def get_product(
     return _product_out(product, db, device_id, variant)
 
 
+def _insight_badges(db: Session, product: Product, variant: str | None, last7: PriceStatsOut.PeriodStats) -> list[str]:
+    """구매 타이밍 인사이트 (v0.13.0, T-109) — 현재가 기준:
+      - "역대 최저가 달성": last_price == 전체 최저
+      - "평균보다 N% 저렴": last_price < 전체 평균
+      - "7일 최저가 도달": last_price == 지난 7일 최저
+    데이터 3포인트 미만이면 판단 불가 → 빈 리스트 (데이터 쌓는 동안 추가 배지 없음)."""
+    if product.last_price is None:
+        return []
+    cur = product.last_price
+    cond = [PricePoint.product_id == product.id]
+    if variant is not None:
+        cond.append(PricePoint.variant == variant)
+    data_points = db.scalar(select(func.count(PricePoint.id)).where(*cond))
+    if data_points < 3:
+        return []
+    badges: list[str] = []
+    o_min = db.scalar(select(func.min(PricePoint.price)).where(*cond))
+    o_avg = db.scalar(select(func.avg(PricePoint.price)).where(*cond))
+    if o_min is not None and cur <= o_min:
+        badges.append("역대 최저가 달성")
+    elif o_avg is not None and cur < o_avg:
+        pct = ((o_avg - cur) / o_avg) * 100
+        badges.append(f"평균보다 {pct:.0f}% 저렴")
+    if last7.min is not None and cur <= last7.min:
+        badges.append("7일 최저가 도달")
+    return badges
+
+
 @router.get("/products/{product_id}/stats", response_model=PriceStatsOut)
 def get_product_stats(
     product_id: str, variant: str | None = None, db: Session = Depends(get_db)
@@ -252,7 +280,8 @@ def get_product_stats(
         )
 
     return PriceStatsOut(
-        period7=period_stats(cutoff7), period30=period_stats(cutoff30), overall=period_stats(epoch)
+        period7=period_stats(cutoff7), period30=period_stats(cutoff30), overall=period_stats(epoch),
+        insight_badges=_insight_badges(db, product, variant, last7=period_stats(cutoff7)),
     )
 
 

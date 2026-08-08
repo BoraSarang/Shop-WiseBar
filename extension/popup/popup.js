@@ -215,6 +215,7 @@ async function loadCurrent() {
         $("currentPrice").textContent = `${currentPrice.toLocaleString()}원`;
       }
       renderStats(product);
+      renderAltPopup(product); // v0.13.0 — 크로스몰 비교
     } else {
       $("currentStats").textContent = "";
     }
@@ -237,6 +238,10 @@ function renderTrendStats(s) {
   const parts = [];
   const fmt = (v) => (v == null ? null : `${Number(v).toLocaleString()}원`);
   const fmtDate = (d) => (d ? d.slice(2).replace(/-/g, "/") : null); // YYYY-MM-DD → YY/MM/DD
+  // v0.13.0 (T-109) — 서버 구매 타이밍 인사이트 우선 표시
+  if (Array.isArray(s.insight_badges) && s.insight_badges.length) {
+    parts.push(s.insight_badges.join(" · "));
+  }
   if (s.period7 && s.period7.min != null) parts.push(`7일 최저 ${fmt(s.period7.min)}`);
   if (s.period30 && s.period30.avg != null) parts.push(`30일 평균 ${fmt(s.period30.avg)}`);
   if (s.overall && s.overall.min != null) {
@@ -289,6 +294,37 @@ function renderStats(product) {
 
 function mallLabel(mall) {
   return { naver: "네이버", coupang: "쿠팡", oliveyoung: "올리브영" }[mall] || mall;
+}
+
+// v0.13.0 (T-108) — 팝업 현재 상품: 동일 상품 다른 몰 가격 비교
+function renderAltPopup(product) {
+  const box = $("altBox");
+  const list = $("altList");
+  const alts = Array.isArray(product?.alternatives)
+    ? product.alternatives.filter((a) => a.last_price != null)
+    : [];
+  if (!alts.length) {
+    box.classList.add("hidden");
+    return;
+  }
+  list.innerHTML = "";
+  for (const a of alts) {
+    const row = document.createElement("a");
+    row.className = "alt-li";
+    row.href = a.url || "#";
+    row.target = "_blank";
+    row.rel = "noopener";
+    const diff =
+      a.diff_percent != null && a.diff_percent !== 0
+        ? a.diff_percent > 0
+          ? `<b class="alt-low">${a.diff_percent}% 더 저렴</b>`
+          : `<span class="alt-high">${-a.diff_percent}% 비쌈</span>`
+        : "";
+    const watchers = a.watch_count ? ` · 👀 ${a.watch_count}명` : "";
+    row.innerHTML = `<span class="alt-name">${mallLabel(a.mall)}${watchers}</span><span class="alt-price">${Number(a.last_price).toLocaleString()}원 ${diff}</span>`;
+    list.appendChild(row);
+  }
+  box.classList.remove("hidden");
 }
 
 async function fetchProductName(productId) {

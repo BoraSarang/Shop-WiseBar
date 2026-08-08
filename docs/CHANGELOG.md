@@ -1,5 +1,17 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.13.0 (2026-08-08) — [server][extension] 크로스몰 비교 + 구매 타이밍 인사이트 (T-106~T-109)
+- [server] `products.normalized_name` 컬럼 신설: 소문자화 → 특수문자 공백 치환 → 불용어(세트/구성/패키지/정품/선물용 등) 토큰 제거. `name_normalizer.normalize()`, upsert 자동 계산 + startup 백필.
+- [server] `GET /products/{pid}` `alternatives` 신설: 정규화명 동일 + 다른 몰 + 가격 ±30%인 동일상품을 가격 낮은순(몰당 최대 3) 매칭. 조회 시 동적 계산(별도 테이블/워커 없음). `diff_percent` = 기준 상품 대비 상대 가격 %.
+- [server] `GET /watch?include_alternatives=true` — 찜 목록 각 상품에 동일 비교 포함.
+- [server] `GET /products/{pid}/stats` `insight_badges` 신설(T-109): 3포인트 이상일 때 "역대 최저가 달성"/"평균보다 N% 저렴"/"7일 최저가 도달" 계산.
+- [extension] 상세 패널 "다른 몰 가격" 섹션(`swb-alt`): 몰 라벨(네이버/쿠팡/올리브영) + 가격 + "N% 더 저렴/비쌈" + 👀 추적자 수 + 클릭 시 해당 몰 상품 열기.
+- [extension] 찜 목록 행에 타 몰 최저가 미니 배지(`⤓ {몰} {가격}원`), 팝업 현재 상품에도 비교 표시(altBox).
+- [extension] 통계 배너 최우선 표시에 `insight_badges` 반영 (상세 패널 + 팝업).
+- [extension] manifest 버전 0.13.0.
+- [test] 확장 UI node --check 통과. 서버 pytest: 정규화 6 + 대체상품 6 + insight 1 + 기존 회귀 — 총 57건 통과.
+- 에러코드: 신규 없음 (기존 E-EXT-NET-1001 재사용).
+
 ## v0.12.3 (2026-08-07) — [extension][server] 공개 핫딜 피드 (T-105)
 - [server] `GET /api/v1/deals/public` 신설: 모든 사용자 실측 하락/최저가 상품 익명 집계. 5분 인메모리 캐시(`_DEAL_CACHE`), `watchers`(찜 수) 필드 추가. 기존 `/recommendations`는 개인(내 기기) 전용 유지.
 - [server] `watches.py` device 미등록 시 404 유지 (테스트에서 선행 등록).

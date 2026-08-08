@@ -157,6 +157,17 @@ header h1 { font-size: var(--swb-fs-md); font-weight: 700; white-space: nowrap; 
 
 .current-actions { display: flex; flex-wrap: wrap; gap: var(--swb-space-2); align-items: center; justify-content: center; }
 
+.alt-box { margin-top: 6px; border-top: 1px solid var(--swb-border); padding-top: 6px; }
+.alt-box.hidden { display: none; }
+.alt-title { font-size: var(--swb-fs-xs); font-weight: 700; color: var(--swb-text-muted); margin-bottom: 4px; }
+.alt-list { display: flex; flex-direction: column; gap: 2px; }
+.alt-li { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 8px; border-radius: var(--swb-radius-md); text-decoration: none; }
+.alt-li:hover { background: var(--swb-primary-soft); }
+.alt-name { font-size: var(--swb-fs-xs); color: var(--swb-text-muted); }
+.alt-price { font-size: var(--swb-fs-xs); font-weight: 700; color: var(--swb-text-primary); }
+.alt-low { color: var(--swb-danger); }
+.alt-high { color: var(--swb-text-faint); }
+
 .current-hint {
   font-size: var(--swb-fs-xs); font-weight: 700;
   color: var(--swb-primary); background: var(--swb-primary-soft-2);

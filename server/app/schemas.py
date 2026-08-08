@@ -106,6 +106,8 @@ class PriceStatsOut(BaseModel):
     period7: PeriodStats = PeriodStats()
     period30: PeriodStats = PeriodStats()
     overall: PeriodStats = PeriodStats()
+    # v0.13.0 (T-109) — 구매 타이밍 인사이트
+    insight_badges: list[str] = []
 
 
 class WatchIn(BaseModel):

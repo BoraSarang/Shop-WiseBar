@@ -142,6 +142,27 @@ class TestStats:
     def test_stats_404(self, client):
         assert client.get("/api/v1/products/unknown/stats").status_code == 404
 
+    def test_insight_badges(self, client, product_payload):
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(timezone.utc)
+        client.post("/api/v1/products", json=product_payload)
+        # 시각을 달리해 UNIQUE(product_id, captured_at) 충돌 방지 (T-109)
+        client.post("/api/v1/products/test%3Aproduct%3A1/prices",
+                    json={"price": 10000, "captured_at": (now - timedelta(minutes=5)).isoformat()})
+        client.post("/api/v1/products/test%3Aproduct%3A1/prices",
+                    json={"price": 9000, "captured_at": (now - timedelta(minutes=3)).isoformat()})
+        # 포인트 2개 → 판단 불가 (3포인트 미만)
+        s = client.get("/api/v1/products/test%3Aproduct%3A1/stats").json()
+        assert s["insight_badges"] == []
+        # 한 번 더 낮은 가격 업로드 → 3포인트, 8000은 역대 최저 → "역대 최저가 달성"
+        client.post("/api/v1/products/test%3Aproduct%3A1/prices",
+                    json={"price": 8000, "captured_at": now.isoformat()})
+        s = client.get("/api/v1/products/test%3Aproduct%3A1/stats").json()
+        badges = s["insight_badges"]
+        assert any("역대 최저가" in b for b in badges)
+        assert any("7일" in b for b in badges)
+
 
 class TestSoldOut:
     def test_sold_out_cycle(self, client, product_payload):

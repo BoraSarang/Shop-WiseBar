@@ -15,6 +15,7 @@ const SWB_UI = (() => {
   let nowPriceCache = null;
   let serverStatsCache = null;
   let trendStatsCache = null; // v0.10.0 — 7일/30일/역대 요약
+  let alternatives = []; // v0.13.0 (T-108) — 동일 상품 다른 몰 비교
 
   const CSS = `
     :host {
@@ -233,6 +234,16 @@ const SWB_UI = (() => {
     .swb-rel-price { font-size: var(--swb-fs-xs); font-weight: 700; color: var(--swb-primary); }
     .swb-rel-loading { font-size: var(--swb-fs-xs); color: var(--swb-text-faint); padding: 4px 6px; }
     .swb-rel-empty { font-size: var(--swb-fs-xs); color: var(--swb-text-faint); padding: 4px 6px; }
+    /* v0.13.0 (T-108) — 크로스몰 비교 */
+    .swb-alt { margin-top: 10px; border-top: 1px solid var(--swb-border); padding-top: var(--swb-space-2); }
+    .swb-alt.hidden { display: none; }
+    .swb-alt-title { font-size: var(--swb-fs-xs); font-weight: 700; color: var(--swb-text-secondary); margin-bottom: 6px; }
+    .swb-alt-li { display: flex; align-items: center; gap: var(--swb-space-2); padding: 6px 8px; border-radius: var(--swb-radius-md); cursor: pointer; }
+    .swb-alt-li:hover { background: var(--swb-primary-soft); }
+    .swb-alt-name { flex: 1; font-size: var(--swb-fs-xs); color: var(--swb-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .swb-alt-price { font-size: var(--swb-fs-xs); font-weight: 700; color: var(--swb-text-primary); }
+    .swb-alt-low { color: var(--swb-danger); }
+    .swb-alt-high { color: var(--swb-text-faint); }
     .swb-foot { padding: var(--swb-space-2) var(--swb-space-4) var(--swb-space-3); font-size: var(--swb-fs-xs); color: var(--swb-text-faint); }
     .swb-list { padding: 6px var(--swb-space-4) var(--swb-space-3); max-height: 340px; overflow-y: auto; }
     .swb-list-head { display: flex; align-items: center; justify-content: space-between; padding: var(--swb-space-2) var(--swb-space-4) 0; }
@@ -296,6 +307,7 @@ const SWB_UI = (() => {
       display: flex; align-items: center; justify-content: space-between; gap: 6px; /* v0.9.2 */
     }
     .swb-li-price { font-size: var(--swb-fs-sm); font-weight: 700; color: var(--swb-primary); }
+    .swb-li-alt { font-size: var(--swb-fs-xxs); font-weight: 600; color: var(--swb-primary); background: var(--swb-primary-soft); border: 1px solid var(--swb-primary-border); border-radius: var(--swb-radius-md); padding: 1px 6px; cursor: pointer; } /* v0.13.0 — 크로스몰 비교 */
     .swb-li-check { font-size: var(--swb-fs-xxs); color: var(--swb-text-faint); margin-left: auto; text-align: right; white-space: nowrap; }
     .swb-li-check.stale {
       align-self: flex-start; color: var(--swb-danger); background: var(--swb-danger-soft);
@@ -454,6 +466,10 @@ const SWB_UI = (() => {
           <div class="swb-related hidden">
             <div class="swb-rel-title">함께 본 상품</div>
             <div class="swb-rel-list"></div>
+          </div>
+          <div class="swb-alt hidden">
+            <div class="swb-alt-title">다른 몰 가격</div>
+            <div class="swb-alt-list"></div>
           </div>
         </div>
         <div class="swb-foot">똑바 · 최저가를 놓치지 마세요</div>
@@ -886,7 +902,7 @@ try {
       ]);
       pointsCache = points || [];
       trendStatsCache = stats || null;
-      if (product) {
+if (product) {
         if (!nowPriceCache && product.last_price) nowPriceCache = Number(product.last_price);
         if (product.is_watched) currentWatched = true;
         currentTargetPrice = product.target_price ? Number(product.target_price) : null; // v0.9.2
@@ -895,9 +911,10 @@ try {
           avg_price: product.avg_price,
           price_count: product.price_count,
           watch_count: product.watch_count,
-
         };
+        alternatives = Array.isArray(product.alternatives) ? product.alternatives : [];
       }
+      renderAlternatives();
     } catch {
       serverError = true;
     }
@@ -939,6 +956,41 @@ try {
       relList.appendChild(row);
     }
     relBox.classList.remove("hidden");
+  }
+
+  // v0.13.0 (T-108): 동일 상품 다른 몰 가격 비교 렌더 — 데이터 없으면 숨김
+  const MALL_LABEL = { naver: "네이버", coupang: "쿠팡", oliveyoung: "올리브영" };
+
+  function renderAlternatives() {
+    const altBox = shadow.querySelector(".swb-alt");
+    const altList = shadow.querySelector(".swb-alt-list");
+    if (!altBox || !Array.isArray(alternatives) || !alternatives.length) {
+      altBox?.classList.add("hidden");
+      return;
+    }
+    altList.innerHTML = "";
+    for (const a of alternatives) {
+      if (!a.url) continue;
+      const row = document.createElement("div");
+      row.className = "swb-alt-li";
+      const diff =
+        a.diff_percent != null && a.diff_percent !== 0
+          ? a.diff_percent > 0
+            ? ` <b class="swb-alt-low">${a.diff_percent}% 더 저렴</b>`
+            : ` <span class="swb-alt-high">${-a.diff_percent}% 비쌈</span>`
+          : "";
+      const watchers = a.watch_count ? ` · 👀 ${a.watch_count}명` : "";
+      row.innerHTML = `<span class="swb-alt-name"></span><span class="swb-alt-price"></span>`;
+      row.querySelector(".swb-alt-name").textContent =
+        `${MALL_LABEL[a.mall] || a.mall}${watchers}`;
+      row.querySelector(".swb-alt-price").textContent =
+        a.last_price != null ? `${Number(a.last_price).toLocaleString()}원${diff}` : "";
+      row.addEventListener("click", () => {
+        if (a.url) chrome.runtime.sendMessage({ type: "OPEN_TAB", url: a.url });
+      });
+      altList.appendChild(row);
+    }
+    altBox.classList.remove("hidden");
   }
 
   // 일별 시리즈: 기간(일) 내 실제 기록일만 {t(ms), price}[]로 반환 (결측 보간 없음 — v0.12.0).
@@ -1051,6 +1103,10 @@ try {
     const parts = [];
     const fmt = (v) => (v == null ? null : `${Number(v).toLocaleString()}원`);
     const fmtDate = (d) => (d ? d.slice(2).replace(/-/g, "/") : null);
+    // v0.13.0 (T-109) — 서버 구매 타이밍 인사이트 우선 표시
+    if (Array.isArray(s.insight_badges) && s.insight_badges.length) {
+      parts.push(s.insight_badges.join(" · "));
+    }
     if (s.period7 && s.period7.min != null) parts.push(`7일 최저 ${fmt(s.period7.min)}`);
     if (s.period30 && s.period30.avg != null) parts.push(`30일 평균 ${fmt(s.period30.avg)}`);
     if (s.overall && s.overall.min != null) {
@@ -1255,7 +1311,7 @@ try {
     }
     listEl.innerHTML = `<div class="swb-loading"><span class="swb-spinner"></span>불러오는 중…</div>`;
     try {
-      watchCache = await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches`);
+      watchCache = await SWB_API(`/devices/${encodeURIComponent(deviceId)}/watches?include_alternatives=true`);
     } catch {
       listEl.innerHTML = `<div class="swb-error">서버에 연결할 수 없습니다 (E-EXT-NET-1001)</div>`;
       return;
@@ -1304,6 +1360,16 @@ try {
       row.querySelector(".swb-li-name").textContent = w.product_name || w.product_id;
       row.querySelector(".swb-li-price").textContent =
         w.last_price != null ? `${Number(w.last_price).toLocaleString()}원` : "";
+      const alts = Array.isArray(w.alternatives) ? w.alternatives.filter((a) => a.last_price != null) : [];
+      if (alts.length) {
+        const lowest = alts.reduce((m, a) => (a.last_price < m.last_price ? a : m), alts[0]);
+        const anchor = document.createElement("span");
+        anchor.className = "swb-li-alt";
+        anchor.textContent = `⤓ ${MALL_LABEL[lowest.mall] || lowest.mall} ${Number(lowest.last_price).toLocaleString()}원`;
+        anchor.title = "다른 몰 가격 비교 (클릭하면 새 탭)";
+        const rowCheck = row.querySelector(".swb-li-check");
+        row.querySelector(".swb-li-price-row").insertBefore(anchor, rowCheck);
+      }
       const chk = staleCheckLabel(w.last_checked_at);
       const chkEl = row.querySelector(".swb-li-check");
       // v0.9.1 — 품절/목표가 상태 (품절 우선)
