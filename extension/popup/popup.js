@@ -116,8 +116,10 @@ async function loadDeals() {
       <span class="watch-thumb"${d.image ? ` style="background-image:url('${String(d.image).replace(/'/g, "\\'")}')"` : ""}>${d.image ? "" : (m ? "" : "?")}${mallBadgeHtml(m)}</span>
       <span class="deal-body">
         <span class="watch-name"></span>
-        <span class="deal-price"></span>
-        <span class="deal-meta">${watchTag}</span>
+        <span class="deal-price-row">
+          <span class="deal-price"></span>
+          <span class="deal-meta">${watchTag}</span>
+        </span>
       </span>
       <span class="deal-pct">${d.reason === "low" ? "최저가" : `▼ ${d.drop_percent}%`}</span>`;
     const badgeImg = m ? li.querySelector(".watch-badge img") : null;

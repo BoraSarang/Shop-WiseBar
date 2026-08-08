@@ -244,14 +244,15 @@ const SWB_UI = (() => {
     .swb-deals-days { display: flex; gap: var(--swb-space-1); }
     .swb-deal-btn { font-size: var(--swb-fs-xxs); font-weight: 700; color: var(--swb-primary); background: var(--swb-surface); border: 1px solid var(--swb-primary-border); border-radius: var(--swb-radius-lg); padding: 2px 8px; cursor: pointer; }
     .swb-deal-btn.active { background: var(--swb-primary); color: #fff; border-color: var(--swb-primary); }
-    .swb-deals { padding: 6px var(--swb-space-4) var(--swb-space-3); max-height: 380px; overflow-y: auto; }
+    .swb-deals { padding: 6px var(--swb-space-4) var(--swb-space-3); max-height: 180px; overflow-y: auto; }
     .swb-deal-li { display: flex; align-items: center; gap: var(--swb-space-2); padding: 7px 8px; border-radius: var(--swb-radius-md); background: var(--swb-primary-soft); margin-bottom: 6px; cursor: pointer; }
     .swb-deal-li:hover { background: var(--swb-primary-soft-2); }
     .swb-deal-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-    .swb-deal-name { font-size: var(--swb-fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .swb-deal-name { font-size: var(--swb-fs-sm); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: keep-all; }
+    .swb-deal-price-row { display: flex; align-items: center; justify-content: space-between; gap: var(--swb-space-2); }
     .swb-deal-price { font-size: var(--swb-fs-sm); font-weight: 700; }
     .swb-deal-before { font-size: var(--swb-fs-xxs); font-weight: 400; color: var(--swb-text-muted); text-decoration: line-through; margin-left: 4px; }
-    .swb-deal-meta { display: flex; gap: 4px; align-items: center; margin-top: 1px; }
+    .swb-deal-meta { display: flex; gap: 4px; align-items: center; }
     .swb-deal-watch { font-size: var(--swb-fs-xxs); font-weight: 600; color: var(--swb-primary); }
     .swb-deal-pct { font-size: var(--swb-fs-xs); font-weight: 800; color: #fff; background: var(--swb-danger); padding: 2px 6px; border-radius: 5px; flex-shrink: 0; }
     .swb-alerts { padding: 6px var(--swb-space-4) var(--swb-space-3); max-height: 380px; overflow-y: auto; }
@@ -533,13 +534,13 @@ const SWB_UI = (() => {
 
   function buildMenu(menu) {
     // v0.11.0 후속 — FAB 25vh 복원(메뉴 원점=FAB 중심 일치) + 배치 재구성.
-    // FAB 중심을 원점(0,0)으로 위/왼쪽/아래 3방향. 위쪽 열에는 전체 핫딜→가격 추이 순으로 세로 배치해
-    // 클릭 즉시 가장 가까운 위치에 노출. 모든 열 아이콘 간격 48px로 통일(라벨-아이콘 겹침 회피).
+    // FAB 중심을 원점(0,0)으로 위/왼쪽/아래 3방향. 왼쪽 열에 전체 핫딜→가격 추이→찜 목록을 세로로, 위쪽 열에 알림을 배치.
+    // 모든 열 아이콘 간격 48px로 통일(라벨-아이콘 겹침 회피).
     // 사용법(help) 메뉴 제거 — 온보딩에서 안내. 아래 열(설정/디버그)은 라벨 dir=above(아이콘 아래).
     const items = [
-      { key: "deals", label: "전체 핫딜", icon: ICON.deal, x: 0, y: -108, dir: "left" },
-      { key: "trend", label: "가격 추이", icon: ICON.trend, x: 0, y: -60, dir: "left" },
-      { key: "alerts", label: "알림", icon: ICON.bell, x: -60, y: 0, dir: "left" },
+      { key: "deals", label: "전체 핫딜", icon: ICON.deal, x: -60, y: -48, dir: "left" },
+      { key: "trend", label: "가격 추이", icon: ICON.trend, x: -60, y: 0, dir: "left" },
+      { key: "alerts", label: "알림", icon: ICON.bell, x: 0, y: -60, dir: "left" },
       { key: "list", label: "찜 목록", icon: ICON.watch, x: -60, y: 48, dir: "left" },
       { key: "set", label: "설정", icon: ICON.settings, x: 0, y: 60, dir: "above" },
     ];
@@ -1151,8 +1152,10 @@ try {
         <span class="swb-li-thumb"${img}>${d.image ? "" : (m ? "" : "?")}${badge}</span>
         <span class="swb-deal-body">
           <span class="swb-deal-name"></span>
-          <span class="swb-deal-price"></span>
-          <span class="swb-deal-meta">${watcher}</span>
+          <span class="swb-deal-price-row">
+            <span class="swb-deal-price"></span>
+            <span class="swb-deal-meta">${watcher}</span>
+          </span>
         </span>
         <span class="swb-deal-pct">${d.reason === "low" ? "최저가" : `▼ ${d.drop_percent}%`}</span>`;
       const badgeImg = m ? row.querySelector(".swb-li-badge img") : null;
