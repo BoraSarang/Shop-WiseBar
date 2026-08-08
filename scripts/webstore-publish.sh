@@ -43,6 +43,7 @@ rm -f "$ZIP"
 # 확장 루트에 shopwisebar.db 등 제외 대상이 있으면 필터
 zip -r "$ZIP" extension \
   -x "*/shopwisebar.db" "*/shopwisebar.db-*" "*.DS_Store" \
+  -x "*/preview-verify.html" \
   >/dev/null
 # zip 안의 manifest 권한 확인용 경로
 unzip -l "$ZIP" | grep -q "extension/manifest.json" && echo "      OK — $ZIP"
