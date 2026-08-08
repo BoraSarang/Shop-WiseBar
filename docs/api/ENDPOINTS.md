@@ -1,6 +1,7 @@
 # 똑바(Shop WiseBar) Server API 명세
 
-> 버전: v0.14.0 · 플랫폼: server (FastAPI) · base: `https://shop-wisebar.onrender.com/api/v1` (로컬 `http://127.0.0.1:8000/api/v1`) · Swagger: `/docs`
+> 버전: v0.15.0 · 플랫폼: server (FastAPI) · base: `https://shop-wisebar.onrender.com/api/v1` (로컬 `http://127.0.0.1:8000/api/v1`) · Swagger: `/docs`
+> 신규: `/admin/*` 집계 엔드포인트 (v0.15.0, macOS 똑바 매니저(ShopWiseBar Manager) 앱 전용, 조회 전용)
 
 ## 공통
 
@@ -64,6 +65,19 @@
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
 | GET/HEAD | `/health` | 헬스체크 `{status, version}` — UptimeRobot 5분 핑 |
+
+## admin — 집계 조회 (v0.15.0, T-115a, macOS 똑바 매니저(ShopWiseBar Manager) 앱용)
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/admin/overview` | 전체 개요 — `{products, devices, watches, price_points, daily_stats, alerts, relations, priced, sold_out}` |
+| GET | `/admin/trend?days=` | 일별 시리즈(KST) — `{days: [{date, captures, points, new}]}` (1~180일) |
+| GET | `/admin/malls` | 몰별 집계 — `{malls: [{mall, products, avg_price, watchers, priced}]}` (coupang/naver/oliveyoung) |
+| GET | `/admin/collect` | 수집 통계 — `{sources: [{source, count}], total, last_capture_at}` |
+| GET | `/admin/insight?days=` | 인사이트 — `{alert_distribution, recent_alerts, top_drops}` (top_drops: 최근가가 직전 대비 5%+ 하락 TOP 20) |
+
+- `/admin/trend` 집계 기준: `captures` = `price_daily_stats.point_count` 합, `points` = `price_points` 건수, `new` = 신규 상품.
+  일자 경계는 KST(UTC+9) 기준 — 그래프와 확장 로컬 표시가 하루 어긋나지 않도록 함.
 
 ## 데이터 저장 규칙
 

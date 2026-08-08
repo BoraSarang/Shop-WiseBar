@@ -1,0 +1,42 @@
+# ShopWiseBar Manager — xcodegen 프로젝트 설정 (v0.15.0, T-115b)
+# macOS SwiftUI 네이티브 관리 앱. 생성: xcodegen generate
+name: ShopWiseBarManager
+options:
+  bundleIdPrefix: com.borasarang
+  deploymentTarget:
+    macOS: "14.0"
+targets:
+  ShopWiseBarManager:
+    type: application
+    platform: macOS
+    sources:
+      - ShopWiseBarManager
+    settings:
+      base:
+        PRODUCT_NAME: ShopWiseBarManager
+        PRODUCT_BUNDLE_IDENTIFIER: com.borasarang.shopWiseBarManager
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "똑바 매니저 (ShopWiseBar Manager)"
+        INFOPLIST_KEY_CFBundleName: "똑바 매니저"
+        MARKETING_VERSION: 0.15.0
+        CURRENT_PROJECT_VERSION: 1
+        SWIFT_VERSION: "6.0"
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.business
+        INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: NO
+        ENABLE_HARDENED_RUNTIME: YES
+        SWIFT_STRICT_CONCURRENCY: minimal
+    scheme:
+      testTargets:
+        - ShopWiseBarManagerTests
+  ShopWiseBarManagerTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - ShopWiseBarManagerTests
+    dependencies:
+      - target: ShopWiseBarManager
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.borasarang.shopWiseBarManagerTests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"

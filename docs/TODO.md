@@ -2,6 +2,18 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-115 — macOS 관리 앱 "똑바 매니저 (ShopWiseBar Manager)" (v0.15.0) — 🔵 진행 (2026-08-08)
+> 사용자 신규 기능 제안: DB에 쌓인 정보를 Mac 관리 프로그램으로 조회. 대시보드/인사이트/전체·쇼핑몰별·수집 통계 + 공통 핫딜.
+> 조회 전용, 인증 없음, 운영 서버(`https://shop-wisebar.onrender.com`) 조회. 디자인은 Music 앱 스타일 네이티브.
+> 상세: `docs/plans/PLAN_v0.15.0_admin-macos.md`
+
+- [x] **T-115a** 서버: `/admin/*` 조회 라우터 (overview/trend/malls/collect/insight) + `test_admin.py` 6건 — 전체 pytest **66건 통과**
+- [ ] **T-115b** macOS: xcodegen `project.yml` + DesignSystem 토큰(확장 swb-tokens 연동) + APIClient(@Observable AppModel)
+- [ ] **T-115c** macOS: Music 앱 스타일 NavigationSplitView 사이드바 + 대시보드(카드+트렌드 차트)
+- [ ] **T-115d** macOS: 인사이트/통계(몰별)/수집/공통 핫딜 뷰
+- [ ] **T-115e** macOS: 상품 상세 드릴다운(가격 이력·stats·alternatives) (데이터 보유 시)
+- [ ] **T-115f** 검증: xcodebuild 성공 + 운영 서버 실데이터 렌더 확인 + 문서/커밋/push
+
 ## T-106~T-109 — 데이터 활용 고도화: 크로스몰 비교 + 타이밍 인사이트 (v0.13.0) — ✅ 완료 (2026-08-08)
 > 사용자 신규 기능 제안: 여러 쇼핑몰에서 수집한 상품 데이터를 활용해 "이와 비슷한 다른 쇼핑몰 상품"부터 노출.
 > 동일상품(정규화명)을 다른 몰 가격과 비교 → "쿠팡이 x% 더 쌈". 상세: `docs/plans/PLAN_v0.13.0_crossmall.md`
