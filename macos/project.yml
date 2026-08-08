@@ -16,7 +16,7 @@ targets:
         PRODUCT_NAME: ShopWiseBarManager
         PRODUCT_BUNDLE_IDENTIFIER: com.borasarang.shopWiseBarManager
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: "똑바 매니저 (ShopWiseBar Manager)"
+        INFOPLIST_KEY_CFBundleDisplayName: "똑바 매니저"
         INFOPLIST_KEY_CFBundleName: "똑바 매니저"
         MARKETING_VERSION: 0.15.0
         CURRENT_PROJECT_VERSION: 1

@@ -77,7 +77,7 @@ struct SidebarView: View {
                     Text(model.dataDescription)
                         .font(DS.Font.xs)
                         .foregroundStyle(.white.opacity(0.6))
-                    Text("똑바 매니저 (ShopWiseBar Manager) · v0.15.0")
+                    Text("똑바 매니저 · v0.15.0")
                         .font(DS.Font.xxs)
                         .foregroundStyle(.white.opacity(0.4))
                 }
@@ -96,10 +96,10 @@ struct SidebarView: View {
                 .frame(width: 30, height: 30)
                 .overlay(Text("⬤").font(.system(size: 14)).foregroundStyle(.white))
             VStack(alignment: .leading, spacing: 1) {
-                Text("똑바 (ShopWiseBar)")
+                Text("똑바")
                     .font(DS.Font.sm.weight(.semibold))
                     .foregroundStyle(.white)
-                Text("매니저 (Manager)")
+                Text("매니저")
                     .font(DS.Font.xxs)
                     .foregroundStyle(.white.opacity(0.65))
             }

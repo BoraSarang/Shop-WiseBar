@@ -1,7 +1,7 @@
 # 똑바(Shop WiseBar) Server API 명세
 
 > 버전: v0.15.0 · 플랫폼: server (FastAPI) · base: `https://shop-wisebar.onrender.com/api/v1` (로컬 `http://127.0.0.1:8000/api/v1`) · Swagger: `/docs`
-> 신규: `/admin/*` 집계 엔드포인트 (v0.15.0, macOS 똑바 매니저(ShopWiseBar Manager) 앱 전용, 조회 전용)
+> 신규: `/admin/*` 집계 엔드포인트 (v0.15.0, macOS 똑바 매니저 앱 전용, 조회 전용)
 
 ## 공통
 
@@ -66,7 +66,7 @@
 |--------|------|------|
 | GET/HEAD | `/health` | 헬스체크 `{status, version}` — UptimeRobot 5분 핑 |
 
-## admin — 집계 조회 (v0.15.0, T-115a, macOS 똑바 매니저(ShopWiseBar Manager) 앱용)
+## admin — 집계 조회 (v0.15.0, T-115a, macOS 똑바 매니저 앱용)
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|

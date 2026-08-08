@@ -1,4 +1,4 @@
-# PLAN_v0.15.0 — 똑바 매니저 (ShopWiseBar Manager) (macOS 관리 앱)
+# PLAN_v0.15.0 — 똑바 매니저 (macOS 관리 앱)
 
 > 작성: 2026-08-08 · 플랫폼: server + macos · 상태: 진행
 > 사용자 요구: DB에 쌓인 정보를 똑바 관리 프로그램(Mac 네이티브 앱)으로 조회. 인사이트/대시보드/전체/쇼핑몰별/수집 통계 + 익스텐션 공통 핫딜.
@@ -26,7 +26,7 @@
 | GET /admin/insight | 알림 타입 분포 + 하락/최저가 TOP |
 | (기존) GET /deals/public | 공통 핫딜 피드 재사용 |
 
-### macOS (macos/ — 똑바 매니저, ShopWiseBar Manager)
+### macOS (macos/ — 똑바 매니저)
 ```
 macos/
 ├── project.yml                     # xcodegen

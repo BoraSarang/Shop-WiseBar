@@ -1,12 +1,12 @@
 # 똑바(Shop WiseBar) 변경 이력
 
-## v0.15.0 (2026-08-08) — [server][macos] macOS 관리 앱 "똑바 매니저 (ShopWiseBar Manager)" (T-115)
+## v0.15.0 (2026-08-08) — [server][macos] macOS 관리 앱 "똑바 매니저" (T-115)
 - [server] `GET /admin/overview` 신설: `products/devices/watches/price_points/daily_stats/alerts/relations/priced/sold_out` 전체 카운트.
 - [server] `GET /admin/trend?days=` — KST 일자 기준 수집 트렌드 시리즈 `{date, captures, points, new}` (1~180일 가드).
 - [server] `GET /admin/malls` — 몰별(쿠팡/네이버/올리브영) 상품 수·평균가·찜·가격책정 집계.
 - [server] `GET /admin/collect` — 소스별 가격이력 건수 + 마지막 수집 시각(KST). `GET /admin/insight` — 알림 분포 + 최근 알림 + 직전 대비 5%+ 하락 TOP20.
 - [server] `test_admin.py` 6건 신설 — 전체 pytest **66건 통과**.
-- [macos] `macos/` 신규 — SwiftUI 네이티브 관리 앱 "똑바 매니저(ShopWiseBar Manager)": xcodegen project.yml, DesignSystem(확장 `swb-tokens.css`과 동일 브랜드/몰 색), @Observable AppModel + APIClient(운영/로컬 서버 토글), Music 앱 스타일 NavigationSplitView 사이드바 + 대시보드/인사이트/통계/수집/공통 핫딜 뷰.
+- [macos] `macos/` 신규 — SwiftUI 네이티브 관리 앱 "똑바 매니저": xcodegen project.yml, DesignSystem(확장 `swb-tokens.css`과 동일 브랜드/몰 색), @Observable AppModel + APIClient(운영/로컬 서버 토글), Music 앱 스타일 NavigationSplitView 사이드바 + 대시보드/인사이트/통계/수집/공통 핫딜 뷰.
 - 문서: `docs/plans/PLAN_v0.15.0_admin-macos.md` / `docs/api/ENDPOINTS.md` /admin 섹션 / TODO T-115 등록.
 
 ## v0.14.0 (2026-08-08) — [server][extension] 품절 복귀 알림 (T-110)
