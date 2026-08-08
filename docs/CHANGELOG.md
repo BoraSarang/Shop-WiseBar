@@ -1,5 +1,13 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.14.0 (2026-08-08) — [server][extension] 품절 복귀 알림 (T-110)
+- [server] `products.back_on_sale_at` 컬럼 신설: 가격 캡처로 품절이 해제되는 순간 기록 (`_apply_price` + `_ensure_columns` 마이그레이션 SQLite/PG).
+- [server] `GET /devices/{did}/alerts` `back_in_stock` 알림 신설: 판매 중 + `back_on_sale_at > since`이면 1회. since=None(최초 폴링)은 과거 이력 노이즈 방지로 미발생. 복귀 후 가격 하락/목표가 검사는 정상 진행.
+- [extension] 알림 타입 분기: 시스템 알림 "품절 해제 · 다시 만들 수 있어요" + FAB 알림 히스토리 "재입고" 배지(`t-back` 초록) "재판매 중 · N원"
+- [extension] manifest 버전 0.14.0.
+- [test] pytest 8건 (devices+alerts: 복귀 1회 / 초기 폴링 미발생 / 복귀 후 하락 감지) — 총 60건 통과. 확장 node --check 통과.
+- 에러코드: 신규 없음 (기존 `E-EXT-NET-1001` 재사용).
+
 ## v0.13.0 (2026-08-08) — [server][extension] 크로스몰 비교 + 구매 타이밍 인사이트 (T-106~T-109)
 - [server] `products.normalized_name` 컬럼 신설: 소문자화 → 특수문자 공백 치환 → 불용어(세트/구성/패키지/정품/선물용 등) 토큰 제거. `name_normalizer.normalize()`, upsert 자동 계산 + startup 백필.
 - [server] `GET /products/{pid}` `alternatives` 신설: 정규화명 동일 + 다른 몰 + 가격 ±30%인 동일상품을 가격 낮은순(몰당 최대 3) 매칭. 조회 시 동적 계산(별도 테이블/워커 없음). `diff_percent` = 기준 상품 대비 상대 가격 %.

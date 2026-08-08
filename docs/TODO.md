@@ -14,9 +14,18 @@
 - [x] 테스트: pytest normalizer/matching/alternatives/insight + 회귀 + node --check + E2E
 - [x] 문서: CHANGELOG v0.13.0 / ENDPOINTS.md alternatives·insight_badges 명세 / manifest 0.13.0
 
-## T-110 — 품절 복귀 알림 (v0.14.0, 이월) — 🔵 진행 (2026-08-08)
+## T-110 — 품절 복귀 알림 (v0.14.0, 이월) — ✅ 완료 (2026-08-08)
 > 사용자 신규 기능 제안 확장: 품절됐던 찜 상품이 재판매(가격 캡처 → sold_out 자동 해제)되면 사용자에게 알림.
 > 서버: `sold_out` 알림 인프라 기존 존재 (검사는 품절 동안 하락/목표가 당지 생략 — 무한 반복 방지). v0.13.0 머지 후 확장 폴링 부활 로직 작업 예정.
+
+- [x] 서버: `products.back_on_sale_at` 컬럼 + 마이그레이션(SQLite/PG) + `_apply_price` 품절 해제 시 기록 (T-110a)
+- [x] 서버: `get_alerts` `back_in_stock` 알림 — back_on_sale_at > since 1회, 최초 폴링 미발생, 복귀 후 하락/목표가 검사 정상 (T-110b)
+- [x] 확장: 시스템 알림 "품절 해제" + FAB 알림 히스토리 "재입고" 배지/메시지 (T-110c)
+- [x] 테스트: pytest 3건 (복귀 1회/초기 폴링 미발생/복귀-하락 동시) + 회귀 — 총 60건 통과, node --check (T-110d)
+- [x] 문서: CHANGELOG v0.14.0 / ENDPOINTS `/alerts` back_in_stock / manifest 0.14.0 / PLAN_v0.14.0_backinstock.md (T-110e)
+
+## T-111 — 주간 트렌드 피드 (v0.14.0, 이월) — ⏸ 보류 (2026-08-08)
+> v0.14.0 후속 항목. 기간은 T-110 완료 후 협의.
 
 ## T-105 — 공개 핫딜 피드 (확장 전용) (v0.12.3) — ✅ 완료 (2026-08-07)
 > 다사자(dasaja.co.kr) 분석 → 모든 사용자의 실측 하락/최저가 상품을 익명 집계해 팝업 "전체 핫딜" 탭에서 노출.

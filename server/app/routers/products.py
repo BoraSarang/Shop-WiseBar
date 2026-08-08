@@ -364,6 +364,7 @@ def _apply_price(db: Session, product: Product, price: int, source: str, variant
     product.last_checked_at = now
     if product.sold_out_at is not None:
         product.sold_out_at = None  # v0.9.1 — 가격 캡처 = 판매 중 → 품절 자동 해제
+        product.back_on_sale_at = now  # v0.14.0 (T-110) — 품절 복귀 시각 기록 (알림 감지용)
     stat = db.scalar(
         select(PriceDailyStat)
         .where(PriceDailyStat.product_id == product.id, PriceDailyStat.stat_date == today)

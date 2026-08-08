@@ -421,10 +421,18 @@ async function pollAlerts() {
       alert.previous_price != null && alert.previous_price > 0
         ? Math.round(((alert.previous_price - alert.price) / alert.previous_price) * 100)
         : null;
-    const title = pct != null ? `가격 ${pct}% 내려갔습니다!` : "가격이 내려갔습니다";
-    const message = `${Number(alert.price).toLocaleString()}원${
-      pct != null ? ` (-${pct}%)` : ""
-    }${alert.previous_price != null ? ` · 기존 ${Number(alert.previous_price).toLocaleString()}원` : ""}`;
+    // v0.14.0 (T-110) — 품절 복귀 알림 분기
+    let title;
+    let message;
+    if (alert.alert_type === "back_in_stock") {
+      title = "품절 해제 · 다시 살 수 있어요";
+      message = `${Number(alert.price).toLocaleString()}원 · 판매 재개`;
+    } else {
+      title = pct != null ? `가격 ${pct}% 내려갔습니다!` : "가격이 내려갔습니다";
+      message = `${Number(alert.price).toLocaleString()}원${
+        pct != null ? ` (-${pct}%)` : ""
+      }${alert.previous_price != null ? ` · 기존 ${Number(alert.previous_price).toLocaleString()}원` : ""}`;
+    }
     await chrome.storage.session.set({ [`nid:${notificationId}`]: alert.product_id });
     chrome.notifications.create(notificationId, {
       type: "basic",

@@ -1,6 +1,6 @@
 # 똑바(Shop WiseBar) Server API 명세
 
-> 버전: v0.13.0 · 플랫폼: server (FastAPI) · base: `https://shop-wisebar.onrender.com/api/v1` (로컬 `http://127.0.0.1:8000/api/v1`) · Swagger: `/docs`
+> 버전: v0.14.0 · 플랫폼: server (FastAPI) · base: `https://shop-wisebar.onrender.com/api/v1` (로컬 `http://127.0.0.1:8000/api/v1`) · Swagger: `/docs`
 
 ## 공통
 
@@ -42,7 +42,7 @@
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
-| GET | `/devices/{did}/alerts?since=` | 폴링 알림 — `price_dropped` / `target_reached` / `sold_out` (증분, 중복 방지) |
+| GET | `/devices/{did}/alerts?since=` | 폴링 알림 — `price_dropped` / `target_reached` / `sold_out` / `back_in_stock`(v0.14.0: 품절→재판매 복귀, since 이후 1회, 최초 폴링 미발생) (증분, 중복 방지) |
 | POST | `/devices/{did}/alerts` | 감지 알림 히스토리 배치 저장 — `[{product_id, alert_type, price, previous_price}]` |
 | GET | `/devices/{did}/alerts/history` | 알림 내역 (최신 50건, 초과 시 오래된 것 정리) |
 | DELETE | `/devices/{did}/alerts/{alert_id}` | 알림 삭제 (204) |
@@ -70,5 +70,6 @@
 - `price_points`: 가격이 변할 때만 INSERT (`UNIQUE(product_id, captured_at)` 초 단위 방어)
 - `price_daily_stats`: 일별 open/close/low/high/point_count 집계
 - `products.normalized_name` (v0.13.0): 소문자화 → 특수문자 공백 치환 → 불용어(세트/구성/패키지/정품/선물용 등) 토큰 제거. upsert 시 자동 계산, 기존 데이터는 startup 백필
+- `products.back_on_sale_at` (v0.14.0): 가격 캡처로 품절(`sold_out_at`)이 해제되는 순간 기록 — 복귀 알림 감지용
 - 크로스몰 alternatives (v0.13.0): 저장 테이블 없이 **조회 시 동적 매칭** — `normalized_name` 동일 + `mall` 다름 + 가격 ±30% (0.7~1.3배). 몰당 최대 3건, 가격 오름차순
 - DB: SQLite(로컬 `shopwisebar.db`) / PostgreSQL(Neon, Render)

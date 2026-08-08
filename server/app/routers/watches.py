@@ -192,6 +192,24 @@ def get_alerts(device_id: str, since: datetime | None = None, db: Session = Depe
                     )
                 )
             continue
+        # v0.14.0 (T-110) — 품절 복귀 알림: 판매 중이지만 back_on_sale_at이 since 이후이면 1회.
+        # since=None(최초 폴링)은 과거 이력 노이즈 → 미발생. 이후 하락/목표가 검사는 정상 진행.
+        if (
+            w.product is not None
+            and w.product.sold_out_at is None
+            and w.product.back_on_sale_at is not None
+            and since is not None
+            and _naive(w.product.back_on_sale_at) > since
+        ):
+            alerts.append(
+                AlertOut(
+                    product_id=w.product_id,
+                    alert_type="back_in_stock",
+                    price=w.product.last_price or 0,
+                    previous_price=None,
+                    captured_at=w.product.back_on_sale_at,
+                )
+            )
         points = list(
             db.scalars(
                 select(PricePoint)

@@ -45,3 +45,4 @@ scripts/store-capture/node_modules/
 # E2E 도구
 scripts/e2e/node_modules/
 scripts/e2e/.e2e-server.log
+extension/popup/preview-verify.html

@@ -68,12 +68,15 @@ def _ensure_columns(engine) -> None:
                 conn.execute(text("ALTER TABLE products ADD COLUMN sold_out_at TIMESTAMP"))
             if "normalized_name" not in cols:  # v0.13.0 (T-106) — 크로스몰 매칭용
                 conn.execute(text("ALTER TABLE products ADD COLUMN normalized_name VARCHAR(512)"))
+            if "back_on_sale_at" not in cols:  # v0.14.0 (T-110) — 품절 복귀 시각
+                conn.execute(text("ALTER TABLE products ADD COLUMN back_on_sale_at TIMESTAMP"))
             cols = {r[1] for r in conn.execute(text("PRAGMA table_info(watches)"))}
             if "target_price" not in cols:
                 conn.execute(text("ALTER TABLE watches ADD COLUMN target_price INTEGER"))
         else:
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS sold_out_at TIMESTAMPTZ"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS normalized_name VARCHAR(512)"))
+            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS back_on_sale_at TIMESTAMPTZ"))
             conn.execute(text("ALTER TABLE watches ADD COLUMN IF NOT EXISTS target_price INTEGER"))
 
 

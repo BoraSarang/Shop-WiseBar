@@ -36,6 +36,7 @@ class Product(Base):
     last_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sold_out_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # v0.9.1 — 품절 시작 시각 (None=판매중)
+    back_on_sale_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # v0.14.0 — 품절→재판매 복귀 시각 (가격 캡처로 해제된 순간 기록)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     price_points: Mapped[list["PricePoint"]] = relationship(back_populates="product", cascade="all, delete-orphan")
