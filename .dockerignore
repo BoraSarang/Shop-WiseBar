@@ -1,0 +1,19 @@
+# Docker 빌드 context 제외 (server/Dockerfile 사용 시)
+# .env / 시크릿 / 로컬 DB / 가상환경은 이미지에 넣지 않는다.
+.git
+.agent
+docs
+dist
+extension
+landing
+macos
+scripts
+server/.venv
+server/.env
+server/*.db
+server/*.db-shm
+server/*.db-wal
+server/*.sqlite3
+server/.pytest_cache
+**/__pycache__
+.DS_Store

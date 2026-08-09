@@ -5,22 +5,21 @@
 ## 1. 배포 (Deploy)
 
 - **호스팅**: Render Web Service (무료 티어) — GitHub `BoraSarang/Shop-WiseBar` `main` 브랜치 자동 배포
-- **서비스 디렉토리**: `server/`
-- **배포 정의**: `render.yaml` (v0.16.4, 블루프린트) — 빌드/시작 명령을 코드로 고정. 대시보드 수동 설정에 의존하지 않음.
-  - 빌드 명령: `pip install -r requirements.txt && python -m playwright install --with-deps chromium`
-  - 시작 명령: `uvicorn app.main:app --host 0.0.0.0 --port $PORT & python -m crawlers.worker`
-- **왜 이 빌드 명령인가** (운영 실측 기록):
-  - Render 컨테이너엔 시스템 Chrome이 없음 → `channel="chrome"` launch 즉시 실패 → v0.16.2까지 크롤러 전수 실패(count=0·0.9s)
-  - `pip`만으로는 playwright PyPI는 설치돼도 브라우저 이진파일/OS 의존성이 없음 → 번들 Chromium 폴백도 실패(0.16.3 배포 로그 2회 실측)
-  - `playwright install --with-deps chromium`를 **빌드 시 루트로** 실행해야 컨테이너에 번들 Chromium + deps가 설치됨.
-    런타임 자가 설치(`crawlers/_browser.py`)는 백업 수단이고, root가 아니면 `--with-deps`는 블로킹/실패함.
-- **적용 방법** (Render Dashboard → New + → **Blueprint** → `render.yaml` 연결) 또는 기존 Web Service에서 아래 두 필드를 `render.yaml` 값과 일치:
-  - Build Command: `pip install -r requirements.txt && python -m playwright install --with-deps chromium`
-  - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT & python -m crawlers.worker`
+- **러타임**: **Docker** (`server/Dockerfile`) + 배포 정의 `render.yaml` (v0.16.4, 블루프린트)
+- **왜 Docker인가** (운영 실측 기록):
+  - Render 컨테이너엔 시스템 Chrome 없음 → `channel="chrome"` launch 즉시 실패 → v0.16.2까지 크롤러 전수 실패(count=0·0.9s)
+  - `pip`만으로는 playwright PyPI는 설치돼도 브라우저 이진파일/OS 의존성이 없음(0.16.3 배포 로그 실측)
+  - NixPacks(runtime: python) 빌드는 **non-root** → `playwright install --with-deps`의 apt-get이 `su: Authentication failure`로 빌드 실패 (0.16.4 운영 실측)
+  - Dockerfile은 루트로 빌드하므로 **apt-get(OS 의존성) + `python -m playwright install chromium`(번들 브라우저)**을 사전 설치 가능. 배포 시 `Dockerfile` 자동 사용.
+- **적용 방법** (권장): Render Dashboard → **New + → Blueprint** → `render.yaml` 연결 → Apply.
+  - 기존 Python Web Service가 있으면 블루프린트가 새 서비스로 생성되므로 **환경변수 재입력** 필요:
+    - `DATABASE_URL` → 기존 값 그대로 복사 (Neon → Dashboard → Connection String)
+    - `CORS_ORIGINS` → 기존/아래 값 유지
+  - 적용 후 구 서비스는 비활성/삭제 (무료 티어 인스턴스 1개 제한 주의)
 - **환경변수** (Render Dashboard → Environment):
   | 변수 | 값 | 비고 |
   |------|-----|------|
-  | `DATABASE_URL` | Neon PostgreSQL 연결 문자열 | 없으면 로컬 SQLite |
+  | `DATABASE_URL` | Neon PostgreSQL 연결 문자열 | 없으면 로컬 SQLite fallback |
   | `CORS_ORIGINS` | `chrome-extension://... , https://borasarang.github.io` | 확장/랜딩 출처 |
 
 > 배포 트리거: `main` 푸시 자동. 수동 배포: Render Dashboard → Manual Deploy.

@@ -1,32 +1,28 @@
 # Render 블루프린트 (v0.16.4, T-120) — 운영 서버 배포 정의를 코드로 고정
-# 사용법: Render Dashboard → New + → Blueprint 본파일을 git과 연결하거나,
-#   기존 Web Service 설정을 아래와 일치시켜 Sync. (빌드/시작 명령을 대시보드에 중복 관리하지 않음)
+# 사용법: Render Dashboard → New + → Blueprint → 이 repo 연결 → `render.yaml` Apply.
+#   기존 Python Web Service가 있는 경우 블루프린트는 새 서비스로 생성되므로
+#   DATABASE_URL 등 환경변수만 재입력. (기존 무료 티어 서비스는 비활성/삭제)
 # 플랫폼: server · 플랜: free (무료 티어)
 #
-# 핵심: 크롤러(Playwright)가 컨테이너에서 수집하려면 빌드 시 루트로 OS 의존성 + 번들 Chromium 설치가 필요.
-#   Render 무료 티어에서 시스템 Chrome은 없고 pip로는 브라우저 이진파일이 안 따라옴 → 여기서 해결.
+# 런타임: Docker (server/Dockerfile). 이유:
+#   Render NixPacks(python) 빌드는 non-root → `playwright install --with-deps chromium`의
+#   apt-get 단계가 "su: Authentication failure"로 실패 (2026-08-10 운영 실측, 빌드 실패).
+#   Docker는 루트로 빌드하므로 apt-get + playwright chromium 사전 설치가 가능.
+#
+# 주의: dockerfilePath/dockerContext 경로는 rootDir 기준 (이 파일은 저장소 루트에 있음).
 services:
   - type: web
     name: shop-wisebar
-    runtime: python
+    runtime: docker
     plan: free
-    rootDir: server
-    buildCommand: >-
-      pip install -r requirements.txt &&
-      python -m playwright install --with-deps chromium
-    startCommand: >-
-      uvicorn app.main:app --host 0.0.0.0 --port $PORT &
-      python -m crawlers.worker
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         sync: false
         comment: >-
-          Neon PostgreSQL 연결 문자열. 없으면 로컬 SQLite fallback.
-          Render Dashboard → Environment에서 실제 값 유지.
+          Neon PostgreSQL 연결 문자열. Render Dashboard → Environment에서 실값 입력
+          (블루프린트 sync:false — 절대 git에 노출 금지). 없으면 서버가 SQLite로 fallback.
       - key: CORS_ORIGINS
         value: chrome-extension://ogbofhjdiiodafcbbowjdniaikapebhe,https://borasarang.github.io
-      - key: PYTHON_VERSION
-        value: "3.13.0"
-      - key: WEB_CONCURRENCY
-        value: "1"
