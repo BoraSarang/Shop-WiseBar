@@ -6,18 +6,17 @@
 
 - **호스팅**: Render Web Service (무료 티어) — GitHub `BoraSarang/Shop-WiseBar` `main` 브랜치 자동 배포
 - **서비스 디렉토리**: `server/`
-- **빌드 명령** (v0.16.3 — playwright 번들 Chromium 설치 추가, T-120):
-  ```
-  pip install -r requirements.txt && python -m playwright install --with-deps chromium
-  ```
-  - Render 컨테이너에는 시스템 Chrome이 없음 → v0.16.2까지 크롤러가 전수 실패(count=0·0.9s, 2026-08-10 실측)
-  - `playwright install --with-deps chromium`이 번들 Chromium + OS 의존성 설치. 크롤러는 시스템 Chrome 실패 시 번들 Chromium으로 폴백 (`crawlers/_browser.py`)
-- **시작 명령** (v0.16.0 — 크롤러 워커 백그라운드 통합):
-  ```
-  uvicorn app.main:app --host 0.0.0.0 --port $PORT & python -m crawlers.worker
-  ```
-  uvicorn app.main:app --host 0.0.0.0 --port $PORT & python -m crawlers.worker
-  ```
+- **배포 정의**: `render.yaml` (v0.16.4, 블루프린트) — 빌드/시작 명령을 코드로 고정. 대시보드 수동 설정에 의존하지 않음.
+  - 빌드 명령: `pip install -r requirements.txt && python -m playwright install --with-deps chromium`
+  - 시작 명령: `uvicorn app.main:app --host 0.0.0.0 --port $PORT & python -m crawlers.worker`
+- **왜 이 빌드 명령인가** (운영 실측 기록):
+  - Render 컨테이너엔 시스템 Chrome이 없음 → `channel="chrome"` launch 즉시 실패 → v0.16.2까지 크롤러 전수 실패(count=0·0.9s)
+  - `pip`만으로는 playwright PyPI는 설치돼도 브라우저 이진파일/OS 의존성이 없음 → 번들 Chromium 폴백도 실패(0.16.3 배포 로그 2회 실측)
+  - `playwright install --with-deps chromium`를 **빌드 시 루트로** 실행해야 컨테이너에 번들 Chromium + deps가 설치됨.
+    런타임 자가 설치(`crawlers/_browser.py`)는 백업 수단이고, root가 아니면 `--with-deps`는 블로킹/실패함.
+- **적용 방법** (Render Dashboard → New + → **Blueprint** → `render.yaml` 연결) 또는 기존 Web Service에서 아래 두 필드를 `render.yaml` 값과 일치:
+  - Build Command: `pip install -r requirements.txt && python -m playwright install --with-deps chromium`
+  - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT & python -m crawlers.worker`
 - **환경변수** (Render Dashboard → Environment):
   | 변수 | 값 | 비고 |
   |------|-----|------|

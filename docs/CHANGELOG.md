@@ -1,5 +1,13 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.4 (2026-08-10) — [server] Render 블루프린트 배포 고정 (T-120)
+- [원인] v0.16.3 자가 설치(런타임 `subprocess`)는 Render 비root 환경에서 `--with-deps` sudo 블로킹 · 첫 배치 동기 블로킹으로 수집 불가 재확인 (운영 로그 3회 실측).
+- [server] `render.yaml` 신규 — 빌드 명령 `pip install -r requirements.txt && python -m playwright install --with-deps chromium`을 코드로 고정. 빌드 시 루트로 OS 의존성 + 번들 Chromium 설치 → 컨테이너에서 수집 가능해짐. 대시보드 설정 의존 제거.
+- [server] `crawlers/_browser.py` — 자가 설치는 백업 수단으로 격하: `--with-deps`는 stdin 차단 + 180s timeout으로 sudo 블로킹 방지, 실패 시 빌드 명령 설치를 안내하는 정확한 로그.
+- [server] `APP_VERSION` 0.16.4 (health로 배포 확인).
+- [검증] pytest 75건 통과. 로컬 렌더 시뮬(시스템 Chrome 부재) 번들 Chromium 수집은 v0.16.3에서 성공 확인됨.
+- 문서: docs/ops/README v0.16.4 (render.yaml 적용법) / docs/TODO T-120 / CHANGELOG.
+
 ## v0.16.3 (2026-08-10) — [server] 운영 크롤러 브라우저 폴백 (T-120)
 - [원인] 운영 로그: oliveyoung 10건/naver 5건 전수 실패 + 0.9초 (2026-08-10 실측). Render 컨테이너에 시스템 Chrome이 없어 `_get_browser()`의 `channel="chrome"` launch가 즉시 실패 → fetch 전부 None. 게다가 `playwright`가 requirements.txt에 없어 운영엔 미설치(import 실패가 fetch 실패로 흡수).
 - [server] `crawlers/_browser.py` 신규 — 브라우저 실행 공용: 시스템 Chrome 우선, 없으면 Playwright 번들 Chromium으로 폴백. oliveyoung/naver 중복 `_get_browser()` 제거 후 공용 사용.
