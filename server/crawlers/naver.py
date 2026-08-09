@@ -86,8 +86,12 @@ def fetch(url: str) -> dict | None:
     return {"name": name, "image": image, "price": price, "checked_at": time.time()}
 
 
-def run_once() -> int:
-    """가격이 오래된 네이버 상품 1배치 수집. 성공 수 반환"""
+def run_once() -> tuple[int, int]:
+    """가격이 오래된 네이버 상품 1배치 수집.
+
+    반환: (attempted, success) — v0.16.2 (T-119): URL 필터 통과 후 실제 fetch 시도한 수와 성공 수.
+    대상 URL이 아닌 후보(brand.naver.com 외)는 시도 수에 포함하지 않는다.
+    """
     now = time.time()
     with SessionLocal() as db:
         candidates = db.query(Product) \
@@ -106,11 +110,13 @@ def run_once() -> int:
         if now - p.last_checked_at.timestamp() > 60 * 60:
             stale.append(p)
 
+    attempted = 0
     success = 0
     for product in stale[:10]:
         # 네이버 전용: 브랜드/스마트스토어 URL만 대상
         if not (product.url and "naver.com" in product.url and "brand.naver.com" in product.url):
             continue
+        attempted += 1  # 실제 fetch 시도 1건
         result = fetch(product.url)
         if result is None:
             continue
@@ -134,4 +140,4 @@ def run_once() -> int:
             db.commit()
             print(f"네이버 수집: {fresh.id} → {result['price']}원")
             success += 1
-    return success
+    return attempted, success

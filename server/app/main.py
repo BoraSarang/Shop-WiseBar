@@ -84,11 +84,16 @@ def _ensure_columns(engine) -> None:
             cols = {r[1] for r in conn.execute(text("PRAGMA table_info(watches)"))}
             if "target_price" not in cols:
                 conn.execute(text("ALTER TABLE watches ADD COLUMN target_price INTEGER"))
+            # v0.16.2 (T-119) — 크롤러 시도 건수 (기존 배치 행은 0 유지, 신규부터 기록)
+            cols = {r[1] for r in conn.execute(text("PRAGMA table_info(crawler_runs)"))}
+            if "attempted" not in cols:
+                conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN attempted INTEGER DEFAULT 0"))
         else:
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS sold_out_at TIMESTAMPTZ"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS normalized_name VARCHAR(512)"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS back_on_sale_at TIMESTAMPTZ"))
             conn.execute(text("ALTER TABLE watches ADD COLUMN IF NOT EXISTS target_price INTEGER"))
+            conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN IF NOT EXISTS attempted INTEGER DEFAULT 0"))
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])

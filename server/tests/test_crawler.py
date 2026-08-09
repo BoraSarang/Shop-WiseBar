@@ -60,7 +60,7 @@ class TestCrawlerLogs:
 
     def test_logs_lists_runs(self, client, db_session):
         _make_config(db_session)
-        db_session.add(CrawlerRun(mall="oliveyoung", success=True, count=2,
+        db_session.add(CrawlerRun(mall="oliveyoung", success=True, count=2, attempted=5,
                                   duration_ms=70726, trigger="manual"))
         db_session.commit()
         r = client.get("/api/v1/admin/crawler/logs")
@@ -69,8 +69,20 @@ class TestCrawlerLogs:
         assert logs[0]["mall"] == "oliveyoung"
         assert logs[0]["success"] is True
         assert logs[0]["count"] == 2
+        assert logs[0]["attempted"] == 5   # v0.16.2 (T-119)
+        assert logs[0]["failed"] == 3      # attempted - count
         assert logs[0]["trigger"] == "manual"
         assert "T" in logs[0]["run_at"]  # KST ISO 타임스탬프
+
+    def test_logs_attempted_zero_rounds(self, client, db_session):
+        """attempted 미기록(마이그레이션 전) 행은 failed 0으로 계산"""
+        _make_config(db_session)
+        db_session.add(CrawlerRun(mall="naver", success=True, count=0, attempted=0,
+                                  duration_ms=800, trigger="schedule"))
+        db_session.commit()
+        logs = client.get("/api/v1/admin/crawler/logs").json()["logs"]
+        assert logs[0]["attempted"] == 0
+        assert logs[0]["failed"] == 0
 
     def test_logs_limit_cap(self, client, db_session):
         _make_config(db_session)

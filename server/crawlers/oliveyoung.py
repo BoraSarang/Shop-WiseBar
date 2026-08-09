@@ -75,8 +75,12 @@ def fetch_goods(goods_no: str) -> dict | None:
     }
 
 
-def run_once() -> int:
-    """갱신 만료된 올리브영 상품 1배치 수집. 성공 수 반환"""
+def run_once() -> tuple[int, int]:
+    """갱신 만료된 올리브영 상품 1배치 수집.
+
+    반환: (attempted, success) — v0.16.2 (T-119): 시도한 건수(성공+실패)와 성공 건수.
+    실패(시도-성공)에는 fetch 실패(None)와 저장 실패가 포함된다.
+    """
     now = time.time()
     with SessionLocal() as db:
         candidates = db.query(Product) \
@@ -93,10 +97,12 @@ def run_once() -> int:
         if now - p.last_checked_at.timestamp() > 60 * 60:
             stale.append(p)
 
+    attempted = 0
     success = 0
     for product in stale[:10]:
         if product.id.startswith("oyrun:"):
             continue
+        attempted += 1  # 실제 fetch 시도 1건
         result = fetch_goods(product.id)
         if result is None:
             continue
@@ -120,4 +126,4 @@ def run_once() -> int:
             db.commit()
             print(f"수집 완료: {fresh.id} → {result['price']}원")
             success += 1
-    return success
+    return attempted, success

@@ -47,14 +47,17 @@ def _run_batch(db, trigger: str) -> None:
     for mall, runner in _RUNNERS:
         started = time.monotonic()
         try:
-            count = runner()
+            # v0.16.2 (T-119) — run_once 가 (attempted, success) 반환
+            attempted, count = runner()
             duration_ms = int((time.monotonic() - started) * 1000)
-            db.add(CrawlerRun(mall=mall, success=True, count=count, duration_ms=duration_ms, trigger=trigger))
+            db.add(CrawlerRun(mall=mall, success=True, count=count, attempted=attempted,
+                              duration_ms=duration_ms, trigger=trigger))
             db.commit()
-            logger.info("배치 %s: %d건 수집 (%.1fs)", mall, count, duration_ms / 1000)
+            logger.info("배치 %s: %d건 수집 / %d건 시도 (%.1fs)", mall, count, attempted, duration_ms / 1000)
         except Exception:  # noqa: BLE001 — 몰 1건 실패가 워커를 죽이지 않도록 개별 격리
             duration_ms = int((time.monotonic() - started) * 1000)
-            db.add(CrawlerRun(mall=mall, success=False, count=0, duration_ms=duration_ms, trigger=trigger))
+            db.add(CrawlerRun(mall=mall, success=False, count=0, attempted=0,
+                              duration_ms=duration_ms, trigger=trigger))
             db.commit()
             logger.exception("배치 %s 실패", mall)
 

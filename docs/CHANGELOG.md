@@ -1,5 +1,15 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.2 (2026-08-10) — [server][macos] 크롤러 성공/실패 통계 (T-119)
+- [server] `crawler_runs.attempted`(시도 건수) 컬럼 신설 — 실패수 = `attempted - count`(성공). `_ensure_columns` 마이그레이션(SQLite ALTER + PG `ADD COLUMN IF NOT EXISTS`), 기존 행은 0 유지.
+- [server] `oliveyoung.py`/`naver.py` `run_once()` 반환값 `int`(성공) → `tuple[int, int]` `(attempted, success)`. 시도 = 실제 fetch 호출 수(네이버는 `brand.naver.com` URL 필터 통과 후). fetch/저장 실패는 success 미포함.
+- [server] `worker.py` — 배치 로그에 `attempted` 기록 (`배치 oliveyoung: 2건 수집 / 5건 시도`).
+- [server] `GET /admin/crawler/logs` 응답에 `attempted`/`failed` 추가 (`failed = attempted - count`, 이전 행은 0으로 계산).
+- [macos] 크롤러 실행 이력 행 → **"대상 N건 중 성공 M · 실패 K"** (성공 초록, 실패 > 0 빨강). `CrawlerLog`는 이전 배포 응답(attempted 없음)에도 호환(0 기본값).
+- [server] `APP_VERSION` 0.16.2.
+- [검증] worker 배치 스텁(oliveyoung 5/2, naver 3/0) → `crawler_runs` attempted 반영 확인. pytest **75건 통과** (신규 1건 + 회귀). macOS xcodebuild **BUILD SUCCEEDED**.
+- 문서: `docs/plans/PLAN_v0.16.1_macos-crawler.md` v0.16.2 섹션 / TODO T-119 / ENDPOINTS `/logs` 필드.
+
 ## v0.16.1 (2026-08-10) — [macos] 똑바 매니저 크롤러 제어/모니터링 화면 (T-118)
 - [macos] 사이드바에 **"크롤러"** 섹션 추가 (`gearshape.2`) — 수집 설정 + 실행 이력.
 - [macos] `APIClient` — `CrawlerConfig`/`CrawlerLog` 모델 + `put`/`post` 헬퍼 + 메서드 4종(`crawlerConfig`/`updateCrawlerConfig`/`requestCrawl`/`crawlerLogs`).

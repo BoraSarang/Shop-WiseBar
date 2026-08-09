@@ -282,6 +282,8 @@ def crawler_logs(limit: int = 50, db: Session = Depends(get_db)) -> dict:
             "mall": r.mall,
             "success": r.success,
             "count": r.count,
+            "attempted": r.attempted,  # v0.16.2 (T-119)
+            "failed": max(0, r.attempted - r.count),  # 시도 - 성공
             "duration_ms": r.duration_ms,
             "trigger": r.trigger,
             "run_at": r.run_at.astimezone(KST).isoformat(),

@@ -171,6 +171,8 @@ struct CrawlerLog: Decodable, Identifiable {
     let mall: String
     let success: Bool
     let count: Int
+    let attempted: Int
+    let failed: Int
     let durationMs: Int
     let trigger: String
     let runAt: String
@@ -178,9 +180,22 @@ struct CrawlerLog: Decodable, Identifiable {
     var id: String { runAt + mall }
 
     enum CodingKeys: String, CodingKey {
-        case mall, success, count, trigger
+        case mall, success, count, attempted, failed, trigger
         case durationMs = "duration_ms"
         case runAt = "run_at"
+    }
+
+    /// 이전 배포(v0.16.0) 응답에는 attempted/failed 없음 → 0 기본값으로 호환 (v0.16.2, T-119)
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        mall = try c.decode(String.self, forKey: .mall)
+        success = try c.decode(Bool.self, forKey: .success)
+        count = try c.decode(Int.self, forKey: .count)
+        attempted = try c.decodeIfPresent(Int.self, forKey: .attempted) ?? count
+        failed = try c.decodeIfPresent(Int.self, forKey: .failed) ?? max(0, attempted - count)
+        durationMs = try c.decode(Int.self, forKey: .durationMs)
+        trigger = try c.decode(String.self, forKey: .trigger)
+        runAt = try c.decode(String.self, forKey: .runAt)
     }
 }
 

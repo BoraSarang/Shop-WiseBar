@@ -78,7 +78,7 @@
 | GET | `/admin/crawler/config` | 크롤러 설정 조회 (v0.16.0) — `{interval_seconds, enabled, run_requested, last_run_at}` |
 | PUT | `/admin/crawler/config` | 크롤러 설정 변경 (v0.16.0) — `{interval_seconds?, enabled?}`. `interval_seconds`는 {3600,10800,21600,43200,86400}(1/3/6/12/24시간)만 허용, 외 값 422. worker가 다음 틱(30초)에 반영 |
 | POST | `/admin/crawler/run` | 즉시 수집 요청 (v0.16.0) — `run_requested=true` 설정. worker가 다음 틱 내 1배치(oliveyoung+naver) 소비 → `{status:"requested"}` |
-| GET | `/admin/crawler/logs?limit=` | 크롤러 배치 이력 (v0.16.0, 기본 50/최대 200) — `{logs: [{mall, success, count, duration_ms, trigger, run_at(KST)}]}` |
+| GET | `/admin/crawler/logs?limit=` | 크롤러 배치 이력 (v0.16.0, 기본 50/최대 200) — `{logs: [{mall, success, count, attempted, failed, duration_ms, trigger, run_at(KST)}]}`. `attempted`/`failed`는 v0.16.2(T-119) 추가 — `failed = attempted - count` |
 
 - `/admin/trend` 집계 기준: `captures` = `price_daily_stats.point_count` 합, `points` = `price_points` 건수, `new` = 신규 상품.
   일자 경계는 KST(UTC+9) 기준 — 그래프와 확장 로컬 표시가 하루 어긋나지 않도록 함.

@@ -181,9 +181,19 @@ struct CrawlerView: View {
             Image(systemName: log.success ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .foregroundStyle(log.success ? DS.Color.success : DS.Color.danger)
 
-            Text(log.success ? "\(log.count)건 수집" : "실패")
-                .font(DS.Font.sm.weight(.medium))
-                .monospacedDigit()
+            // v0.16.2 (T-119) — "대상 N건 중 성공 M · 실패 K"
+            HStack(spacing: 6) {
+                Text("대상 \(log.attempted)건 중")
+                    .foregroundStyle(.secondary)
+                Text("성공 \(log.count)")
+                    .foregroundStyle(DS.Color.success)
+                Text("·")
+                    .foregroundStyle(.secondary)
+                Text("실패 \(log.failed)")
+                    .foregroundStyle(log.failed > 0 ? DS.Color.danger : Color.secondary)
+            }
+            .font(DS.Font.sm.weight(.medium))
+            .monospacedDigit()
 
             Spacer()
 

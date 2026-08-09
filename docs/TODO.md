@@ -2,6 +2,16 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-119 — 크롤러 성공/실패 통계 (v0.16.2) — 🔵 진행 (2026-08-10)
+> v0.16.1 사용 중 "수집이 0건이네?"(운영 이력 count=0만 표시) → "몇 건 시도 → 몇 건 성공, 몇 건 실패" 표시 요구.
+> `crawler_runs.attempted`(시도) 추가 + 크롤러 `run_once` → `(attempted, success)` 반환 + macOS 이력 행 개선. 상세: `docs/plans/PLAN_v0.16.1_macos-crawler.md` v0.16.2 섹션
+- [x] **T-119a** 서버: `main.py` 마이그레이션 + `CrawlerRun.attempted`
+- [x] **T-119b** 서버: oliveyoung/naver `run_once` → `(attempted, success)`
+- [x] **T-119c** 서버: worker.py attempted 기록 + admin logs 응답 attempted/failed
+- [x] **T-119d** macOS: CrawlerLog.attempted + CrawlerView "대상 N건 중 성공 M · 실패 K" (+ 옛 응답 호환)
+- [x] **T-119e** 검증: pytest 75건 + xcodebuild 성공 + worker 배치 스텁 attempted 반영
+- [ ] **T-119f** 문서: CHANGELOG v0.16.2 / ENDPOINTS / TODO 반영 ✅ 반영 / 커밋·push + 운영 배포
+
 ## T-118 — macOS 매니저 크롤러 제어/모니터링 화면 (v0.16.1) — 🔵 진행 (2026-08-10)
 > v0.16.0(T-117) 서버 크롤러 제어 API를 macOS 똑바 매니저 사이드바 "크롤러" 섹션으로 노출.
 > 설정(주기 1/3/6/12/24시·활성화)·즉시 수집 트리거·배치 실행 이력을 화면에서 제어. 상세: `docs/plans/PLAN_v0.16.1_macos-crawler.md`

@@ -41,3 +41,30 @@ macOS 똑바 매니저 앱의 새 사이드바 섹션 "크롤러"로 연결한�
 ## 관련 문서
 - 서버 API: `docs/api/ENDPOINTS.md` `/admin/crawler` 4종 (v0.16.0)
 - 계획: `docs/plans/PLAN_v0.16.0_naver-crawler.md` (T-117)
+
+---
+
+# v0.16.2 — 크롤러 성공/실패 통계 추가 (T-119)
+
+> v0.16.1 실제 사용(2026-08-10): 운영 서버에서 크롤러 이력 count=0으로만 보임 (시도 수 미기록). "몇 건 시도 → 몇 건 성공, 몇 건 실패" 표시 요구.
+
+## 결정 사항
+1. **`crawler_runs.attempted` (시도 수) 컬럼 추가** — 실패 수 = `attempted - count`(성공)로 서버 응답에서 계산.
+2. **크롤러 `run_once()` 반환값 변경**: `int`(성공) → `tuple[int, int]` `(attempted, success)`.
+   - oliveyoung: 후보 중 `oyrun:` 제외 + 실제 fetch 시도한 수 = attempted
+   - naver: URL 필터(`brand.naver.com`) 통과 후 fetch 시도한 수 = attempted
+   - fetch 실패(None)나 저장 실패는 success에 미포함 → failed로 집계
+3. **admin `/logs` 응답 확장**: 행에 `attempted`, `failed` 추가 (`failed = attempted - count`)
+4. **macOS 표시**: 실행 이력 행 → "대상 N건 중 성공 M건 · 실패 K건" (기존 "N건 수집" 대체). 색상: success 초록 / failed > 0 빨강.
+5. **마이그레이션**: `_ensure_columns`에 SQLite ALTER + PG `ADD COLUMN IF NOT EXISTS`.
+
+## 구현 단계
+- [ ] **T-119a** 서버: `models.py` CrawlerRun.attempted + `main.py` _ensure_columns 마이그레이션
+- [ ] **T-119b** 서버: oliveyoung/naver `run_once` → `(attempted, success)` 반환
+- [ ] **T-119c** 서버: worker.py attempted 기록 + admin.py logs 응답 attempted/failed
+- [ ] **T-119d** macOS: CrawlerLog.attempted + CrawlerView 행 표시 "대상 N건 중 성공 M · 실패 K"
+- [ ] **T-119e** 검증: pytest(기존 + attempted) + xcodebuild + 운영 로컬 DB 실측
+- [ ] **T-119f** 문서: CHANGELOG v0.16.2 / TODO / ENDPOINTS + 커밋·push
+
+## 롤백 계획
+- `git revert` — 서버 컬럼 추가는 무해(기본값 없으면 0으로 취급, 로직에서 `getattr` 방어 불필요: 신규 배치부터 기록)

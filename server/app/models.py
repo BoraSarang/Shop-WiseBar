@@ -134,6 +134,7 @@ class CrawlerRun(Base):
     mall: Mapped[str] = mapped_column(String(32), index=True)  # oliveyoung | naver
     success: Mapped[bool] = mapped_column(Boolean, default=True)
     count: Mapped[int] = mapped_column(Integer, default=0)  # 수집 성공 건수
+    attempted: Mapped[int] = mapped_column(Integer, default=0)  # v0.16.2 (T-119) — 시도 건수 (실패 = attempted - count)
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
     trigger: Mapped[str] = mapped_column(String(16), default="schedule")  # schedule | manual
     run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
