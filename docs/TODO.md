@@ -2,6 +2,16 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-118 — macOS 매니저 크롤러 제어/모니터링 화면 (v0.16.1) — 🔵 진행 (2026-08-10)
+> v0.16.0(T-117) 서버 크롤러 제어 API를 macOS 똑바 매니저 사이드바 "크롤러" 섹션으로 노출.
+> 설정(주기 1/3/6/12/24시·활성화)·즉시 수집 트리거·배치 실행 이력을 화면에서 제어. 상세: `docs/plans/PLAN_v0.16.1_macos-crawler.md`
+- [x] **T-118a** macOS: APIClient — `CrawlerConfig`/`CrawlerLog` 모델 + `put`/`post` 헬퍼 + 메서드 4종(config/update/run/logs)
+- [x] **T-118b** macOS: AppModel — `Section.crawler` + 설정/이력 상태 + `refreshCrawler()` + 제어 액션
+- [x] **T-118c** macOS: App.swift — 사이드바/콘텐츠 스위치 연결 + 하단 버전 동적 표시
+- [x] **T-118d** macOS: CrawlerView — 설정 카드(주기·활성화·지금수집) + 실행 이력 리스트(성공/실패·트리거·KST)
+- [x] **T-118e** 검증: xcodebuild 성공 + 로컬 서버(0.16.0) 실제 연동 확인(config/logs 로드) + pytest 74건 회귀(서버 변경 없음)
+- [ ] **T-118f** 문서: CHANGELOG v0.16.1 반영 ✅ / TODO 반영 ✅ / 커밋·push
+
 ## T-116 — 네이버 서버 크롤러 + 크롤러 제어 API (v0.16.0) — 🔵 진행 (2026-08-10)
 > 2차 크롤링 검증(ShopWiseBar-Verify) 결과: 네이버 브랜드스토어가 서버 Playwright(headless, 네이버만 성공 실측)로 캡차 없이 이름+가격 수집 가능 → 서버 크롤러 신규 채택.
 > 쿠팡은 여전히 Akamai 차단 → 익스텐션 의존 유지. + 크롤러 제어 API(macOS 매니저 연동 전 서버 준비). 상세: `docs/plans/PLAN_v0.16.0_naver-crawler.md`

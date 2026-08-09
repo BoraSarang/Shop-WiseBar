@@ -70,3 +70,10 @@ extension Int {
         return (f.string(from: NSNumber(value: self)) ?? "0") + "원"
     }
 }
+
+/// 앱 버전 (Info.plist CFBundleShortVersionString)
+extension Bundle {
+    var versionString: String {
+        (infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.0.0"
+    }
+}

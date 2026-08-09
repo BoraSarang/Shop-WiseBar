@@ -46,6 +46,7 @@ struct ContentView: View {
         case .stats: StatsView()
         case .deals: DealsView()
         case .collect: CollectView()
+        case .crawler: CrawlerView()
         }
     }
 }
@@ -85,7 +86,7 @@ struct SidebarView: View {
                     Text(model.dataDescription)
                         .font(DS.Font.xs)
                         .foregroundStyle(.white.opacity(0.6))
-                    Text("똑바 매니저 · v0.15.0")
+                    Text("똑바 매니저 · v\(Bundle.main.versionString)")
                         .font(DS.Font.xxs)
                         .foregroundStyle(.white.opacity(0.4))
                 }

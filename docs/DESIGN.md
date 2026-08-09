@@ -46,13 +46,17 @@
 - `watches.target_price`가 설정된 상품이 목표가 이하로 내려가면 `TARGET_REACHED` 기록
 - 익스텐션은 `since` 파라미터로 증분 폴링 → 알림 중복 방지
 
-### 2.4 올리브영 크롤러 (server/crawlers/, Playwright 전환)
+### 2.4 서버 크롤러 (server/crawlers/, Playwright 전환)
 
 - 기존: HTTP GET + requests → TLS 핑거프린팅 403 (실측)
 - 신규: `sync_playwright` + `channel="chrome"` (시스템 Chrome) headless
-  - 상품 상세 페이지 `goodsNo` 기준 진입 → `body`에서 가격 추출 + `og:title`/`og:image`
-  - 실측 PoC: 39,900원 + og 메타 수집 성공
-- 워커: `worker.py` 주기 실행 (기본 1일 1회, 상품 수에 따라 조정)
+  - 올리브영: 상품 상세 페이지 `goodsNo` 기준 진입 → `body`에서 가격 추출 + `og:title`/`og:image` (실측 PoC 성공)
+  - 네이버(v0.16.0): 브랜드스토어 `brand.naver.com` — networkidle + 가격 텍스트 대기 스크롤(최대 5회) + body `N원` 정규식 (캡차 0회 실측)
+  - 쿠팡: Akamai 차단 → 서버 수집 불가, 익스텐션 의존 유지
+- **워커 (v0.16.0 30초 틱)**: `worker.py`가 매 루프 DB에서 `crawler_config`(id=1 싱글턴)를 읽어 **주기(1/3/6/12/24시) 실시간 반영** + `run_requested` 즉시 1배치 소비
+- **배치 이력 (v0.16.0)**: 몰별 결과를 `crawler_runs`에 기록(성공/실패·건수·소요·트리거 schedule/manual, KST 표시)
+- **제어 API (v0.16.0)**: `GET/PUT /api/v1/admin/crawler/config` + `POST /api/v1/admin/crawler/run` + `GET /api/v1/admin/crawler/logs` — macOS 매니저 연동
+- 운영: Render Start Command에 `uvicorn ... & python -m crawlers.worker` 통합
 
 ## 3. 브라우저 익스텐션 (extension/, Chrome MV3)
 
@@ -156,6 +160,14 @@ chrome.alarms (기본 5분) ──▶ GET /devices/{id}/alerts?since={last}
 - 확장자는 Chrome MV3 단일 코드 (Edge/Whale manifest 호환)
 - `// BRIDGE:` 불필요 (브라우저 네이티브 API 직접 사용)
 - 서버는 Python FastAPI 단일
+
+## 4.5 macOS 관리 앱 "똑바 매니저" (v0.15.0~, SwiftUI 네이티브)
+
+- **구성**: `macos/ShopWiseBarManager/` — APIClient + @Observable AppModel + Music 앱 스타일 NavigationSplit(사이드바+콘텐츠)
+- **조회 전용**: 인증 없음, 운영 서버(`https://shop-wisebar.onrender.com`) `/api/v1/admin/*` 집계 · 로컬 서버 토글(옵션)
+- **사이드바 섹션**: 대시보드 / 인사이트 / 통계 / 공통 핫딜 / 수집 / **크롤러 (v0.16.1)**
+- **크롤러 화면 (v0.16.1)**: `crawler_config` 조회·주기(1/3/6/12/24시)·활성화 토글 변경 + `POST /admin/crawler/run` 즉시 수집 + `crawler_runs` 배치 이력 리스트(KST)
+- **빌드**: `xcodegen generate` (project.yml) → `xcodebuild -project ... -scheme ShopWiseBarManager build` → Debug .app 실행
 
 ## 5. 에러코드 체계
 

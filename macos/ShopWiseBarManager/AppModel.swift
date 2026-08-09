@@ -17,6 +17,13 @@ final class AppModel {
     var insight: InsightResponse?
     var deals: [DealItem] = []
 
+    // 크롤러 화면 (v0.16.1)
+    var crawlerConfig: CrawlerConfig?
+    var crawlerLogs: [CrawlerLog] = []
+    var crawlerState: LoadState = .idle
+    var crawlerError: String?
+    var crawlerBusy = false
+
     // 서버 토글 (UserDefaults에 저장)
     var serverOverride: String {
         didSet {
@@ -36,6 +43,7 @@ final class AppModel {
         case stats = "통계"
         case deals = "공통 핫딜"
         case collect = "수집"
+        case crawler = "크롤러"
 
         var id: String { rawValue }
 
@@ -46,6 +54,7 @@ final class AppModel {
             case .stats: return "sum"
             case .deals: return "tag"
             case .collect: return "tray.and.arrow.down"
+            case .crawler: return "gearshape.2"
             }
         }
     }
@@ -85,5 +94,52 @@ final class AppModel {
         deals = (await d)?.deals ?? []
         lastUpdated = Date()
         state = .loaded
+    }
+
+    // MARK: 크롤러 (v0.16.1)
+
+    /// 크롤러 설정 + 배치 이력 병렬 갱신
+    func refreshCrawler() async {
+        crawlerState = .loading
+        crawlerError = nil
+        async let c: CrawlerConfig? = try? api.crawlerConfig()
+        async let l: CrawlerLogsResponse? = try? api.crawlerLogs()
+        crawlerConfig = await c
+        crawlerLogs = (await l)?.logs ?? []
+        crawlerState = .loaded
+    }
+
+    /// 주기 변경 (초) — 서버 허용값 {3600,10800,21600,43200,86400}
+    func setCrawlerInterval(_ seconds: Int) async {
+        await applyCrawlerUpdate(CrawlerConfigUpdate(intervalSeconds: seconds))
+    }
+
+    /// 활성화 토글
+    func toggleCrawlerEnabled(_ enabled: Bool) async {
+        await applyCrawlerUpdate(CrawlerConfigUpdate(enabled: enabled))
+    }
+
+    private func applyCrawlerUpdate(_ patch: CrawlerConfigUpdate) async {
+        crawlerError = nil
+        do {
+            crawlerConfig = try await api.updateCrawlerConfig(patch)
+        } catch {
+            crawlerError = error.localizedDescription
+        }
+        await refreshCrawler()
+    }
+
+    /// 즉시 수집 요청 → 이력 갱신
+    func requestCrawl() async {
+        guard !crawlerBusy else { return }
+        crawlerBusy = true
+        crawlerError = nil
+        do {
+            try await api.requestCrawl()
+            await refreshCrawler()
+        } catch {
+            crawlerError = error.localizedDescription
+        }
+        crawlerBusy = false
     }
 }

@@ -136,6 +136,58 @@ struct DealsResponse: Decodable {
     let deals: [DealItem]
 }
 
+// MARK: - 크롤러 제어 (v0.16.0 서버 API)
+
+struct CrawlerConfig: Decodable {
+    let intervalSeconds: Int
+    let enabled: Bool
+    let runRequested: Bool
+    let lastRunAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case intervalSeconds = "interval_seconds"
+        case enabled
+        case runRequested = "run_requested"
+        case lastRunAt = "last_run_at"
+    }
+}
+
+/// PUT /admin/crawler/config 요청 body (옵션 필드만 전송)
+struct CrawlerConfigUpdate: Encodable {
+    var intervalSeconds: Int?
+    var enabled: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case intervalSeconds = "interval_seconds"
+        case enabled
+    }
+}
+
+struct CrawlerRunRequest: Decodable {
+    let status: String
+}
+
+struct CrawlerLog: Decodable, Identifiable {
+    let mall: String
+    let success: Bool
+    let count: Int
+    let durationMs: Int
+    let trigger: String
+    let runAt: String
+
+    var id: String { runAt + mall }
+
+    enum CodingKeys: String, CodingKey {
+        case mall, success, count, trigger
+        case durationMs = "duration_ms"
+        case runAt = "run_at"
+    }
+}
+
+struct CrawlerLogsResponse: Decodable {
+    let logs: [CrawlerLog]
+}
+
 enum APIError: LocalizedError {
     case invalidURL
     case bad(String)
@@ -182,6 +234,38 @@ private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async
         return try JSONDecoder().decode(T.self, from: data)
     }
 
+    private func put<T: Decodable>(_ path: String, body: (some Encodable)? = nil) async throws -> T {
+        var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
+        comps.path += path
+        guard let url = comps.url else { throw APIError.invalidURL }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PUT"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let body {
+            req.httpBody = try JSONEncoder().encode(body)
+        }
+        req.timeoutInterval = 15
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse else { throw APIError.invalidURL }
+        guard (200 ..< 300).contains(http.statusCode) else {
+            throw APIError.http(http.statusCode)
+        }
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+
+    private func post(_ path: String) async throws {
+        var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
+        comps.path += path
+        guard let url = comps.url else { throw APIError.invalidURL }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 15
+        let (_, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
+            throw APIError.http((resp as? HTTPURLResponse)?.statusCode ?? -1)
+        }
+    }
+
     func overview() async throws -> Overview { try await get("/api/v1/admin/overview") }
     func trend(days: Int = 30) async throws -> TrendResponse {
         try await get("/api/v1/admin/trend", query: [URLQueryItem(name: "days", value: String(days))])
@@ -192,4 +276,23 @@ private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async
         try await get("/api/v1/admin/insight", query: [URLQueryItem(name: "days", value: String(days))])
     }
     func deals() async throws -> DealsResponse { try await get("/api/v1/deals/public") }
+
+    // MARK: 크롤러 (v0.16.0)
+
+    func crawlerConfig() async throws -> CrawlerConfig {
+        try await get("/api/v1/admin/crawler/config")
+    }
+
+    func updateCrawlerConfig(_ body: CrawlerConfigUpdate) async throws -> CrawlerConfig {
+        try await put("/api/v1/admin/crawler/config", body: body)
+    }
+
+    /// 즉시 수집 요청 — worker가 다음 틱(30초) 내 1배치 소비
+    func requestCrawl() async throws {
+        try await post("/api/v1/admin/crawler/run")
+    }
+
+    func crawlerLogs(limit: Int = 50) async throws -> CrawlerLogsResponse {
+        try await get("/api/v1/admin/crawler/logs", query: [URLQueryItem(name: "limit", value: String(limit))])
+    }
 }

@@ -18,7 +18,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "똑바 매니저"
         INFOPLIST_KEY_CFBundleName: "똑바 매니저"
-        MARKETING_VERSION: 0.15.0
+        MARKETING_VERSION: 0.16.1
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "6.0"
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.business

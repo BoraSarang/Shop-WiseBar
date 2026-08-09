@@ -1,5 +1,14 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.1 (2026-08-10) — [macos] 똑바 매니저 크롤러 제어/모니터링 화면 (T-118)
+- [macos] 사이드바에 **"크롤러"** 섹션 추가 (`gearshape.2`) — 수집 설정 + 실행 이력.
+- [macos] `APIClient` — `CrawlerConfig`/`CrawlerLog` 모델 + `put`/`post` 헬퍼 + 메서드 4종(`crawlerConfig`/`updateCrawlerConfig`/`requestCrawl`/`crawlerLogs`).
+- [macos] `AppModel` — `Section.crawler` + 설정/이력 상태 + `refreshCrawler()` + 제어 액션(`setCrawlerInterval`/`toggleCrawlerEnabled`/`requestCrawl`).
+- [macos] `CrawlerView` 신규 — **수집 설정**: 주기 세그먼트(1/3/6/12/24시간) + 활성화 토글 + "지금 수집" 버튼(서버 POST, 다음 틱 30초 내 1배치). **실행 이력**: 몰 배지 + 성공/실패 + 건수 + 소요 + 트리거(수동/예약) + KST 시각, 최근 50건.
+- [macos] 사이드바 하단 버전 하드코딩 → `Bundle.versionString` 동적 표시. `project.yml` MARKETING_VERSION 0.16.1.
+- [검증] xcodebuild **BUILD SUCCEEDED**. 로컬 서버(0.16.0) 연결 실운영 확인 — 크롤러 탭 진입 시 config+logs 로드, 설정 변경/수집 요청 반영. 서버 pytest **74건 통과** (서버 변경 없음).
+- 문서: `docs/plans/PLAN_v0.16.1_macos-crawler.md` / TODO T-118 / ENDPOINTS(v0.16.0) 재사용.
+
 ## v0.16.0 (2026-08-10) — [server] 네이버 서버 크롤러 추가 + 크롤러 제어 API (T-116, T-117)
 - [server] `crawlers/naver.py` 신규: 브랜드스토어(`brand.naver.com`) 상품 자동 수집. `channel="chrome"` 헤드리스 + Chrome UA + `wait_until="networkidle"` + 가격 텍스트 대기 스크롤(최대 5회) + body `N원` 정규식.
 - [server] `crawlers/worker.py` — `CRAWLABLE_MALLS=("oliveyoung","naver")` 정의 + `naver.run_once` 병렬 호출. (기존 oliveyoung.py 80행 `CRAWLABLE_MALLS` 임포트 버그 해소: 미정의 상수 참조)
