@@ -9,26 +9,13 @@ from datetime import datetime, timezone
 
 from app.database import SessionLocal
 from app.models import PricePoint, Product
-
-_pw = None
-_browser = None
+from crawlers._browser import get_browser
 
 # 실측: 기본 UA는 Cloudflare 챌린지("잠시만 기다리십시오") 차단, Chrome UA로 통과
 UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
-
-
-def _get_browser():
-    """브라우저 지연 생성 (채널: 시스템 Chrome — playwright chromium 다운로드 타임아웃 이슈 실측)"""
-    global _pw, _browser
-    if _browser is None:
-        from playwright.sync_api import sync_playwright
-
-        _pw = sync_playwright().start()
-        _browser = _pw.chromium.launch(channel="chrome", headless=True)
-    return _browser
 
 
 def fetch_goods(goods_no: str) -> dict | None:
@@ -38,7 +25,7 @@ def fetch_goods(goods_no: str) -> dict | None:
         f"?goodsNo={goods_no}"
     )
     try:
-        browser = _get_browser()
+        browser = get_browser()
         ctx = browser.new_context(user_agent=UA, locale="ko-KR")
         page = ctx.new_page()
         page.goto(url, wait_until="domcontentloaded", timeout=30000)

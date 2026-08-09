@@ -1,13 +1,20 @@
 # 서버 운영 가이드 (Render)
 
-> 플랫폼: server · 마지막 갱신: 2026-08-10 (v0.16.0) · 배포 주소: https://shop-wisebar.onrender.com
+> 플랫폼: server · 마지막 갱신: 2026-08-10 (v0.16.3) · 배포 주소: https://shop-wisebar.onrender.com
 
 ## 1. 배포 (Deploy)
 
 - **호스팅**: Render Web Service (무료 티어) — GitHub `BoraSarang/Shop-WiseBar` `main` 브랜치 자동 배포
 - **서비스 디렉토리**: `server/`
-- **빌드 명령**: `pip install -r requirements.txt`
+- **빌드 명령** (v0.16.3 — playwright 번들 Chromium 설치 추가, T-120):
+  ```
+  pip install -r requirements.txt && python -m playwright install --with-deps chromium
+  ```
+  - Render 컨테이너에는 시스템 Chrome이 없음 → v0.16.2까지 크롤러가 전수 실패(count=0·0.9s, 2026-08-10 실측)
+  - `playwright install --with-deps chromium`이 번들 Chromium + OS 의존성 설치. 크롤러는 시스템 Chrome 실패 시 번들 Chromium으로 폴백 (`crawlers/_browser.py`)
 - **시작 명령** (v0.16.0 — 크롤러 워커 백그라운드 통합):
+  ```
+  uvicorn app.main:app --host 0.0.0.0 --port $PORT & python -m crawlers.worker
   ```
   uvicorn app.main:app --host 0.0.0.0 --port $PORT & python -m crawlers.worker
   ```
@@ -25,7 +32,7 @@
 - **요청/에러 로그**: Render Dashboard → 서비스 → **Logs** 탭
   - 요청 로그: `req method=GET path=/health status=200 elapsed_ms=10.7`
   - 에러 로그: `unhandled error path=... exc=...` + Python 스택 (500 응답 + `E-SRV-GEN-1001`)
-  - 크롤러 로그: `[CRAWLER] 배치 oliveyoung: 2건 수집 (70.7s)` — 배치 실행·실패 기록
+  - 크롤러 로그: `[CRAWLER] 배치 oliveyoung: 2건 수집 / 5건 시도 (70.7s)` — v0.16.2부터 시도/수집 표기. 브라우저 폴백 로그: `브라우저: 시스템 Chrome` / `브라우저: Playwright 번들 Chromium`
 - 로깅은 표준출력(stdout)으로 출력 → Render가 수집
 
 ## 3. 크롤러 제어/모니터링 (v0.16.0)

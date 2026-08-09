@@ -5,4 +5,5 @@ pydantic>=2.12.0
 python-dotenv>=1.0.1
 httpx>=0.28.0
 psycopg[binary]>=3.2.0
+playwright>=1.49.0  # T-120 — 크롤러 브라우저. 운영 Render 빌드에서 `python -m playwright install --with-deps chromium` 실행 필요
 pytest>=8.0.0  # T-89 — 테스트 전용 (런타임 아님)

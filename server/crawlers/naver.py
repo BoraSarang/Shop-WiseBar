@@ -10,9 +10,7 @@ from datetime import datetime, timezone
 
 from app.database import SessionLocal
 from app.models import PricePoint, Product
-
-_pw = None
-_browser = None
+from crawlers._browser import get_browser
 
 UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -22,17 +20,6 @@ UA = (
 # 가격이 즉시 안 뜨면 스크롤하며 최대 attempts 회 대기 (네이버 상품 페이지는 JS 지연 렌더링 — 실측)
 MAX_PRICE_WAIT = 5
 PRICE_RE = re.compile(r"([0-9][0-9,]*)\s*원")
-
-
-def _get_browser():
-    """브라우저 지연 생성 (채널: 시스템 Chrome — Playwright chromium 다운로드 타임아웃 이슈 실측)"""
-    global _pw, _browser
-    if _browser is None:
-        from playwright.sync_api import sync_playwright
-
-        _pw = sync_playwright().start()
-        _browser = _pw.chromium.launch(channel="chrome", headless=True)
-    return _browser
 
 
 def _extract_price(text: str) -> int | None:
@@ -45,7 +32,7 @@ def _extract_price(text: str) -> int | None:
 def fetch(url: str) -> dict | None:
     """네이버 브랜드스토어 상품 URL → {name, price, image}. 실패/챌린지 시 None"""
     try:
-        browser = _get_browser()
+        browser = get_browser()
         ctx = browser.new_context(user_agent=UA, locale="ko-KR")
         page = ctx.new_page()
         with_prices = []

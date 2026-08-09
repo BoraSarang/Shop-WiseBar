@@ -2,6 +2,14 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-120 — 운영 크롤러 브라우저 폴백 (v0.16.3) — ✅ (2026-08-10)
+> 운영 로그: oliveyoung 10건/naver 5건 전부 실패·0.9초 — Render 컨테이너에 시스템 Chrome 없어 `_get_browser()`의 `channel="chrome"` launch 즉시 실패 + `playwright`가 requirements.txt에 없어 운영 미설치(import 실패가 fetch 실패로 흡수). → Render(linux)가 Playwright 번들 Chromium으로 수집 가능하게 폴백 + 빌드 명령에 playwright 설치.
+- [x] **T-120a** 브라우저 실행 폴백: 시스템 Chrome 없으면 playwright 번들 Chromium으로 (chrome → chromium 재시도) — `crawlers/_browser.py` 신규 + oliveyoung/naver 중복 제거
+- [x] **T-120b** requirements.txt에 `playwright>=1.49.0` 추가
+- [x] **T-120c** Render 빌드 명령/운영 가이드에 `python -m playwright install --with-deps chromium` 반영 (ops/README v0.16.3)
+- [x] **T-120d** 검증: pytest 75건 통과 + 시스템 Chrome 미설치 시뮬레이션으로 번들 Chromium 올리브영 수집 성공(28,900원)
+- [ ] **T-120e** 커밋·push + 운영 배포(빌드 명령 변경) 후 `/crawler/logs` attempted>0 · failed 감소 확인
+
 ## T-119 — 크롤러 성공/실패 통계 (v0.16.2) — 🔵 진행 (2026-08-10)
 > v0.16.1 사용 중 "수집이 0건이네?"(운영 이력 count=0만 표시) → "몇 건 시도 → 몇 건 성공, 몇 건 실패" 표시 요구.
 > `crawler_runs.attempted`(시도) 추가 + 크롤러 `run_once` → `(attempted, success)` 반환 + macOS 이력 행 개선. 상세: `docs/plans/PLAN_v0.16.1_macos-crawler.md` v0.16.2 섹션

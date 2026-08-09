@@ -1,5 +1,13 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.3 (2026-08-10) — [server] 운영 크롤러 브라우저 폴백 (T-120)
+- [원인] 운영 로그: oliveyoung 10건/naver 5건 전수 실패 + 0.9초 (2026-08-10 실측). Render 컨테이너에 시스템 Chrome이 없어 `_get_browser()`의 `channel="chrome"` launch가 즉시 실패 → fetch 전부 None. 게다가 `playwright`가 requirements.txt에 없어 운영엔 미설치(import 실패가 fetch 실패로 흡수).
+- [server] `crawlers/_browser.py` 신규 — 브라우저 실행 공용: 시스템 Chrome 우선, 없으면 Playwright 번들 Chromium으로 폴백. oliveyoung/naver 중복 `_get_browser()` 제거 후 공용 사용.
+- [server] `requirements.txt`에 `playwright>=1.49.0` 추가 (크롤러 의존성 누락 수정).
+- [server] Render 빌드 명령에 `python -m playwright install --with-deps chromium` 추가 (`docs/ops/README.md`) — 운영 DB 마이그레이션 불필요(T-119 배포 유지).
+- [검증] 시스템 Chrome 미설치(Render) 시뮬레이션 → 번들 Chromium으로 올리브영 수집 성공(이름/이미지/28,900원). pytest **75건 통과**.
+- 문서: docs/TODO T-120 / docs/ops/README v0.16.3 / CHANGELOG. 커밋 후 Render 재배포 필요 (빌드 명령 변경).
+
 ## v0.16.2 (2026-08-10) — [server][macos] 크롤러 성공/실패 통계 (T-119)
 - [server] `crawler_runs.attempted`(시도 건수) 컬럼 신설 — 실패수 = `attempted - count`(성공). `_ensure_columns` 마이그레이션(SQLite ALTER + PG `ADD COLUMN IF NOT EXISTS`), 기존 행은 0 유지.
 - [server] `oliveyoung.py`/`naver.py` `run_once()` 반환값 `int`(성공) → `tuple[int, int]` `(attempted, success)`. 시도 = 실제 fetch 호출 수(네이버는 `brand.naver.com` URL 필터 통과 후). fetch/저장 실패는 success 미포함.
