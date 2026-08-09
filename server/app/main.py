@@ -7,6 +7,7 @@ from sqlalchemy import text
 from app.config import APP_VERSION, settings
 from app.database import Base, engine
 from app.logging_setup import setup_logging, started_at
+from app.models import CrawlerConfig
 from app.routers import admin, devices, products, recommendations, relations, watches
 from app.routers.products import _backfill_normalized_names
 from app.routers.recommendations import INDEX_SQLS
@@ -56,6 +57,15 @@ def on_startup() -> None:
             if updated:
                 s.commit()
     except Exception:  # noqa: BLE001 — 백필 실패해도 서버 기동은 계속 (재시도 가능)
+        pass
+    # v0.16.0 (T-117) — 크롤러 설정 시드 (싱글턴 1행, 없을 때만 삽입)
+    try:
+        with SessionLocal() as s:
+            cfg = s.get(CrawlerConfig, 1)
+            if cfg is None:
+                s.add(CrawlerConfig(id=1))
+                s.commit()
+    except Exception:  # noqa: BLE001 — 시드 실패 무해
         pass
 
 

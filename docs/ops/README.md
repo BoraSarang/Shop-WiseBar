@@ -1,13 +1,16 @@
 # 서버 운영 가이드 (Render)
 
-> 플랫폼: server · 마지막 갱신: 2026-08-06 (v0.10.3) · 배포 주소: https://shop-wisebar.onrender.com
+> 플랫폼: server · 마지막 갱신: 2026-08-10 (v0.16.0) · 배포 주소: https://shop-wisebar.onrender.com
 
 ## 1. 배포 (Deploy)
 
 - **호스팅**: Render Web Service (무료 티어) — GitHub `BoraSarang/Shop-WiseBar` `main` 브랜치 자동 배포
 - **서비스 디렉토리**: `server/`
 - **빌드 명령**: `pip install -r requirements.txt`
-- **시작 명령**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **시작 명령** (v0.16.0 — 크롤러 워커 백그라운드 통합):
+  ```
+  uvicorn app.main:app --host 0.0.0.0 --port $PORT & python -m crawlers.worker
+  ```
 - **환경변수** (Render Dashboard → Environment):
   | 변수 | 값 | 비고 |
   |------|-----|------|
@@ -15,13 +18,36 @@
   | `CORS_ORIGINS` | `chrome-extension://... , https://borasarang.github.io` | 확장/랜딩 출처 |
 
 > 배포 트리거: `main` 푸시 자동. 수동 배포: Render Dashboard → Manual Deploy.
+> 크롤러 워커는 uvicorn과 동일 컨테이너에서 백그라운드로 실행 (`[CRAWLER]` 로그) — 서비스 추가 없이 운영.
 
 ## 2. 로그 보기
 
 - **요청/에러 로그**: Render Dashboard → 서비스 → **Logs** 탭
   - 요청 로그: `req method=GET path=/health status=200 elapsed_ms=10.7`
   - 에러 로그: `unhandled error path=... exc=...` + Python 스택 (500 응답 + `E-SRV-GEN-1001`)
+  - 크롤러 로그: `[CRAWLER] 배치 oliveyoung: 2건 수집 (70.7s)` — 배치 실행·실패 기록
 - 로깅은 표준출력(stdout)으로 출력 → Render가 수집
+
+## 3. 크롤러 제어/모니터링 (v0.16.0)
+
+```bash
+# 설정 조회 (주기·활성화·트리거 대기·최근 실행)
+curl https://shop-wisebar.onrender.com/api/v1/admin/crawler/config
+
+# 주기 변경 (1/3/6/12/24시간, 실시간 반영)
+curl -X PUT https://shop-wisebar.onrender.com/api/v1/admin/crawler/config \
+  -H 'Content-Type: application/json' -d '{"interval_seconds":3600}'
+
+# 활성화/비활성화
+curl -X PUT https://shop-wisebar.onrender.com/api/v1/admin/crawler/config \
+  -H 'Content-Type: application/json' -d '{"enabled":false}'
+
+# 즉시 수집 (다음 틱 30초 내 1배치 = oliveyoung+naver)
+curl -X POST https://shop-wisebar.onrender.com/api/v1/admin/crawler/run
+
+# 배치 이력 (몰·성공/실패·건수·소요·트리거)
+curl "https://shop-wisebar.onrender.com/api/v1/admin/crawler/logs?limit=50"
+```
 
 ## 3. 상태 확인 (모니터링)
 

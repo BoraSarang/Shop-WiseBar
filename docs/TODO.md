@@ -2,6 +2,20 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-116 — 네이버 서버 크롤러 + 크롤러 제어 API (v0.16.0) — 🔵 진행 (2026-08-10)
+> 2차 크롤링 검증(ShopWiseBar-Verify) 결과: 네이버 브랜드스토어가 서버 Playwright(headless, 네이버만 성공 실측)로 캡차 없이 이름+가격 수집 가능 → 서버 크롤러 신규 채택.
+> 쿠팡은 여전히 Akamai 차단 → 익스텐션 의존 유지. + 크롤러 제어 API(macOS 매니저 연동 전 서버 준비). 상세: `docs/plans/PLAN_v0.16.0_naver-crawler.md`
+
+- [x] **T-116a** 서버: `crawlers/naver.py` 신규 — `fetch(url)`(networkidle+가격 대기 스크롤+body 정규식) + `run_once()`
+- [x] **T-116b** 서버: `crawlers/worker.py` — `CRAWLABLE_MALLS` 정의(oliveyoung/naver) + `naver.run_once` 병렬 호출 + 각 크롤러 자사 몰 필터 (공유 쿼리 선점 버그 수정)
+- [x] **T-116c** 검증: 로컬 DB 네이버 실상품(롯데웰푸드 브랜드스토어) 10건 갱신 + price_point 반영 확인 (1,000~66,000원)
+- [x] **T-117a** 서버: `crawler_runs`/`crawler_config` 테이블 + 시드 (models.py + startup)
+- [x] **T-117b** 서버: `worker.py` 30초 틱 재작성 — 주기 실시간 반영 + run_requested 즉시 배치 + 배치 로그 기록 + `--once`
+- [x] **T-117c** 서버: `admin.py` — `GET/PUT /admin/crawler/config`(주기 {1,3,6,12,24}시) + `POST /admin/crawler/run` + `GET /admin/crawler/logs`
+- [x] **T-117d** 검증: worker --once / PUT 주기 즉시 반영 / POST run 즉시 배치 / crawler_runs 반영 — 실검증 완료 (올리브영 실수집 2건 + trigger=manual + 로그 기록)
+- [x] **T-117e** 문서: CHANGELOG v0.16.0 / ENDPOINTS / APP_VERSION=0.16.0 + pytest 회귀 — `tests/test_crawler.py` 8건 + **74건 통과**
+- [ ] **T-117f** 커밋·push (macOS 매니저 UI는 다음 단계 — API만 준비)
+
 ## T-115 — macOS 관리 앱 "똑바 매니저" (v0.15.0) — 🔵 진행 (2026-08-08)
 > 사용자 신규 기능 제안: DB에 쌓인 정보를 Mac 관리 프로그램으로 조회. 대시보드/인사이트/전체·쇼핑몰별·수집 통계 + 공통 핫딜.
 > 조회 전용, 인증 없음, 운영 서버(`https://shop-wisebar.onrender.com`) 조회. 디자인은 Music 앱 스타일 네이티브.

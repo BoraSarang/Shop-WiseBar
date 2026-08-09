@@ -1,5 +1,17 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.0 (2026-08-10) — [server] 네이버 서버 크롤러 추가 + 크롤러 제어 API (T-116, T-117)
+- [server] `crawlers/naver.py` 신규: 브랜드스토어(`brand.naver.com`) 상품 자동 수집. `channel="chrome"` 헤드리스 + Chrome UA + `wait_until="networkidle"` + 가격 텍스트 대기 스크롤(최대 5회) + body `N원` 정규식.
+- [server] `crawlers/worker.py` — `CRAWLABLE_MALLS=("oliveyoung","naver")` 정의 + `naver.run_once` 병렬 호출. (기존 oliveyoung.py 80행 `CRAWLABLE_MALLS` 임포트 버그 해소: 미정의 상수 참조)
+- [server] 각 크롤러 `run_once`를 자사 몰 필터로 격리 — `Product.mall == "oliveyoung"` / `Product.mall == "naver"` (공유 후보 쿼리로 네이버가 올리브영만 선점하던 버그 수정)
+- [server] **크롤러 제어/모니터링 (T-117)**: `crawler_runs`(배치 이력) + `crawler_config`(싱글턴 설정) 테이블 신설, startup 시드.
+- [server] `crawlers/worker.py` 30초 틱 재작성 — 매 루프에서 DB 설정(주기 1/3/6/12/24시)을 읽어 **실시간 반영**, `run_requested` 즉시 1배치 소비, 몰별 배치 결과를 `crawler_runs`에 기록, `--once` 검증 모드.
+- [server] `GET/PUT /admin/crawler/config` — 주기·활성화 조회/변경(허용지 422) · `POST /admin/crawler/run` — 즉시 수집 트리거 · `GET /admin/crawler/logs?limit=` — 배치 이력(몰·성공/실패·건수·소요·트리거·KST).
+- [server] `APP_VERSION` 0.16.0.
+- [검증] 2차 크롤링 검증(ShopWiseBar-Verify, 2026-08-10): 로컬 시스템 Chrome에서 네이버 캡차 0회, 롯데웰푸드 브랜드스토어 실상품 10건 갱신(가격 1,000~66,000원). 1차 PoC의 "네이버 캡차 불가" 결론을 갱신. 쿠팡은 여전히 Akamai 차단 → 익스텐션 의존 유지.
+- [검증] worker `--once` 실동작 확인: `POST /run` → 다음 틱 내 즉시 배치(trigger=manual), 올리브영 실수집 2건(28,900원/27,000원) → `crawler_runs` 로그 기록. API 4종 TestClient 실서버 검증.
+- [test] `tests/test_crawler.py` 8건 신설 (config 기본/변경/422/toggle + run 트리거 + logs 빈/기록/limit) — 전체 pytest **74건 통과** (회귀 66 → 74). 에러코드 신규 없음(422는 FastAPI 기본). 검증 리포트: `ShopWiseBar-Verify/results/verify-report.md`, 계획: `docs/plans/PLAN_v0.16.0_naver-crawler.md`.
+
 ## v0.15.0 (2026-08-08) — [server][macos] macOS 관리 앱 "똑바 매니저" (T-115)
 - [server] `GET /admin/overview` 신설: `products/devices/watches/price_points/daily_stats/alerts/relations/priced/sold_out` 전체 카운트.
 - [server] `GET /admin/trend?days=` — KST 일자 기준 수집 트렌드 시리즈 `{date, captures, points, new}` (1~180일 가드).

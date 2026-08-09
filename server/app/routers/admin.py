@@ -1,19 +1,34 @@
 # 관리자(Admin) 조회 라우터 — macOS ShopWiseBarManager 앱용 집계 엔드포인트 (v0.15.0, T-115a)
-# 읽기 전용. 로컬/운영 스키마 공통(SQLAlchemy 모델) 기준 집계만 수행.
+# v0.16.0 (T-117): 크롤러 제어/모니터링 엔드포인트 추가 (config/run/logs)
+# 읽기 전용 + 크롤러 제어. 로컬/운영 스키마 공통(SQLAlchemy 모델) 기준 집계만 수행.
 # PLATFORM: server
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.datetimeutil import KST, kst_date
-from app.models import Alert, Device, PriceDailyStat, PricePoint, Product, ProductRelation, Watch
+from app.models import (
+    Alert,
+    CrawlerConfig,
+    CrawlerRun,
+    Device,
+    PriceDailyStat,
+    PricePoint,
+    Product,
+    ProductRelation,
+    Watch,
+)
 
 router = APIRouter()
 
 DROP_RATIO = 0.95  # ≥5% 하락 감지 기준 (insight에서 사용)
+
+# 크롤러 주기 허용값 (초) — 1/3/6/12/24시간만 허용 (T-117)
+CRAWLER_INTERVAL_CHOICES = (3600, 10800, 21600, 43200, 86400)
 
 
 def _kst_date(dt: datetime) -> str:
@@ -188,3 +203,89 @@ def admin_insight(days: int = 30, db: Session = Depends(get_db)) -> dict:
         "recent_alerts": recent_alerts,
         "top_drops": drops[:20],
     }
+
+
+# ── 크롤러 제어/모니터링 (v0.16.0, T-117) ──────────────────────────────────────
+
+
+class CrawlerConfigIn(BaseModel):
+    interval_seconds: int | None = None
+    enabled: bool | None = None
+
+
+def _crawler_config(db: Session) -> CrawlerConfig:
+    cfg = db.get(CrawlerConfig, 1)
+    if cfg is None:
+        cfg = CrawlerConfig(id=1)
+        db.add(cfg)
+        db.commit()
+        db.refresh(cfg)
+    return cfg
+
+
+def _config_out(db: Session) -> dict:
+    cfg = _crawler_config(db)
+    last = db.execute(select(func.max(CrawlerRun.run_at))).scalar()
+    last_run_at = None
+    if last:
+        last_run_at = last.astimezone(KST).isoformat()
+    return {
+        "interval_seconds": cfg.interval_seconds,
+        "enabled": cfg.enabled,
+        "run_requested": cfg.run_requested,
+        "last_run_at": last_run_at,
+    }
+
+
+@router.get("/admin/crawler/config")
+def crawler_config_get(db: Session = Depends(get_db)) -> dict:
+    """크롤러 설정 조회 — 주기/활성화/트리거 대기/최근 실행 시각."""
+    return _config_out(db)
+
+
+@router.put("/admin/crawler/config")
+def crawler_config_put(payload: CrawlerConfigIn, db: Session = Depends(get_db)) -> dict:
+    """크롤러 설정 변경 — 주기(1/3/6/12/24시간) + 활성화. worker가 다음 틱(30초)에 반영."""
+    cfg = _crawler_config(db)
+    if payload.interval_seconds is not None:
+        if payload.interval_seconds not in CRAWLER_INTERVAL_CHOICES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"interval_seconds는 {CRAWLER_INTERVAL_CHOICES} 중 하나여야 합니다.",
+            )
+        cfg.interval_seconds = payload.interval_seconds
+    if payload.enabled is not None:
+        cfg.enabled = payload.enabled
+    db.commit()
+    db.refresh(cfg)
+    return _config_out(db)
+
+
+@router.post("/admin/crawler/run")
+def crawler_run_request(db: Session = Depends(get_db)) -> dict:
+    """즉시 수집 요청 — run_requested=1로 설정. worker가 다음 틱(30초) 내 1배치 소비."""
+    cfg = _crawler_config(db)
+    cfg.run_requested = True
+    db.commit()
+    return {"status": "requested", "interval_seconds": cfg.interval_seconds}
+
+
+@router.get("/admin/crawler/logs")
+def crawler_logs(limit: int = 50, db: Session = Depends(get_db)) -> dict:
+    """크롤러 배치 실행 이력 — 시각(몰별)·성공/실패·건수·소요·트리거 (KST)."""
+    limit = max(1, min(int(limit), 200))
+    rows = db.execute(
+        select(CrawlerRun).order_by(CrawlerRun.run_at.desc(), CrawlerRun.id.desc()).limit(limit)
+    ).scalars().all()
+    logs = [
+        {
+            "mall": r.mall,
+            "success": r.success,
+            "count": r.count,
+            "duration_ms": r.duration_ms,
+            "trigger": r.trigger,
+            "run_at": r.run_at.astimezone(KST).isoformat(),
+        }
+        for r in rows
+    ]
+    return {"logs": logs}

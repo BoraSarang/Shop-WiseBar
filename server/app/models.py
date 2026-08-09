@@ -5,7 +5,7 @@
 # PLATFORM: server
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -121,4 +121,32 @@ class ProductRelation(Base):
     target_product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
     kind: Mapped[str] = mapped_column(String(16), default="related")
     weight: Mapped[int] = mapped_column(Integer, default=1)  # 함께 등장한 횟수
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class CrawlerRun(Base):
+    """크롤러 배치 실행 이력 (v0.16.0, T-117) — 몰별 실행 배치 1건 = 1행.
+    macOS 매니저/관리 API가 동작 여부를 확인하는 로그."""
+
+    __tablename__ = "crawler_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mall: Mapped[str] = mapped_column(String(32), index=True)  # oliveyoung | naver
+    success: Mapped[bool] = mapped_column(Boolean, default=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)  # 수집 성공 건수
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    trigger: Mapped[str] = mapped_column(String(16), default="schedule")  # schedule | manual
+    run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class CrawlerConfig(Base):
+    """크롤러 전역 설정 (v0.16.0, T-117) — 단일 행(singleton). worker가 루프마다 읽어
+    주기를 실시간 반영하고, run_requested로 즉시 배치를 트리거한다."""
+
+    __tablename__ = "crawler_config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    interval_seconds: Mapped[int] = mapped_column(Integer, default=3600)  # 기본 1시간
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    run_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
