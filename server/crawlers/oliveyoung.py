@@ -77,12 +77,10 @@ def fetch_goods(goods_no: str) -> dict | None:
 
 def run_once() -> int:
     """갱신 만료된 올리브영 상품 1배치 수집. 성공 수 반환"""
-    from crawlers.worker import CRAWLABLE_MALLS
-
     now = time.time()
     with SessionLocal() as db:
         candidates = db.query(Product) \
-            .filter(Product.mall.in_(CRAWLABLE_MALLS)) \
+            .filter(Product.mall == "oliveyoung") \
             .order_by(Product.last_checked_at.asc().nulls_first()) \
             .limit(10 * 3) \
             .all()
