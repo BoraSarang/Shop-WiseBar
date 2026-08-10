@@ -2,14 +2,15 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
-## T-120 — 운영 크롤러 브라우저 폴백 (v0.16.3→v0.16.5) — 🔵 진행 (2026-08-10)
+## T-120 — 운영 크롤러 브라우저 폴백 (v0.16.3→v0.16.6) — 🔵 진행 (2026-08-10)
 > 운영 로그: oliveyoung 10건/naver 5건 전부 실패·0.9초 — Render 컨테이너에 시스템 Chrome 없어 `_get_browser()`의 `channel="chrome"` launch 즉시 실패 + `playwright`가 requirements.txt에 없어 운영 미설치(import 실패가 fetch 실패로 흡수). → Render(linux)가 Playwright 번들 Chromium으로 수집 가능하게 폴백 + 빌드 명령에 playwright 설치.
 - [x] **T-120a** 브라우저 실행 폴백: 시스템 Chrome 없으면 playwright 번들 Chromium으로 (chrome → chromium 재시도) — `crawlers/_browser.py` 신규 + oliveyoung/naver 중복 제거
 - [x] **T-120b** requirements.txt에 `playwright>=1.49.0` 추가
 - [x] **T-120c** Render 빌드 명령/운영 가이드 반영 + **v0.16.4 `render.yaml` 블루프린트로 코드 고정** (빌드 시 `--with-deps chromium` 설치)
 - [x] **T-120d** 검증: pytest 75건 통과 + 시스템 Chrome 미설치 시뮬레이션으로 번들 Chromium 올리브영 수집 성공(28,900원) — **v0.16.3 운영 배포에서 번들 이진파일 부재로 실패 재실측 → v0.16.4 빌드 시 설치로 해결**
-- [x] **T-120e** v0.16.5 메모리 경량화: `close_browser()` 배치 후 해제 + 컨텍스트 리소스(이미지/폰트/광고) 차단 + `ctx.close()` try/finally 보장 + 배치 10→3건 + fetch 진단 로그(og:title/가격 미발견 시 body 미리보기) — 운영 OOM(512MB, 2026-08-10 실측) 대응
-- [ ] **T-120f** v0.16.5 배포 후 운영 `/crawler/logs` OOM 재발 없음 + attempted>0 · 진단 로그로 수집 0건 원인 판별 확인
+- [x] **T-120e** 검증: v0.16.5 배포 후 **OOM 재발 없음** (배치 3건 34.8s + `브라우저 리소스 해제 완료`, 운영 로그 00:10 UTC). 진단 로그로 수집 0건 원인 **Cloudflare 챌린지 차단 확정** (body=89자 "잠시만 기다려 주세요... RAY_ID")
+- [x] **T-120g** v0.16.6 Cloudflare 대응: Dockerfile에 `playwright install chrome`(실제 Chrome) + `--disable-blink-features=AutomationControlled` + oliveyoung 챌린지 자동 해결 재대기
+- [ ] **T-120h** v0.16.6 배포 후 운영 `/crawler/logs` 확인 — channel="chrome" 사용 로그(`브라우저: 시스템 Chrome`) + attempted>0 수집 확인
 
 ## T-119 — 크롤러 성공/실패 통계 (v0.16.2) — 🔵 진행 (2026-08-10)
 > v0.16.1 사용 중 "수집이 0건이네?"(운영 이력 count=0만 표시) → "몇 건 시도 → 몇 건 성공, 몇 건 실패" 표시 요구.

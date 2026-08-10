@@ -1,5 +1,14 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.6 (2026-08-10) — [server] 올리브영 Cloudflare 챌린지 차단 대응 (T-120g)
+- [원인] v0.16.5 배포 후 운영 진단 로그 확정: `og:title 없음 body=89자 (잠시만 기다려 주세요 ... 접속 정보를 확인 중이에요 RAY_ID)` — 올리브영 Cloudflare가 **Render 미국 데이터센터 IP + Playwright 번들 Chromium(headless shell)**을 봇으로 차단. 로컬 macOS에서 번들 대신 **시스템 Chrome(channel="chrome")으로 성공**했던 실측과 일치.
+- [server] `Dockerfile` — `python -m playwright install chrome || true` 추가: 실제 Google Chrome을 사전 설치해 `channel="chrome"`로 헤드리스 봇 감지 회피. 설치 실패해도 빌드 유지(번들 Chromium 폴백). `chromium` 설치도 유지.
+- [server] `crawlers/_browser.py` — launch 인자에 `--disable-blink-features=AutomationControlled` 추가 (navigator.webdriver 감지 회피).
+- [server] `oliveyoung.py` — Cloudflare "잠시만 기다려 주세요" 페이지 감지 시 **5초 간격 최대 3회 재대기** 후 재확인 (JS 챌린지 자동 해결 대기).
+- [server] `APP_VERSION` 0.16.6.
+- [검증] pytest **75건 통과**. 로컬 실수집(시스템 Chrome, 리소스 차단 하): 올리브영 3건 + 네이버 1건 성공 유지. 실제 Chrome 우회 효과는 Render 배포 후 운영 로그로 확인.
+- 문서: docs/TODO T-120g / ops/README v0.16.6 / CHANGELOG.
+
 ## v0.16.5 (2026-08-10) — [server] 크롤러 메모리 경량화 + fetch 진단 로그 (T-120f)
 - [원인] v0.16.4 배치 실행 후 **OOM 킬** (Render 무료 티어 512MB, 운영 실측 2026-08-10 08:55 KST). 크로미움 렌더러가 배치(10건 순차) 동안 누적 + idle 브라우저 상주 + 컨텍스트 예외 시 `ctx.close()` 누락.
 - [server] `crawlers/_browser.py` — `close_browser()` 추가 (배치 완료 후 크로미움/playwright 리소스 해제). `new_context()` 헬퍼 추가 — **이미지/미디어/폰트/광고 요청 차단**으로 메모리·대역폭 절감 (og 메타/body 텍스트 파싱엔 영향 없음). launch에 `--no-sandbox --disable-gpu --disable-dev-shm-usage`.

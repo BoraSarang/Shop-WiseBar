@@ -17,10 +17,12 @@ _browser = None
 _PY = sys.executable or "python"
 
 # 컨테이너(Render) 크로미움 launch 인자 — 샌드박스 비활성·/dev/shm 오프셋·GPU 비활성 (메모리/안정성)
+# AutomationControlled 비활성: Cloudflare 챌린지가 navigator.webdriver로 헤드리스 봇 감지하는 것 회피 (v0.16.6)
 _LAUNCH_ARGS = [
     "--no-sandbox",
     "--disable-gpu",
     "--disable-dev-shm-usage",
+    "--disable-blink-features=AutomationControlled",
 ]
 
 # 텍스트 크롤러는 og 태그/body 텍스트만 필요 → 이미지·미디어·폰트·광고·추적기는 차단 (메모리·대역폭 절감)

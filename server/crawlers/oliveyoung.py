@@ -22,7 +22,11 @@ UA = (
 
 
 def fetch_goods(goods_no: str) -> dict | None:
-    """올리브영 goodsNo → {name, price, image}. 실패 시 None"""
+    """올리브영 goodsNo → {name, price, image}. 실패 시 None
+
+    Cloudflare 챌린지 대응 (v0.16.6): "잠시만 기다려 주세요... 접속 정보를 확인 중" 페이지가 뜨면
+    브라우저에서 JS 챌린지가 자동 해결될 때까지 5초 간격 최대 3회 재대기 후 재확인.
+    """
     url = (
         "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do"
         f"?goodsNo={goods_no}"
@@ -32,8 +36,14 @@ def fetch_goods(goods_no: str) -> dict | None:
         try:
             page = ctx.new_page()
             page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            page.wait_for_timeout(5000)  # SPA 렌더 + 봇 챌린지 통과 대기 (실측)
-            body_text = page.evaluate("document.body ? document.body.innerText : ''")
+            # 챌린지 페이지면 자동 해결까지 대기 (v0.16.6)
+            for _ in range(4):
+                page.wait_for_timeout(5000)  # SPA 렌더 + 봇 챌린지 통과 대기 (실측)
+                body_text = page.evaluate("document.body ? document.body.innerText : ''")
+                challenge = "잠시만 기다려" in body_text or "접속 정보를 확인" in body_text
+                if not challenge:
+                    break
+                logger.info("올리브영 챌린지 대기 중 goodsNo=%s (%d회)", goods_no, _ + 1)
             name_match = page.query_selector('meta[property="og:title"]')
             image_match = page.query_selector('meta[property="og:image"]')
             name = name_match.get_attribute("content") if name_match else None

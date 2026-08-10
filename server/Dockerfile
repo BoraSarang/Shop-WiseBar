@@ -1,13 +1,16 @@
-# 똑바(Shop WiseBar) 서버 — 크롤러(Playwright 번들 Chromium) 포함 배포 이미지
-# PLATFORM: server · v0.16.4 (T-120)
+# 똑바(Shop WiseBar) 서버 — 크롤러(Playwright 번들 Chromium + 실제 Chrome) 포함 배포 이미지
+# PLATFORM: server · v0.16.6 (T-120g)
 # Render NixPacks(python) 빌드는 non-root → `playwright install --with-deps`의 apt-get이
 #   "Switching to root user ... su: Authentication failure"로 실패함 (2026-08-10 운영 실측)
 # 이 Dockerfile은 베이스 이미지에서 root로 apt-get + playwright chromium을 사전 설치한다.
+# v0.16.6: 올리브영 Cloudflare 챌린지 차단(운영 실측, body=89자 "잠시만 기다려 주세요... RAY_ID") 대응 —
+#   실제 Google Chrome(`playwright install chrome`)도 설치해 channel="chrome"로 헤드리스 봇 감지 회피.
+#   설치 실패 시 빌드를 막지 않도록 `|| true` — 없으면 번들 Chromium 폴백(기존 경로 유지).
 # 로컬 mac 작업환경에는 docker가 없어 로컬 빌드 미검증 — Render가 Docker 런타임으로 빌드&검증.
 
 FROM python:3.13-slim
 
-# 크롤러(Chromium headless shell) 실행에 필요한 OS 의존성 — playwright 공식 권장 목록
+# 크롤러 실행에 필요한 OS 의존성 — playwright 공식 권장 목록 (Chrome 포함 상위호환)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
@@ -23,6 +26,7 @@ WORKDIR /app
 
 COPY server/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
+    && python -m playwright install chrome || true \
     && python -m playwright install chromium
 
 COPY server/ .
