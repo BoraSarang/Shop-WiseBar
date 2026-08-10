@@ -87,11 +87,15 @@ def fetch_goods(goods_no: str) -> dict | None:
         if tx:
             price = int(tx.group(1).replace(",", ""))
     if not price:
+        # 소멸/차단 판별: body가 180자 미만(헤더만 렌더)이면 상품 본문이 없는 페이지 →
+        #   운영(미국 IP) 실측 body=160자로 "찾을 수 없" 문구가 잘려 없음 → 소멸로 판정 (v0.16.7)
+        tiny = len(body_text) < 180
         logger.warning(
-            "올리브영 가격 미발견 goodsNo=%s body=%d자 (%s...)", goods_no,
-            len(body_text), body_text[:60].replace("\n", " "),
+            "올리브영 가격 미발견 goodsNo=%s body=%d자(%s) (%s...)",
+            goods_no, len(body_text), "tiny→소멸" if tiny else "본문↲오류",
+            body_text[:60].replace("\n", " "),
         )
-        return {"status": "gone"} if "찾을 수 없" in body_text else None
+        return {"status": "gone"} if tiny else None
 
     return {
         "status": "ok",
