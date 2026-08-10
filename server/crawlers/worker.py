@@ -44,8 +44,25 @@ def _get_config(db) -> CrawlerConfig:
     return cfg
 
 
-def _run_batch(db, trigger: str) -> None:
-    """전체 몰 배치 실행 + 몰별 결과를 crawler_runs 에 기록.
+def _record_run(mall: str, trigger: str, success: bool, count: int,
+                attempted: int, gone: int, error: str | None, duration_ms: int) -> None:
+    """배치 결과를 crawler_runs 에 기록 — 반드시 **새 세션**으로.
+
+    배치(수 분) 동안 바깥 세션을 들고 있으면 Render/Neon 프록시가 유휴 커넥션을
+    끊어 커밋이 실패한다 (운영 실측, v0.16.9 루프 오류: crawler_runs INSERT 실패).
+    → 기록은 항상 방금 연 세션에서 수행해 깨진 세션 재사용을 방지한다.
+    """
+    try:
+        with SessionLocal() as db:
+            db.add(CrawlerRun(mall=mall, success=success, count=count, attempted=attempted,
+                              gone=gone, error=error, duration_ms=duration_ms, trigger=trigger))
+            db.commit()
+    except Exception as exc:  # noqa: BLE001 — 이력 저장 실패는 배치 결과를 죽이지 않도록 무시
+        logger.error("배치 %s 이력 저장 실패: %s", mall, type(exc).__name__)
+
+
+def _run_batch(trigger: str) -> None:
+    """전체 몰 배치 실행 (세션 미보유) + 몰별 결과를 새 세션으로 기록.
 
     배치 완료 후 close_browser() — 512MB OOM 방지 (v0.16.5), 다음 배치 시 재생성된다.
     """
@@ -56,33 +73,42 @@ def _run_batch(db, trigger: str) -> None:
             # v0.16.8 (T-121) — 4튜플 (attempted, success, gone, error) — 실패 사유 기록
             attempted, count, gone, error = runner()
             duration_ms = int((time.monotonic() - started) * 1000)
-            db.add(CrawlerRun(mall=mall, success=True, count=count, attempted=attempted,
-                              gone=gone, error=error, duration_ms=duration_ms, trigger=trigger))
-            db.commit()
+            _record_run(mall, trigger, True, count, attempted, gone, error, duration_ms)
             logger.info("배치 %s: %d건 수집 / %d건 시도 / %s (%.1fs)",
                         mall, count, attempted,
                         f"소멸 {gone}건" if gone else "오류 " + error if error else "정상",
                         duration_ms / 1000)
         except Exception as exc:  # noqa: BLE001 — 몰 1건 실패가 워커를 죽이지 않도록 개별 격리
             duration_ms = int((time.monotonic() - started) * 1000)
-            db.add(CrawlerRun(mall=mall, success=False, count=0, attempted=0,
-                              gone=0, error=f"배치 예외: {type(exc).__name__}",
-                              duration_ms=duration_ms, trigger=trigger))
-            db.commit()
+            _record_run(mall, trigger, False, 0, 0, 0, f"배치 예외: {type(exc).__name__}", duration_ms)
             logger.exception("배치 %s 실패", mall)
         finally:
             close_browser()  # 다음 몰/틱을 위해 크로미움 리소스 해제
+
+
+def _consume_trigger() -> bool:
+    """run_requested 플래그를 새 세션으로 소비. 배치 후 저장된 트리거를 초기화한다."""
+    try:
+        with SessionLocal() as db:
+            cfg = _get_config(db)
+            if cfg.run_requested:
+                cfg.run_requested = False
+                db.commit()
+                logger.info("run_requested 소비 (즉시 배치 완료)")
+                return True
+    except Exception as exc:  # noqa: BLE001 — 소비 실패는 다음 틱에서 재시도
+        logger.error("트리거 소비 실패: %s", type(exc).__name__)
+    return False
 
 
 def _run_once_loop() -> None:
     """진입점 분기 도우미 — 메인 루프 공통 처리: 배치 실행 + 트리거 소비."""
     with SessionLocal() as db:
         cfg = _get_config(db)
-        _run_batch(db, trigger="manual" if cfg.run_requested else "schedule")
-        if cfg.run_requested:
-            cfg.run_requested = False
-            db.commit()
-            logger.info("run_requested 소비 (즉시 배치 완료)")
+        requested = cfg.run_requested
+    _run_batch(trigger="manual" if requested else "schedule")
+    if requested:
+        _consume_trigger()
 
 
 def main() -> None:
@@ -99,24 +125,25 @@ def main() -> None:
     last_batch_run: float | None = None
     while True:
         try:
-            with SessionLocal() as db:
+            with SessionLocal() as db:  # cfg 읽기는 세션을 짧게 열고 즉시 닫는다 (v0.16.9)
                 cfg = _get_config(db)
+                requested = cfg.run_requested
+                enabled = cfg.enabled
+                interval = cfg.interval_seconds
 
-                if cfg.run_requested:
-                    # 수동 트리거: 즉시 1배치 → 플래그 리셋 (다음 POST까지 중복 방지)
-                    last_batch_run = time.time()
-                    _run_batch(db, trigger="manual")
-                    cfg.run_requested = False
-                    db.commit()
-                    logger.info("run_requested 소비 (즉시 배치 완료)")
-                elif cfg.enabled and (
-                    last_batch_run is None or (time.time() - last_batch_run) >= cfg.interval_seconds
-                ):
-                    # 예약 배치 — 주기는 cfg.interval_seconds (실시간 반영)
-                    last_batch_run = time.time()
-                    _run_batch(db, trigger="schedule")
-                else:
-                    logger.debug("다음 틱 대기 (enabled=%s interval=%ss)", cfg.enabled, cfg.interval_seconds)
+            if requested:
+                # 수동 트리거: 즉시 1배치 → 플래그 리셋 (다음 POST까지 중복 방지)
+                last_batch_run = time.time()
+                _run_batch(trigger="manual")
+                _consume_trigger()
+            elif enabled and (
+                last_batch_run is None or (time.time() - last_batch_run) >= interval
+            ):
+                # 예약 배치 — 주기는 cfg.interval_seconds (실시간 반영)
+                last_batch_run = time.time()
+                _run_batch(trigger="schedule")
+            else:
+                logger.debug("다음 틱 대기 (enabled=%s interval=%ss)", enabled, interval)
         except Exception:  # noqa: BLE001 — 배치 실패가 루프를 죽이지 않도록 최상위 격리
             logger.exception("루프 오류")
         time.sleep(TICK_SECONDS)

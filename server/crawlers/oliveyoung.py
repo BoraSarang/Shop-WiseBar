@@ -46,8 +46,8 @@ def _open_goods_page(goods_no: str, url: str) -> tuple | None:
         except Exception as exc:  # noqa: BLE001 — 타임아웃 등이어도 아래 렌더 대기로 커버
             logger.warning("올리브영 goto 지연 goodsNo=%s: %s (렌더 대기 지속)", goods_no, type(exc).__name__)
         body_text = ""
-        # 챌린지 자동 해결 + SPA 렌더 대기 — 미국 IP는 해결이 느리므로 6회(30s)까지 (v0.16.9)
-        for _ in range(6):
+        # 챌린지 자동 해결 + SPA 렌더 대기 — 미국 IP는 해결이 느리므로 8회(40s)까지 (v0.16.9)
+        for _ in range(8):
             try:
                 page.wait_for_timeout(5000)
                 body_text = page.evaluate("document.body ? document.body.innerText : ''")
