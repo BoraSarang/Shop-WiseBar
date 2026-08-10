@@ -26,6 +26,60 @@ UA = (
 _GONE_TITLE = "올리브영 온라인몰"
 
 
+def _open_goods_page(goods_no: str, url: str) -> tuple | None:
+    """상품 페이지를 열고 (context, page, body_text) 반환 — goto 실패해도 렌더 대기 지속.
+
+    v0.16.9 (T-122c): 미국 IP에서 domcontentloaded가 30초를 넘겨 goto 타임아웃 반복 실측.
+      → timeout 60초 + goto 예외를 무시하고 렌더 대기 루프를 계속 진행 (페이지가 늦게 로드되는
+        Cloudflare 챌린지 대응). 컨텍스트 닫기는 호출자가 finally로 처리.
+    반환: (ctx, page, body_text). 실패 시 None (호출자는 브라우저 오류로 처리).
+    """
+    try:
+        ctx = new_context(user_agent=UA, locale="ko-KR")
+    except Exception as exc:
+        logger.warning("올리브영 컨텍스트 생성 실패 goodsNo=%s: %s", goods_no, exc)
+        return None
+    try:
+        page = ctx.new_page()
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        except Exception as exc:  # noqa: BLE001 — 타임아웃 등이어도 아래 렌더 대기로 커버
+            logger.warning("올리브영 goto 지연 goodsNo=%s: %s (렌더 대기 지속)", goods_no, type(exc).__name__)
+        body_text = ""
+        # 챌린지 자동 해결 + SPA 렌더 대기 — 미국 IP는 해결이 느리므로 6회(30s)까지 (v0.16.9)
+        for _ in range(6):
+            try:
+                page.wait_for_timeout(5000)
+                body_text = page.evaluate("document.body ? document.body.innerText : ''")
+            except Exception as exc:  # noqa: BLE001 — 페이지 재생성 등 일시 상태
+                logger.warning("올리브영 렌더 대기 예외 goodsNo=%s (%d회): %s", goods_no, _ + 1, type(exc).__name__)
+                continue
+            challenge = "잠시만 기다려" in body_text or "접속 정보를 확인" in body_text
+            if not challenge:
+                break
+            logger.info("올리브영 챌린지 대기 중 goodsNo=%s (%d회)", goods_no, _ + 1)
+        return ctx, page, body_text
+    except Exception as exc:
+        try:
+            ctx.close()
+        except Exception:  # noqa: BLE001
+            pass
+        logger.warning("올리브영 페이지 열기 실패 goodsNo=%s: %s", goods_no, exc)
+        return None
+
+
+def _read_meta(page) -> tuple[str | None, str | None]:
+    """og:title / og:image 메타 추출 — 페이지가 닫혀 있으면 None."""
+    try:
+        name_match = page.query_selector('meta[property="og:title"]')
+        image_match = page.query_selector('meta[property="og:image"]')
+        name = name_match.get_attribute("content") if name_match else None
+        image = image_match.get_attribute("content") if image_match else None
+    except Exception:  # noqa: BLE001 — 페이지 파손 시 None 처리
+        return None, None
+    return name, image
+
+
 def fetch_goods(goods_no: str) -> dict | None:
     """올리브영 goodsNo → {status: "ok", name, price, image} | {status:"gone"} | {status:None, error} | None.
 
@@ -35,35 +89,22 @@ def fetch_goods(goods_no: str) -> dict | None:
       None    — 일시 오류/차단 — dict에 error 사유 포함 (v0.16.8, T-121)
     실패 시에도 None 대신 dict를 반환해 run_once가 **실패 사유**를 이력에 기록한다.
 
-    Cloudflare 챌린지 대응 (v0.16.6): "잠시만 기다려 주세요... 접속 정보를 확인 중" 페이지가 뜨면
-    브라우저에서 JS 챌린지가 자동 해결될 때까지 5초 간격 최대 3회 재대기 후 재확인.
+    Cloudflare 챌린지 대응 (v0.16.6→v0.16.9): "잠시만 기다려 주세요... 접속 정보를 확인 중" 페이지가
+    뜨면 JS 챌린지 자동 해결까지 5초 간격 최대 6회 재대기. goto 타임아웃(미국 IP 30s 초과 실측)도
+    렌더 대기로 커버.
     """
     url = (
         "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do"
         f"?goodsNo={goods_no}"
     )
+    opened = _open_goods_page(goods_no, url)
+    if opened is None:
+        return {"status": None, "error": f"브라우저 오류: 페이지 열기 실패"}
+    ctx, page, body_text = opened
     try:
-        ctx = new_context(user_agent=UA, locale="ko-KR")
-        try:
-            page = ctx.new_page()
-            page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            # 챌린지 페이지면 자동 해결까지 대기 (v0.16.6)
-            for _ in range(4):
-                page.wait_for_timeout(5000)  # SPA 렌더 + 봇 챌린지 통과 대기 (실측)
-                body_text = page.evaluate("document.body ? document.body.innerText : ''")
-                challenge = "잠시만 기다려" in body_text or "접속 정보를 확인" in body_text
-                if not challenge:
-                    break
-                logger.info("올리브영 챌린지 대기 중 goodsNo=%s (%d회)", goods_no, _ + 1)
-            name_match = page.query_selector('meta[property="og:title"]')
-            image_match = page.query_selector('meta[property="og:image"]')
-            name = name_match.get_attribute("content") if name_match else None
-            image = image_match.get_attribute("content") if image_match else None
-        finally:
-            ctx.close()  # 컨텍스트 누적으로 인한 메모리 누적 방지 (운영 OOM 대응)
-    except Exception as exc:
-        logger.warning("올리브영 fetch 실패 goodsNo=%s: %s", goods_no, exc)
-        return {"status": None, "error": f"브라우저 오류: {type(exc).__name__}: {exc}"}
+        name, image = _read_meta(page)
+    finally:
+        ctx.close()  # 컨텍스트 누적으로 인한 메모리 누적 방지 (운영 OOM 대응)
 
     if not name:
         # 진단: og:title 없음 = 봇 챌린지 미해결/블록 페이지 등
@@ -118,34 +159,19 @@ def fetch_goods_diag(goods_no: str) -> dict:
         "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do"
         f"?goodsNo={goods_no}"
     )
-    body_text = ""
-    name = None
-    error = None
-    status = None
-    price = None
+    opened = _open_goods_page(goods_no, url)
+    if opened is None:
+        return {"goods_no": goods_no, "status": None, "error": "브라우저 오류: 페이지 열기 실패"}
+    ctx, page, body_text = opened
     try:
-        ctx = new_context(user_agent=UA, locale="ko-KR")
-        try:
-            page = ctx.new_page()
-            page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            for _ in range(4):
-                page.wait_for_timeout(5000)
-                body_text = page.evaluate("document.body ? document.body.innerText : ''")
-                challenge = "잠시만 기다려" in body_text or "접속 정보를 확인" in body_text
-                if not challenge:
-                    break
-            name_match = page.query_selector('meta[property="og:title"]')
-            image_match = page.query_selector('meta[property="og:image"]')
-            og = name_match.get_attribute("content") if name_match else None
-            image = image_match.get_attribute("content") if image_match else None
-        finally:
-            ctx.close()
-    except Exception as exc:
-        return {"goods_no": goods_no, "status": None,
-                "error": f"브라우저 오류: {type(exc).__name__}: {exc}"}
+        og, image = _read_meta(page)
+    finally:
+        ctx.close()
 
-    if og:
-        name = og
+    name = og
+    status = None
+    error = None
+    price = None
     if not name:
         status, error = None, f"og:title 없음 body={len(body_text)}자"
     elif name == _GONE_TITLE or "찾을 수 없" in body_text:
