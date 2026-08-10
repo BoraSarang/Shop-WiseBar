@@ -228,7 +228,7 @@ def run_once() -> tuple[int, int, int, str | None]:
     success = 0
     gone = 0
     errors: list[str] = []
-    for product in stale[:3]:  # 배치 3건 — Render 512MB 메모리 예산 (v0.16.5)
+    for product in stale[:6]:  # 배치 6건 — v0.16.5(3건)→v0.16.9 확대: 순차·컨텍스트 1개 + 리소스차단이라 메모리 안전, 소멸 소진 2배 속도
         if product.id.startswith("oyrun:"):
             continue
         attempted += 1  # 실제 fetch 시도 1건
