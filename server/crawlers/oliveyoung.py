@@ -8,7 +8,7 @@
 import logging
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.database import SessionLocal
 from app.models import PricePoint, Product
@@ -238,12 +238,14 @@ def run_once() -> tuple[int, int, int, str | None]:
             continue  # 일시 오류 — 다음 배치에서 재시도
         if result["status"] == "gone":
             gone += 1  # 소멸(판매종료) 건수 — 실패로 취급하지 않음 (v0.16.8)
-            # 가격 없이 last_checked_at만 갱신해 1시간마다 재시도 중단 (v0.16.7)
+            # 소멸 확정 상품은 7일 후에만 재확인 (v0.16.9) — 
+            #   기존 60분마다 스테일로 부활해 소멸 상품이 배치를 계속 점유하는 문제 해결.
+            #   판매 재개 시 7일 내 자동 감지된다 (fetch → ok 가격 수집 → last_checked_at 갱신).
             with SessionLocal() as db:
                 fresh = db.get(Product, product.id)
                 if fresh is None:
                     continue
-                fresh.last_checked_at = datetime.now(timezone.utc)
+                fresh.last_checked_at = datetime.now(timezone.utc) + timedelta(days=7)
                 db.commit()
             continue
         with SessionLocal() as db:
