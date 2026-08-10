@@ -178,24 +178,43 @@ struct CrawlerView: View {
                 .padding(.vertical, 2)
                 .background(DS.Color.mall(log.mall), in: .capsule)
 
-            Image(systemName: log.success ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .foregroundStyle(log.success ? DS.Color.success : DS.Color.danger)
+            statusIcon(log)
 
             // v0.16.2 (T-119) — "대상 N건 중 성공 M · 실패 K"
+            // v0.16.8 (T-121) — 상품 없음(gone) 별도 표시 — 실패로 퉁치지 않음
             HStack(spacing: 6) {
                 Text("대상 \(log.attempted)건 중")
                     .foregroundStyle(.secondary)
                 Text("성공 \(log.count)")
                     .foregroundStyle(DS.Color.success)
-                Text("·")
-                    .foregroundStyle(.secondary)
-                Text("실패 \(log.failed)")
-                    .foregroundStyle(log.failed > 0 ? DS.Color.danger : Color.secondary)
+                if log.gone > 0 {
+                    Text("·")
+                        .foregroundStyle(.secondary)
+                    Text("상품없음 \(log.gone)")
+                        .foregroundStyle(.secondary)
+                }
+                if log.failed > 0 {
+                    Text("·")
+                        .foregroundStyle(.secondary)
+                    Text("실패 \(log.failed)")
+                        .foregroundStyle(DS.Color.danger)
+                }
             }
             .font(DS.Font.sm.weight(.medium))
             .monospacedDigit()
 
             Spacer()
+
+            // v0.16.8 (T-121) — 실패 사유 (있을 때만)
+            if let error = log.error, !error.isEmpty {
+                Text(error)
+                    .font(DS.Font.xs)
+                    .foregroundStyle(DS.Color.danger)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .help(error)
+                    .frame(maxWidth: 140, alignment: .trailing)
+            }
 
             Text(triggerLabel(log.trigger))
                 .font(DS.Font.xs)
@@ -213,10 +232,28 @@ struct CrawlerView: View {
         }
         .padding(.vertical, DS.Space.s2)
         .padding(.horizontal, DS.Space.s2)
-        .background(
-            log.success ? Color.clear : DS.Color.danger.opacity(0.08),
-            in: RoundedRectangle(cornerRadius: DS.Radius.sm)
-        )
+        .background(rowBackground(log), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+    }
+
+    /// v0.16.8 (T-121) — 3상태 아이콘: 성공 ✓ / 상품없음 ∘ / 실패 ✕
+    @ViewBuilder
+    private func statusIcon(_ log: CrawlerLog) -> some View {
+        if log.count > 0 {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(DS.Color.success)
+        } else if log.gone > 0 && log.failed == 0 {
+            Image(systemName: "circle.lefthalf.filled")
+                .foregroundStyle(.secondary)
+        } else {
+            Image(systemName: "xmark.circle.fill")
+                .foregroundStyle(DS.Color.danger)
+        }
+    }
+
+    private func rowBackground(_ log: CrawlerLog) -> Color {
+        if log.count > 0 { return .clear }            // 성공 — 무배경
+        if log.gone > 0 && log.failed == 0 { return Color.clear }  // 상품없음 — 무배경
+        return DS.Color.danger.opacity(0.08)          // 실패 — 연분홍
     }
 
     private func triggerLabel(_ trigger: String) -> String {
