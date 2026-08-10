@@ -33,9 +33,10 @@ def _extract_price(text: str) -> int | None:
 
 
 def fetch(url: str) -> dict | None:
-    """네이버 브랜드스토어 상품 URL → {status, name, price, image}. 오류 시 None.
+    """네이버 브랜드스토어 상품 URL → {status, name, price, image}. 오류 시 사유 dict.
 
-    status: "ok" — 정상 수집 / "gone" — 상품 삭제·변경 (재시도 방지를 위해 run_once가 last_checked_at 갱신).
+    status: "ok" — 정상 수집 / "gone" — 상품 삭제·변경 (재시도 방지 위해 run_once가 last_checked_at 갱신).
+    실패 시 None 대신 {status:None, error:사유} 반환 — run_once가 실패 사유를 이력에 기록 (v0.16.8, T-121).
     """
     try:
         ctx = new_context(user_agent=UA, locale="ko-KR")
@@ -58,7 +59,7 @@ def fetch(url: str) -> dict | None:
             # 챌린지(보안/캡차) 감지 — 진입이 차단되면 가격 추출을 신뢰하지 않음
             if any(k in body_text for k in ("보안 확인", "완료하세요", "캡차")) or "captcha" in body_text.lower():
                 logger.warning("네이버 챌린지 차단 %s", url)
-                return None
+                return {"status": None, "error": "챌린지/캡차 차단"}
             if not price:
                 gone = "존재하지 않습니다" in body_text  # 상품 삭제/변경 (운영 실측)
                 logger.warning(
@@ -66,7 +67,9 @@ def fetch(url: str) -> dict | None:
                     len(body_text), body_text[:60].replace("\n", " "),
                     "→ 소멸" if gone else "",
                 )
-                return {"status": "gone"} if gone else None
+                if gone:
+                    return {"status": "gone"}
+                return {"status": None, "error": f"가격 미발견 body={len(body_text)}자"}
 
             name_match = page.query_selector('meta[property="og:title"]')
             image_match = page.query_selector('meta[property="og:image"]')
@@ -76,19 +79,20 @@ def fetch(url: str) -> dict | None:
             ctx.close()  # 컨텍스트 누적으로 인한 메모리 누적 방지 (운영 OOM 대응)
     except Exception as exc:
         logger.warning("네이버 fetch 실패 %s: %s", url, exc)
-        return None
+        return {"status": None, "error": f"브라우저 오류: {type(exc).__name__}"}
 
     if not name:
         logger.warning("네이버 og:title 없음 %s", url)
-        return None
+        return {"status": None, "error": "og:title 없음"}
 
     return {"status": "ok", "name": name, "image": image, "price": price, "checked_at": time.time()}
 
 
-def run_once() -> tuple[int, int]:
+def run_once() -> tuple[int, int, int, str | None]:
     """가격이 오래된 네이버 상품 1배치 수집.
 
-    반환: (attempted, success) — v0.16.2 (T-119): URL 필터 통과 후 실제 fetch 시도한 수와 성공 수.
+    반환: (attempted, success, gone, error) — v0.16.8 (T-121):
+      attempted 시도 / success 성공 / gone 상품없음 / error 실패 사유(없으면 None).
     대상 URL이 아닌 후보(brand.naver.com 외)는 시도 수에 포함하지 않는다.
     """
     now = time.time()
@@ -111,16 +115,20 @@ def run_once() -> tuple[int, int]:
 
     attempted = 0
     success = 0
+    gone = 0
+    errors: list[str] = []
     for product in stale[:3]:  # 배치 3건 — Render 512MB 메모리 예산 (v0.16.5)
         # 네이버 전용: 브랜드/스마트스토어 URL만 대상
         if not (product.url and "naver.com" in product.url and "brand.naver.com" in product.url):
             continue
         attempted += 1  # 실제 fetch 시도 1건
         result = fetch(product.url)
-        if result is None:
+        if result is None or result.get("status") is None:
+            errors.append(result["error"] if result else "알 수 없는 오류")
             continue
         if result["status"] == "gone":
-            # 상품 삭제 — last_checked_at만 갱신해 1시간마다 재시도 중단 (v0.16.7)
+            gone += 1  # 상품 삭제 — 실패로 취급하지 않음 (v0.16.8)
+            # last_checked_at만 갱신해 1시간마다 재시도 중단 (v0.16.7)
             with SessionLocal() as db:
                 fresh = db.get(Product, product.id)
                 if fresh is None:
@@ -148,4 +156,4 @@ def run_once() -> tuple[int, int]:
             db.commit()
             print(f"네이버 수집: {fresh.id} → {result['price']}원")
             success += 1
-    return attempted, success
+    return attempted, success, gone, "; ".join(dict.fromkeys(errors)) or None

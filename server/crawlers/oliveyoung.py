@@ -27,12 +27,13 @@ _GONE_TITLE = "올리브영 온라인몰"
 
 
 def fetch_goods(goods_no: str) -> dict | None:
-    """올리브영 goodsNo → {status: "ok", name, price, image} | {status:"gone"} | None(오류).
+    """올리브영 goodsNo → {status: "ok", name, price, image} | {status:"gone"} | {status:None, error} | None.
 
     status:
-      "ok"   — 정상 수집
-      "gone" — 판매종료/삭제 상품 (다음 배치 재시도 방지하려면 last_checked_at 갱신)
-      None   — 일시 오류 (챌린지 미해결/타임아웃 등 → 다음 배치에서 재시도)
+      "ok"    — 정상 수집
+      "gone"  — 판매종료/삭제 상품 (다음 배치 재시도 방지하려면 last_checked_at 갱신)
+      None    — 일시 오류/차단 — dict에 error 사유 포함 (v0.16.8, T-121)
+    실패 시에도 None 대신 dict를 반환해 run_once가 **실패 사유**를 이력에 기록한다.
 
     Cloudflare 챌린지 대응 (v0.16.6): "잠시만 기다려 주세요... 접속 정보를 확인 중" 페이지가 뜨면
     브라우저에서 JS 챌린지가 자동 해결될 때까지 5초 간격 최대 3회 재대기 후 재확인.
@@ -62,15 +63,13 @@ def fetch_goods(goods_no: str) -> dict | None:
             ctx.close()  # 컨텍스트 누적으로 인한 메모리 누적 방지 (운영 OOM 대응)
     except Exception as exc:
         logger.warning("올리브영 fetch 실패 goodsNo=%s: %s", goods_no, exc)
-        return None
+        return {"status": None, "error": f"브라우저 오류: {type(exc).__name__}"}
 
     if not name:
-        # 진단: og:title 없음 = 봇 챌린지/블록 페이지 등 가능성
-        logger.warning(
-            "올리브영 og:title 없음 goodsNo=%s body=%d자 (%s...)", goods_no,
-            len(body_text), body_text[:60].replace("\n", " "),
-        )
-        return None
+        # 진단: og:title 없음 = 봇 챌린지 미해결/블록 페이지 등
+        reason = f"og:title 없음 body={len(body_text)}자"
+        logger.warning("올리브영 %s goodsNo=%s (%s...)", reason, goods_no, body_text[:60].replace("\n", " "))
+        return {"status": None, "error": reason}
 
     # 소멸(판매종료) 감지 — og:title이 몰 페이지 제목이면 상품이 없음 (운영 실측)
     if name == _GONE_TITLE or "찾을 수 없" in body_text:
@@ -95,7 +94,9 @@ def fetch_goods(goods_no: str) -> dict | None:
             goods_no, len(body_text), "tiny→소멸" if tiny else "본문↲오류",
             body_text[:60].replace("\n", " "),
         )
-        return {"status": "gone"} if tiny else None
+        if tiny:
+            return {"status": "gone"}
+        return {"status": None, "error": f"가격 미발견 body={len(body_text)}자"}
 
     return {
         "status": "ok",
@@ -106,11 +107,12 @@ def fetch_goods(goods_no: str) -> dict | None:
     }
 
 
-def run_once() -> tuple[int, int]:
+def run_once() -> tuple[int, int, int, str | None]:
     """갱신 만료된 올리브영 상품 1배치 수집.
 
-    반환: (attempted, success) — v0.16.2 (T-119): 시도한 건수(성공+실패)와 성공 건수.
-    실패(시도-성공)에는 fetch 실패(None)와 저장 실패가 포함된다.
+    반환: (attempted, success, gone, error) — v0.16.8 (T-121):
+      attempted 시도 건수 / success 성공 건수 / gone 상품없음(소멸) 건수 / error 실패 사유(없으면 None).
+    실패 = attempted - success - gone (fetch 불가·일시 오류 — 다음 배치에서 재시도).
     """
     now = time.time()
     with SessionLocal() as db:
@@ -130,15 +132,19 @@ def run_once() -> tuple[int, int]:
 
     attempted = 0
     success = 0
+    gone = 0
+    errors: list[str] = []
     for product in stale[:3]:  # 배치 3건 — Render 512MB 메모리 예산 (v0.16.5)
         if product.id.startswith("oyrun:"):
             continue
         attempted += 1  # 실제 fetch 시도 1건
         result = fetch_goods(product.id)
-        if result is None:
+        if result is None or result.get("status") is None:
+            errors.append(result["error"] if result else "알 수 없는 오류")
             continue  # 일시 오류 — 다음 배치에서 재시도
         if result["status"] == "gone":
-            # 소멸(판매종료) — 가격 없이 last_checked_at만 갱신해 1시간마다 재시도 중단 (v0.16.7)
+            gone += 1  # 소멸(판매종료) 건수 — 실패로 취급하지 않음 (v0.16.8)
+            # 가격 없이 last_checked_at만 갱신해 1시간마다 재시도 중단 (v0.16.7)
             with SessionLocal() as db:
                 fresh = db.get(Product, product.id)
                 if fresh is None:
@@ -166,4 +172,4 @@ def run_once() -> tuple[int, int]:
             db.commit()
             print(f"수집 완료: {fresh.id} → {result['price']}원")
             success += 1
-    return attempted, success
+    return attempted, success, gone, "; ".join(dict.fromkeys(errors)) or None

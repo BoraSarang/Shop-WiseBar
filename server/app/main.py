@@ -88,12 +88,19 @@ def _ensure_columns(engine) -> None:
             cols = {r[1] for r in conn.execute(text("PRAGMA table_info(crawler_runs)"))}
             if "attempted" not in cols:
                 conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN attempted INTEGER DEFAULT 0"))
+            # v0.16.8 (T-121) — 상품없음 건수 + 실패 사유 (3상태 구분용)
+            if "gone" not in cols:
+                conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN gone INTEGER DEFAULT 0"))
+            if "error" not in cols:
+                conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN error VARCHAR(512)"))
         else:
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS sold_out_at TIMESTAMPTZ"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS normalized_name VARCHAR(512)"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS back_on_sale_at TIMESTAMPTZ"))
             conn.execute(text("ALTER TABLE watches ADD COLUMN IF NOT EXISTS target_price INTEGER"))
             conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN IF NOT EXISTS attempted INTEGER DEFAULT 0"))
+            conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN IF NOT EXISTS gone INTEGER DEFAULT 0"))
+            conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN IF NOT EXISTS error VARCHAR(512)"))
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])

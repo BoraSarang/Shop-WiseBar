@@ -135,6 +135,8 @@ class CrawlerRun(Base):
     success: Mapped[bool] = mapped_column(Boolean, default=True)
     count: Mapped[int] = mapped_column(Integer, default=0)  # 수집 성공 건수
     attempted: Mapped[int] = mapped_column(Integer, default=0)  # v0.16.2 (T-119) — 시도 건수 (실패 = attempted - count)
+    gone: Mapped[int] = mapped_column(Integer, default=0)  # v0.16.8 (T-121) — 상품 없음(소멸) 건수 — 실패로 퉁치지 않음
+    error: Mapped[str | None] = mapped_column(String(512), nullable=True)  # v0.16.8 (T-121) — 실패 사유 (챌린지/타임아웃 등)
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
     trigger: Mapped[str] = mapped_column(String(16), default="schedule")  # schedule | manual
     run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

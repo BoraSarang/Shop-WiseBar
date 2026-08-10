@@ -52,16 +52,21 @@ def _run_batch(db, trigger: str) -> None:
     for mall, runner in _RUNNERS:
         started = time.monotonic()
         try:
-            # v0.16.2 (T-119) — run_once 가 (attempted, success) 반환
-            attempted, count = runner()
+            # v0.16.2 (T-119) — run_once 는 (attempted, success) 반환
+            # v0.16.8 (T-121) — 4튜플 (attempted, success, gone, error) — 실패 사유 기록
+            attempted, count, gone, error = runner()
             duration_ms = int((time.monotonic() - started) * 1000)
             db.add(CrawlerRun(mall=mall, success=True, count=count, attempted=attempted,
-                              duration_ms=duration_ms, trigger=trigger))
+                              gone=gone, error=error, duration_ms=duration_ms, trigger=trigger))
             db.commit()
-            logger.info("배치 %s: %d건 수집 / %d건 시도 (%.1fs)", mall, count, attempted, duration_ms / 1000)
-        except Exception:  # noqa: BLE001 — 몰 1건 실패가 워커를 죽이지 않도록 개별 격리
+            logger.info("배치 %s: %d건 수집 / %d건 시도 / %s (%.1fs)",
+                        mall, count, attempted,
+                        f"소멸 {gone}건" if gone else "오류 " + error if error else "정상",
+                        duration_ms / 1000)
+        except Exception as exc:  # noqa: BLE001 — 몰 1건 실패가 워커를 죽이지 않도록 개별 격리
             duration_ms = int((time.monotonic() - started) * 1000)
             db.add(CrawlerRun(mall=mall, success=False, count=0, attempted=0,
+                              gone=0, error=f"배치 예외: {type(exc).__name__}",
                               duration_ms=duration_ms, trigger=trigger))
             db.commit()
             logger.exception("배치 %s 실패", mall)

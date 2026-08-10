@@ -1,5 +1,15 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.8 (2026-08-10) — [server][macos] 크롤러 이력 3상태(성공/실패/상품없음) + 실패 사유 (T-121)
+> 사용자 요구: 크롤러 응답이 성공/실패만이 아니라 **성공/실패/상품 없음 3상태**여야 하며, 실패면 **실패 사유**를 알고 싶어 함.
+- [server] `crawler_runs`에 `gone`(int, 상품없음/소멸 건수) + `error`(varchar, 실패 사유) 컬럼 추가 — `main.py _ensure_columns` 마이그레이션 (SQLite PRAGMA / PG IF NOT EXISTS, 기존 행 하위호환).
+- [server] `oliveyoung.fetch_goods`/`naver.fetch` — 실패 시 `None` 대신 `{status:None, error:사유}` 반환 (브라우저 오류/og:title 없음/챌린지 차단/가격 미발견 구분).
+- [server] `run_once` 반환 `(attempted, success)` → **4튜플 `(attempted, success, gone, error)`** — 소멸 상품을 `gone`으로 집계해 실패에서 제외, 오류 사유 누적.
+- [server] `worker._run_batch` — gone/error 저장 + 배치 예외 시 사유 기록. `/admin/crawler/logs` 응답에 `gone`/`error` 추가, **`failed = attempted - count - gone`**.
+- [macos] `CrawlerLog` gone/error 반영 + `CrawlerView` 이력 행 — **3상태 아이콘**(✓ 성공 / 상품없음 ∘ / ✕ 실패) + "상품없음 N" 표기 + 실패 사유 텍스트(호버 툴팁).
+- [검증] pytest **76건**(신규 gone/error 테스트 포함). APP_VERSION 0.16.8.
+- 문서: docs/TODO T-121 / PLAN_v0.16.8 / ENDPOINTS.
+
 ## v0.16.7 (2026-08-10) — [server] 소멸 상품 재시도 방지 (T-120i)
 - [원인] v0.16.6 배포 후 운영 진단 확정: Cloudflare 차단은 해결(`브라우저: 시스템 Chrome` + body 89→160자)됐지만 `배치 oliveyoung: 0건/3건 (143.6s)` 지속. 크롤러가 접근하는 상품 3건(A00000022367116 등)을 **로컬 한국 IP·시스템 Chrome로 직접 조회** → 모두 `og:title="올리브영 온라인몰"` + "찾을 수 없음" = **판매종료(sold-out) 상품**. 일시 차단이 아니라 상품 소멸이 정상 원인. 소멸 상품은 last_checked_at이 갱신되지 않아 **1시간마다 무기한 재시도 → 0건 + 143초 낭비** (운영 실측).
 - [server] `oliveyoung.py` — `fetch_goods` 반환에 `status` 추가: `"ok"`(수집) / `"gone"`(**소멸 감지**: og:title=="올리브영 온라인몰" 또는 body "찾을 수 없") / `None`(일시 오류). `run_once`는 `gone`이면 **last_checked_at만 갱신**해 다음 배치 재시도 중단 (가격은 이력 유지).

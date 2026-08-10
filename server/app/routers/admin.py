@@ -283,7 +283,9 @@ def crawler_logs(limit: int = 50, db: Session = Depends(get_db)) -> dict:
             "success": r.success,
             "count": r.count,
             "attempted": r.attempted,  # v0.16.2 (T-119)
-            "failed": max(0, r.attempted - r.count),  # 시도 - 성공
+            "failed": max(0, r.attempted - r.count - r.gone),  # 실패 = 시도 - 성공 - 상품없음 (v0.16.8)
+            "gone": r.gone,  # v0.16.8 (T-121) — 상품 없음(소멸) 건수
+            "error": r.error,  # v0.16.8 (T-121) — 실패 사유
             "duration_ms": r.duration_ms,
             "trigger": r.trigger,
             "run_at": r.run_at.astimezone(KST).isoformat(),

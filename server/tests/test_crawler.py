@@ -70,9 +70,26 @@ class TestCrawlerLogs:
         assert logs[0]["success"] is True
         assert logs[0]["count"] == 2
         assert logs[0]["attempted"] == 5   # v0.16.2 (T-119)
-        assert logs[0]["failed"] == 3      # attempted - count
+        assert logs[0]["failed"] == 3      # attempted - count - gone
         assert logs[0]["trigger"] == "manual"
         assert "T" in logs[0]["run_at"]  # KST ISO 타임스탬프
+
+    def test_logs_gone_and_error(self, client, db_session):
+        """v0.16.8 (T-121) — 상품없음(gone)은 실패에서 제외되고 error 사유가 노출된다."""
+        _make_config(db_session)
+        db_session.add(CrawlerRun(mall="oliveyoung", success=True, count=0, attempted=3,
+                                  gone=3, error=None, duration_ms=75072, trigger="schedule"))
+        db_session.add(CrawlerRun(mall="naver", success=True, count=1, attempted=2,
+                                  gone=0, error="챌린지/캡차 차단", duration_ms=1803, trigger="manual"))
+        db_session.commit()
+        logs = {l["mall"]: l for l in client.get("/api/v1/admin/crawler/logs").json()["logs"]}
+        oy, nv = logs["oliveyoung"], logs["naver"]
+        assert oy["gone"] == 3
+        assert oy["failed"] == 0      # 전부 상품없음 → 실패 아님
+        assert oy["error"] is None
+        assert nv["gone"] == 0
+        assert nv["failed"] == 1      # 시도2 - 성공1 - gone0
+        assert nv["error"] == "챌린지/캡차 차단"
 
     def test_logs_attempted_zero_rounds(self, client, db_session):
         """attempted 미기록(마이그레이션 전) 행은 failed 0으로 계산"""
