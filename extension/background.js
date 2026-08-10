@@ -182,6 +182,12 @@ async function captureProductInner(tab) {
   const price = Number(data.price);
   const soldOut = Boolean(data.soldOut);
   if (!price && !soldOut) return;
+  // v0.16.10 — 올리브영 goodsNo는 반드시 A+12자리(13자)다. 관심상품 ID가 15자면
+  //   상세페이지 URL이 이미지 파일명 등 잘못된 소스에서 온 것 — 오염 방지를 위해 저장 전 차단.
+  if (target.mall === "oliveyoung" && !/^A\d{12}$/.test(target.productID)) {
+    DebugLogger.warn(`[똑바] 올리브영 잘못된 ID 차단 ${target.productID} (A+12자리 아님)`);
+    return;
+  }
 
   try {
     await api("/products", {
@@ -298,7 +304,12 @@ async function uploadRelatedItems(items, label, parentId) {
   // 1회로 줄여 서버 연결·라우팅 오버헤드 제거 ([PERF] 1~3s 지연의 주요 원인)
   let upserted = 0;
   const relatedIds = [];
-  const fresh = items.filter((item) => !relatedUploadedIds.has(item.productID));
+  // v0.16.10 — 올리브영 goodsNo는 A+12자리(13자)만 유효. 15자(이미지 파일명 오염) 제외 —
+  //   존재하지 않는 ID로 저장되어 서버 크롤러가 전부 "찾을 수 없"으로 판정하던 치명적 버그 방지.
+  const itemsOk = items.filter(
+    (it) => it.mall !== "oliveyoung" || /^A\d{12}$/.test(it.productID),
+  );
+  const fresh = itemsOk.filter((item) => !relatedUploadedIds.has(item.productID));
   // batch는 한 번에 40개까지 (schemas max_length=50) — 초과분은 다음 요청으로
   for (let i = 0; i < fresh.length; i += 40) {
     const chunk = fresh.slice(i, i + 40).map((item) => ({

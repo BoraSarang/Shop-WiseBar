@@ -256,8 +256,12 @@ const Extractor = {
   },
 
   // 올리브영 연관 상품 추출 (v0.5.2): div 클릭 SPA라 a[href] 링크가 없음.
-  // 추천 카드(CurationItem) 이미지 URL에 goodsNo가 포함된 점을 이용:
-  // "A00000017264304ko.jpg" → productID "A00000017264304"
+  // 추천 카드(CurationItem) 이미지 URL에 goodsNo가 포함된 점을 이용.
+  // v0.16.10 버그수정: 이미지 파일명은 "A{goodsNo12자리}{이미지순번2자리}ko.jpg" —
+  //   예: "A00000017264304ko.jpg" → goodsNo "A000000172643" (마지막 2자리 "04" = 순번, 제거)
+  //   기존 `A(\d+)...`로 14자리를 그대로 productID로 쓰면 존재하지 않는 ID로 저장되어
+  //   서버 크롤러가 전부 "상품을 찾을 수 없어요"로 판정하는 치명적 버그였음 (운영 실측).
+  //   → A 뒤 첫 12자리만 goodsNo로 사용 (진짜 상세페이지 goodsNo = A+12자리).
   extractRelatedOliveyoung(currentProductID) {
     const items = [];
     const seen = new Set([currentProductID]);
@@ -268,9 +272,9 @@ const Extractor = {
       const img = card.querySelector("img");
       if (!img) continue;
       const src = img.getAttribute("data-src") || img.getAttribute("src") || "";
-      const m = src.match(/A(\d+)ko\.jpg/);
+      const m = src.match(/A(\d{12,})ko\.jpg/);
       if (!m) continue;
-      const productID = `A${m[1]}`;
+      const productID = `A${m[1].slice(0, 12)}`;
       if (seen.has(productID)) continue;
       seen.add(productID);
 
