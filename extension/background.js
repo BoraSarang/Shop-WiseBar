@@ -182,10 +182,11 @@ async function captureProductInner(tab) {
   const price = Number(data.price);
   const soldOut = Boolean(data.soldOut);
   if (!price && !soldOut) return;
-  // v0.16.10 — 올리브영 goodsNo는 반드시 A+12자리(13자)다. 관심상품 ID가 15자면
+  // v0.16.10 — 올리브영 goodsNo는 A+12자리 또는 B+12자리(13자)다. 관심상품 ID가 15자면
   //   상세페이지 URL이 이미지 파일명 등 잘못된 소스에서 온 것 — 오염 방지를 위해 저장 전 차단.
-  if (target.mall === "oliveyoung" && !/^A\d{12}$/.test(target.productID)) {
-    DebugLogger.warn(`[똑바] 올리브영 잘못된 ID 차단 ${target.productID} (A+12자리 아님)`);
+  //   v0.16.11 — B+12자리 상품(기획세트 등) 누락 방지: `^[AB]\d{12}$`.
+  if (target.mall === "oliveyoung" && !/^[AB]\d{12}$/.test(target.productID)) {
+    DebugLogger.warn(`[똑바] 올리브영 잘못된 ID 차단 ${target.productID} ([AB]+12자리 아님)`);
     return;
   }
 
@@ -304,10 +305,11 @@ async function uploadRelatedItems(items, label, parentId) {
   // 1회로 줄여 서버 연결·라우팅 오버헤드 제거 ([PERF] 1~3s 지연의 주요 원인)
   let upserted = 0;
   const relatedIds = [];
-  // v0.16.10 — 올리브영 goodsNo는 A+12자리(13자)만 유효. 15자(이미지 파일명 오염) 제외 —
+  // v0.16.10 — 올리브영 goodsNo는 A+12자리 또는 B+12자리(13자)만 유효. 15자(이미지 파일명 오염) 제외 —
   //   존재하지 않는 ID로 저장되어 서버 크롤러가 전부 "찾을 수 없"으로 판정하던 치명적 버그 방지.
+  //   v0.16.11 — B+12자리 상품(기획세트 등)도 유효 — 서버 crawlers/oliveyoung.py 규약과 일치.
   const itemsOk = items.filter(
-    (it) => it.mall !== "oliveyoung" || /^A\d{12}$/.test(it.productID),
+    (it) => it.mall !== "oliveyoung" || /^[AB]\d{12}$/.test(it.productID),
   );
   const fresh = itemsOk.filter((item) => !relatedUploadedIds.has(item.productID));
   // batch는 한 번에 40개까지 (schemas max_length=50) — 초과분은 다음 요청으로
