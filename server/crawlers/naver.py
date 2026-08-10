@@ -33,7 +33,10 @@ def _extract_price(text: str) -> int | None:
 
 
 def fetch(url: str) -> dict | None:
-    """네이버 브랜드스토어 상품 URL → {name, price, image}. 실패/챌린지 시 None"""
+    """네이버 브랜드스토어 상품 URL → {status, name, price, image}. 오류 시 None.
+
+    status: "ok" — 정상 수집 / "gone" — 상품 삭제·변경 (재시도 방지를 위해 run_once가 last_checked_at 갱신).
+    """
     try:
         ctx = new_context(user_agent=UA, locale="ko-KR")
         try:
@@ -57,11 +60,13 @@ def fetch(url: str) -> dict | None:
                 logger.warning("네이버 챌린지 차단 %s", url)
                 return None
             if not price:
+                gone = "존재하지 않습니다" in body_text  # 상품 삭제/변경 (운영 실측)
                 logger.warning(
-                    "네이버 가격 미발견 %s body=%d자 (%s...)", url,
+                    "네이버 가격 미발견 %s body=%d자 (%s...) %s", url,
                     len(body_text), body_text[:60].replace("\n", " "),
+                    "→ 소멸" if gone else "",
                 )
-                return None
+                return {"status": "gone"} if gone else None
 
             name_match = page.query_selector('meta[property="og:title"]')
             image_match = page.query_selector('meta[property="og:image"]')
@@ -77,7 +82,7 @@ def fetch(url: str) -> dict | None:
         logger.warning("네이버 og:title 없음 %s", url)
         return None
 
-    return {"name": name, "image": image, "price": price, "checked_at": time.time()}
+    return {"status": "ok", "name": name, "image": image, "price": price, "checked_at": time.time()}
 
 
 def run_once() -> tuple[int, int]:
@@ -113,6 +118,15 @@ def run_once() -> tuple[int, int]:
         attempted += 1  # 실제 fetch 시도 1건
         result = fetch(product.url)
         if result is None:
+            continue
+        if result["status"] == "gone":
+            # 상품 삭제 — last_checked_at만 갱신해 1시간마다 재시도 중단 (v0.16.7)
+            with SessionLocal() as db:
+                fresh = db.get(Product, product.id)
+                if fresh is None:
+                    continue
+                fresh.last_checked_at = datetime.now(timezone.utc)
+                db.commit()
             continue
         with SessionLocal() as db:
             fresh = db.get(Product, product.id)

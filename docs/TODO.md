@@ -10,7 +10,9 @@
 - [x] **T-120d** 검증: pytest 75건 통과 + 시스템 Chrome 미설치 시뮬레이션으로 번들 Chromium 올리브영 수집 성공(28,900원) — **v0.16.3 운영 배포에서 번들 이진파일 부재로 실패 재실측 → v0.16.4 빌드 시 설치로 해결**
 - [x] **T-120e** 검증: v0.16.5 배포 후 **OOM 재발 없음** (배치 3건 34.8s + `브라우저 리소스 해제 완료`, 운영 로그 00:10 UTC). 진단 로그로 수집 0건 원인 **Cloudflare 챌린지 차단 확정** (body=89자 "잠시만 기다려 주세요... RAY_ID")
 - [x] **T-120g** v0.16.6 Cloudflare 대응: Dockerfile에 `playwright install chrome`(실제 Chrome) + `--disable-blink-features=AutomationControlled` + oliveyoung 챌린지 자동 해결 재대기
-- [ ] **T-120h** v0.16.6 배포 후 운영 `/crawler/logs` 확인 — channel="chrome" 사용 로그(`브라우저: 시스템 Chrome`) + attempted>0 수집 확인
+- [x] **T-120h** 검증: v0.16.6 배포 후 운영 로그 — iframe 확정: `브라우저: 시스템 Chrome` 로드 성공 + Cloudflare 챌린지 통과(body 89→160자). 하지만 0건 지속 → 원인은 **상품 소멸** (로컬 한국 IP 직조회로 확정: og:title="올리브영 온라인몰" + "찾을 수 없음")
+- [x] **T-120i** v0.16.7 소멸 상품 재시도 방지: fetch status "gone" 감지(og:title 몰 제목 / "찾을 수 없" / "존재하지 않습니다") + run_once가 last_checked_at 갱신 (1시간마다 0건·143초 무의미 반복 중단)
+- [ ] **T-120j** v0.16.7 배포 후 운영 `/crawler/logs` — 수집 0건이 **소멸 상품만** 남고 중단되는지 확인 (배치 소요 크게 감소 예상)
 
 ## T-119 — 크롤러 성공/실패 통계 (v0.16.2) — 🔵 진행 (2026-08-10)
 > v0.16.1 사용 중 "수집이 0건이네?"(운영 이력 count=0만 표시) → "몇 건 시도 → 몇 건 성공, 몇 건 실패" 표시 요구.

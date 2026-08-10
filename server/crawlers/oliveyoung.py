@@ -1,7 +1,9 @@
-# 올리브영 Playwright 크롤러 (v0.16.5) — HTTP 요청은 TLS 핑거프린팅으로 403 (실측) → headless Chrome으로 교체
+# 올리브영 Playwright 크롤러 (v0.16.7) — HTTP 요청은 TLS 핑거프린팅으로 403 (실측) → headless Chrome으로 교체
 # 파싱: og 태그(이름/이미지) + body 텍스트 가격 패턴
 # 실측 PoC (2026-08-03): channel="chrome" headless로 가격 39,900원 + og:title/og:image 수집 성공
 # 네이버/쿠팡은 서버 크롤링 불가(캡차/Akamai) — 익스텐션 업로드에 의존 (PRD 2장)
+# v0.16.7 (T-120i): 소멸 상품(판매종료) 감지 — 반환 dict에 status 추가. run_once는 gone이면
+#   last_checked_at 갱신만 해 다음 배치 재시도 방지 (운영: 소멸 상품이 1시간마다 0건 반복 실측).
 # PLATFORM: server
 import logging
 import re
@@ -20,9 +22,17 @@ UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 
+# 소멸 페이지 표식 (운영·로컬 실측): og:title="올리브영 온라인몰" + body "찾을 수 없"
+_GONE_TITLE = "올리브영 온라인몰"
+
 
 def fetch_goods(goods_no: str) -> dict | None:
-    """올리브영 goodsNo → {name, price, image}. 실패 시 None
+    """올리브영 goodsNo → {status: "ok", name, price, image} | {status:"gone"} | None(오류).
+
+    status:
+      "ok"   — 정상 수집
+      "gone" — 판매종료/삭제 상품 (다음 배치 재시도 방지하려면 last_checked_at 갱신)
+      None   — 일시 오류 (챌린지 미해결/타임아웃 등 → 다음 배치에서 재시도)
 
     Cloudflare 챌린지 대응 (v0.16.6): "잠시만 기다려 주세요... 접속 정보를 확인 중" 페이지가 뜨면
     브라우저에서 JS 챌린지가 자동 해결될 때까지 5초 간격 최대 3회 재대기 후 재확인.
@@ -62,6 +72,11 @@ def fetch_goods(goods_no: str) -> dict | None:
         )
         return None
 
+    # 소멸(판매종료) 감지 — og:title이 몰 페이지 제목이면 상품이 없음 (운영 실측)
+    if name == _GONE_TITLE or "찾을 수 없" in body_text:
+        logger.info("올리브영 소멸 상품(재시도 방지) goodsNo=%s", goods_no)
+        return {"status": "gone"}
+
     # 가격: ① body "N,NNN원" ② tx_num ③ data-qa 할인가
     price = None
     m = re.search(r"([0-9][0-9,]*)\s*원", body_text)
@@ -76,9 +91,10 @@ def fetch_goods(goods_no: str) -> dict | None:
             "올리브영 가격 미발견 goodsNo=%s body=%d자 (%s...)", goods_no,
             len(body_text), body_text[:60].replace("\n", " "),
         )
-        return None
+        return {"status": "gone"} if "찾을 수 없" in body_text else None
 
     return {
+        "status": "ok",
         "name": name,
         "image": image,
         "price": price,
@@ -116,6 +132,15 @@ def run_once() -> tuple[int, int]:
         attempted += 1  # 실제 fetch 시도 1건
         result = fetch_goods(product.id)
         if result is None:
+            continue  # 일시 오류 — 다음 배치에서 재시도
+        if result["status"] == "gone":
+            # 소멸(판매종료) — 가격 없이 last_checked_at만 갱신해 1시간마다 재시도 중단 (v0.16.7)
+            with SessionLocal() as db:
+                fresh = db.get(Product, product.id)
+                if fresh is None:
+                    continue
+                fresh.last_checked_at = datetime.now(timezone.utc)
+                db.commit()
             continue
         with SessionLocal() as db:
             fresh = db.get(Product, product.id)

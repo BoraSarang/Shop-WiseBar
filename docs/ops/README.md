@@ -1,13 +1,13 @@
 # 서버 운영 가이드 (Render)
 
-> 플랫폼: server · 마지막 갱신: 2026-08-10 (v0.16.6) · 배포 주소: https://shop-wisebar.onrender.com
+> 플랫폼: server · 마지막 갱신: 2026-08-10 (v0.16.7) · 배포 주소: https://shop-wisebar.onrender.com
 
 ## 1. 배포 (Deploy)
 
 - **호스팅**: Render Web Service (무료 티어) — GitHub `BoraSarang/Shop-WiseBar` `main` 브랜치 자동 배포
 - **러타임**: **Docker** (`server/Dockerfile`) + 배포 정의 `render.yaml` (v0.16.4, 블루프린트)
 - **메모리 예산** (v0.16.5): Render 무료 티어 512MB 한도 — 크롤러는 ①배치 후 `close_browser()`로 크로미움 해제 ②컨텍스트에서 이미지/미디어/폰트/광고 요청 차단 ③배치 3건 제한. OOM("Ran out of memory") 재발 시 `/crawler/logs` 배치 소요+건수와 `[CRAWLER]` 진단 로그 확인.
-- **Cloudflare 챌린지 대응** (v0.16.6): 운영 실측 로그 `og:title 없음 body=89자 (잠시만 기다려 주세요 ... RAY_ID)` = 올리브영이 Render 미국 DC IP + **Headless Shell** 봇을 차단한 것. Dockerfile에서 `playwright install chrome`(실제 Google Chrome)로 교체해 `channel="chrome"`을 유지하려 함 — 재차단 시 대안: 크롤러는 한국 로컬에서만 구동(확장 업로드가 주 데이터 경로이므로 서버 크롤러는 보조).
+- **Cloudflare 챌린지 대응** (v0.16.6): 운영 실측 로그 `og:title 없음 body=89자 (잠시만 기다려 주세요 ... RAY_ID)` = 올리브영이 Render 미국 DC IP + **Headless Shell** 봇을 차단한 것. Dockerfile에서 `playwright install chrome`(실제 Google Chrome)로 교체해 `channel="chrome"`으로 통과 확인(`브라우저: 시스템 Chrome`). 남은 0건은 **상품 소멸**(v0.16.7) — 로그의 `올리브영 소멸 상품(재시도 방지)` / `-> 소멸` 표시는 정상이며, 가격 없이 last_checked_at만 갱신해 무의미 재시도를 중단한다.
 - **왜 Docker인가** (운영 실측 기록):
   - Render 컨테이너엔 시스템 Chrome 없음 → `channel="chrome"` launch 즉시 실패 → v0.16.2까지 크롤러 전수 실패(count=0·0.9s)
   - `pip`만으로는 playwright PyPI는 설치돼도 브라우저 이진파일/OS 의존성이 없음(0.16.3 배포 로그 실측)

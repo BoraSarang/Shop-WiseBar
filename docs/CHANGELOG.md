@@ -1,5 +1,13 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.7 (2026-08-10) — [server] 소멸 상품 재시도 방지 (T-120i)
+- [원인] v0.16.6 배포 후 운영 진단 확정: Cloudflare 차단은 해결(`브라우저: 시스템 Chrome` + body 89→160자)됐지만 `배치 oliveyoung: 0건/3건 (143.6s)` 지속. 크롤러가 접근하는 상품 3건(A00000022367116 등)을 **로컬 한국 IP·시스템 Chrome로 직접 조회** → 모두 `og:title="올리브영 온라인몰"` + "찾을 수 없음" = **판매종료(sold-out) 상품**. 일시 차단이 아니라 상품 소멸이 정상 원인. 소멸 상품은 last_checked_at이 갱신되지 않아 **1시간마다 무기한 재시도 → 0건 + 143초 낭비** (운영 실측).
+- [server] `oliveyoung.py` — `fetch_goods` 반환에 `status` 추가: `"ok"`(수집) / `"gone"`(**소멸 감지**: og:title=="올리브영 온라인몰" 또는 body "찾을 수 없") / `None`(일시 오류). `run_once`는 `gone`이면 **last_checked_at만 갱신**해 다음 배치 재시도 중단 (가격은 이력 유지).
+- [server] `naver.py` — 동일: `fetch` status 반환, body "존재하지 않습니다" → `gone`, `run_once` last_checked_at 갱신.
+- [server] `APP_VERSION` 0.16.7.
+- [검증] pytest **75건 통과**. 로컬 실검증: 소멸 상품 3건 모두 `status=gone` 감지 (판매종료), 판매중 상품(A000000262781 등) `status=ok` 수집 — gone 분기가 실제 DB last_checked_at 갱신.
+- 문서: docs/TODO T-120i / ops/README v0.16.7 / CHANGELOG.
+
 ## v0.16.6 (2026-08-10) — [server] 올리브영 Cloudflare 챌린지 차단 대응 (T-120g)
 - [원인] v0.16.5 배포 후 운영 진단 로그 확정: `og:title 없음 body=89자 (잠시만 기다려 주세요 ... 접속 정보를 확인 중이에요 RAY_ID)` — 올리브영 Cloudflare가 **Render 미국 데이터센터 IP + Playwright 번들 Chromium(headless shell)**을 봇으로 차단. 로컬 macOS에서 번들 대신 **시스템 Chrome(channel="chrome")으로 성공**했던 실측과 일치.
 - [server] `Dockerfile` — `python -m playwright install chrome || true` 추가: 실제 Google Chrome을 사전 설치해 `channel="chrome"`로 헤드리스 봇 감지 회피. 설치 실패해도 빌드 유지(번들 Chromium 폴백). `chromium` 설치도 유지.
