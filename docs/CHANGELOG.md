@@ -1,5 +1,14 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.5 (2026-08-10) — [server] 크롤러 메모리 경량화 + fetch 진단 로그 (T-120f)
+- [원인] v0.16.4 배치 실행 후 **OOM 킬** (Render 무료 티어 512MB, 운영 실측 2026-08-10 08:55 KST). 크로미움 렌더러가 배치(10건 순차) 동안 누적 + idle 브라우저 상주 + 컨텍스트 예외 시 `ctx.close()` 누락.
+- [server] `crawlers/_browser.py` — `close_browser()` 추가 (배치 완료 후 크로미움/playwright 리소스 해제). `new_context()` 헬퍼 추가 — **이미지/미디어/폰트/광고 요청 차단**으로 메모리·대역폭 절감 (og 메타/body 텍스트 파싱엔 영향 없음). launch에 `--no-sandbox --disable-gpu --disable-dev-shm-usage`.
+- [server] `oliveyoung.py`/`naver.py` — 컨텍스트를 `new_context()`로 교체 + `try/finally`로 **`ctx.close()` 누락 방지**. 배치 크기 **10 → 3건** 축소 (512MB 예산). fetch 실패 원인을 판별하는 **진단 로그** 추가 (og:title 없음/가격 미발견 시 body 미리보기 — 상품 소멸 vs 챌린지/블록 구분).
+- [server] `worker.py` — `_run_batch` 종료 시 `close_browser()` 호출 (다음 배치 시 재생성).
+- [server] `APP_VERSION` 0.16.5.
+- [검증] pytest **75건 통과**. 리소스 차단 하 로컬 실수집: 올리브영 현재 판매상품 3건(프로티원 25,900원 등) + 네이버(의성마늘프랑크 52,800원). 소멸 상품은 "상품을 찾을 수 없어요/존재하지 않습니다"로 진단 로그 분별 확인 — **수집 0건의 원인(상품 소멸 vs 차단)을 운영 로그로 확정 가능**.
+- 문서: docs/TODO T-120f / CHANGELOG.
+
 ## v0.16.4 (2026-08-10) — [server] Render Docker 전환으로 크롤러 브라우저 설치 고정 (T-120)
 - [원인] (1) v0.16.3 런타임 자가 설치는 Render 비root에서 `--with-deps` sudo 블로킹으로 수집 불가 (운영 3회 실측). (2) v0.16.4 NixPacks(python) 블루프린트 빌드는 non-root 라 `playwright install --with-deps chromium`의 apt-get이 `su: Authentication failure`로 **빌드 자체 실패** (운영 실측, 2026-08-10).
 - [server] `server/Dockerfile` 신규 — python:3.13-slim + 크롤러 OS 의존성 apt-get + `playwright install chromium`을 **root로 사전 설치**. `COPY server/ .` + `uvicorn ... & python -m crawlers.worker` CMD.

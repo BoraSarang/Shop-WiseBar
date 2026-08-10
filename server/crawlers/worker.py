@@ -1,10 +1,11 @@
-# 크롤러 워커 (v0.16.0) — 올리브영·네이버 상품 자동 수집 (Playwright)
+# 크롤러 워커 (v0.16.5) — 올리브영·네이버 상품 자동 수집 (Playwright)
 # 실행: `python -m crawlers.worker` (uvicorn과 별도 프로세스 — 운영은 Render Start Command 통합)
 # 동작:
 #   - 30초 틱으로 매 루프 DB에서 크롤러 설정을 읽어 **주기를 실시간 반영**
 #   - run_requested=1 (POST /admin/crawler/run)이면 즉시 배치 실행 → 플래그 리셋
 #   - enabled + 마지막 배치 후 경과 ≥ interval_seconds 면 예약 배치 (주기 기본 1시간)
 #   - 배치 = oliveyoung + naver run_once 각각 호출, 결과를 crawler_runs 에 기록
+#   - 배치 완료 후 브라우저 리소스 해제 (v0.16.5 — 운영 OOM 512MB 대응)
 #   - `--once` 인자: 1배치만 수행 후 종료 (로컬/CI 검증용)
 # PLATFORM: server
 import argparse
@@ -14,6 +15,7 @@ from datetime import datetime, timezone
 
 from app.database import SessionLocal
 from app.models import CrawlerConfig, CrawlerRun
+from crawlers._browser import close_browser
 from crawlers.naver import run_once as naver_run_once
 from crawlers.oliveyoung import run_once as oliveyoung_run_once
 
@@ -43,7 +45,10 @@ def _get_config(db) -> CrawlerConfig:
 
 
 def _run_batch(db, trigger: str) -> None:
-    """전체 몰 배치 실행 + 몰별 결과를 crawler_runs 에 기록."""
+    """전체 몰 배치 실행 + 몰별 결과를 crawler_runs 에 기록.
+
+    배치 완료 후 close_browser() — 512MB OOM 방지 (v0.16.5), 다음 배치 시 재생성된다.
+    """
     for mall, runner in _RUNNERS:
         started = time.monotonic()
         try:
@@ -60,6 +65,8 @@ def _run_batch(db, trigger: str) -> None:
                               duration_ms=duration_ms, trigger=trigger))
             db.commit()
             logger.exception("배치 %s 실패", mall)
+        finally:
+            close_browser()  # 다음 몰/틱을 위해 크로미움 리소스 해제
 
 
 def _run_once_loop() -> None:

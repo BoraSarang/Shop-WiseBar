@@ -1,16 +1,19 @@
-# 네이버 크롤러 (v0.16.0) — 브랜드스토어 상품 자동 수집 (Playwright)
+# 네이버 크롤러 (v0.16.5) — 브랜드스토어 상품 자동 수집 (Playwright)
 # 2차 검증 실측 (2026-08-10, ShopWiseBar-Verify): channel="chrome" headless + Chrome UA +
 #   wait_until="networkidle" + 가격 텍스트 대기 스크롤(최대 5회) → 캡차 없이 이름+가격 수집 성공 3건
 #   (1차 PoC는 캡차 "보안 확인"으로 실패 → v0.16.0에서 아키텍처 갱신: docs/plans/PLAN_v0.16.0_naver-crawler.md)
 # 대상: brand.naver.com (브랜드스토어). smartstore.naver.com 은 후속 단계.
 # PLATFORM: server
+import logging
 import re
 import time
 from datetime import datetime, timezone
 
 from app.database import SessionLocal
 from app.models import PricePoint, Product
-from crawlers._browser import get_browser
+from crawlers._browser import new_context
+
+logger = logging.getLogger("crawler")
 
 UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -32,42 +35,46 @@ def _extract_price(text: str) -> int | None:
 def fetch(url: str) -> dict | None:
     """네이버 브랜드스토어 상품 URL → {name, price, image}. 실패/챌린지 시 None"""
     try:
-        browser = get_browser()
-        ctx = browser.new_context(user_agent=UA, locale="ko-KR")
-        page = ctx.new_page()
-        with_prices = []
+        ctx = new_context(user_agent=UA, locale="ko-KR")
         try:
-            page.goto(url, wait_until="networkidle", timeout=45000)  # 가격 지연 로드 대기 (실측)
-        except Exception:
-            page.goto(url, wait_until="domcontentloaded", timeout=30000)  # networkidle 타임아웃 폴백
-        # 가격 텍스트가 뜰 때까지 스크롤 대기
-        for _ in range(MAX_PRICE_WAIT):
-            body_text = page.evaluate("document.body ? document.body.innerText : ''")
-            price = _extract_price(body_text)
-            if price:
-                break
-            page.evaluate("window.scrollBy(0, 600)")
-            page.wait_for_timeout(1000)
-        else:
+            page = ctx.new_page()
             price = None
-        if not price:
-            ctx.close()
-            return None
+            body_text = ""
+            try:
+                page.goto(url, wait_until="networkidle", timeout=45000)  # 가격 지연 로드 대기 (실측)
+            except Exception:
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)  # networkidle 타임아웃 폴백
+            # 가격 텍스트가 뜰 때까지 스크롤 대기
+            for _ in range(MAX_PRICE_WAIT):
+                body_text = page.evaluate("document.body ? document.body.innerText : ''")
+                price = _extract_price(body_text)
+                if price:
+                    break
+                page.evaluate("window.scrollBy(0, 600)")
+                page.wait_for_timeout(1000)
+            # 챌린지(보안/캡차) 감지 — 진입이 차단되면 가격 추출을 신뢰하지 않음
+            if any(k in body_text for k in ("보안 확인", "완료하세요", "캡차")) or "captcha" in body_text.lower():
+                logger.warning("네이버 챌린지 차단 %s", url)
+                return None
+            if not price:
+                logger.warning(
+                    "네이버 가격 미발견 %s body=%d자 (%s...)", url,
+                    len(body_text), body_text[:60].replace("\n", " "),
+                )
+                return None
 
-        # 챌린지(보안/캡차) 감지 — 진입이 차단되면 가격 추출을 신뢰하지 않음
-        if any(k in body_text for k in ("보안 확인", "완료하세요", "캡차")) or "captcha" in body_text.lower():
-            ctx.close()
-            return None
-
-        name_match = page.query_selector('meta[property="og:title"]')
-        image_match = page.query_selector('meta[property="og:image"]')
-        name = name_match.get_attribute("content") if name_match else None
-        image = image_match.get_attribute("content") if image_match else None
-        ctx.close()
-    except Exception:
+            name_match = page.query_selector('meta[property="og:title"]')
+            image_match = page.query_selector('meta[property="og:image"]')
+            name = name_match.get_attribute("content") if name_match else None
+            image = image_match.get_attribute("content") if image_match else None
+        finally:
+            ctx.close()  # 컨텍스트 누적으로 인한 메모리 누적 방지 (운영 OOM 대응)
+    except Exception as exc:
+        logger.warning("네이버 fetch 실패 %s: %s", url, exc)
         return None
 
     if not name:
+        logger.warning("네이버 og:title 없음 %s", url)
         return None
 
     return {"name": name, "image": image, "price": price, "checked_at": time.time()}
@@ -99,7 +106,7 @@ def run_once() -> tuple[int, int]:
 
     attempted = 0
     success = 0
-    for product in stale[:10]:
+    for product in stale[:3]:  # 배치 3건 — Render 512MB 메모리 예산 (v0.16.5)
         # 네이버 전용: 브랜드/스마트스토어 URL만 대상
         if not (product.url and "naver.com" in product.url and "brand.naver.com" in product.url):
             continue

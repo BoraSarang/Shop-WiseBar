@@ -1,15 +1,18 @@
-# 올리브영 Playwright 크롤러 (v0.3) — HTTP 요청은 TLS 핑거프린팅으로 403 (실측) → headless Chrome으로 교체
+# 올리브영 Playwright 크롤러 (v0.16.5) — HTTP 요청은 TLS 핑거프린팅으로 403 (실측) → headless Chrome으로 교체
 # 파싱: og 태그(이름/이미지) + body 텍스트 가격 패턴
 # 실측 PoC (2026-08-03): channel="chrome" headless로 가격 39,900원 + og:title/og:image 수집 성공
 # 네이버/쿠팡은 서버 크롤링 불가(캡차/Akamai) — 익스텐션 업로드에 의존 (PRD 2장)
 # PLATFORM: server
+import logging
 import re
 import time
 from datetime import datetime, timezone
 
 from app.database import SessionLocal
 from app.models import PricePoint, Product
-from crawlers._browser import get_browser
+from crawlers._browser import new_context
+
+logger = logging.getLogger("crawler")
 
 # 실측: 기본 UA는 Cloudflare 챌린지("잠시만 기다리십시오") 차단, Chrome UA로 통과
 UA = (
@@ -25,21 +28,28 @@ def fetch_goods(goods_no: str) -> dict | None:
         f"?goodsNo={goods_no}"
     )
     try:
-        browser = get_browser()
-        ctx = browser.new_context(user_agent=UA, locale="ko-KR")
-        page = ctx.new_page()
-        page.goto(url, wait_until="domcontentloaded", timeout=30000)
-        page.wait_for_timeout(5000)  # SPA 렌더 + 봇 챌린지 통과 대기 (실측)
-        body_text = page.evaluate("document.body ? document.body.innerText : ''")
-        name_match = page.query_selector('meta[property="og:title"]')
-        image_match = page.query_selector('meta[property="og:image"]')
-        name = name_match.get_attribute("content") if name_match else None
-        image = image_match.get_attribute("content") if image_match else None
-        ctx.close()
-    except Exception:
+        ctx = new_context(user_agent=UA, locale="ko-KR")
+        try:
+            page = ctx.new_page()
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            page.wait_for_timeout(5000)  # SPA 렌더 + 봇 챌린지 통과 대기 (실측)
+            body_text = page.evaluate("document.body ? document.body.innerText : ''")
+            name_match = page.query_selector('meta[property="og:title"]')
+            image_match = page.query_selector('meta[property="og:image"]')
+            name = name_match.get_attribute("content") if name_match else None
+            image = image_match.get_attribute("content") if image_match else None
+        finally:
+            ctx.close()  # 컨텍스트 누적으로 인한 메모리 누적 방지 (운영 OOM 대응)
+    except Exception as exc:
+        logger.warning("올리브영 fetch 실패 goodsNo=%s: %s", goods_no, exc)
         return None
 
     if not name:
+        # 진단: og:title 없음 = 봇 챌린지/블록 페이지 등 가능성
+        logger.warning(
+            "올리브영 og:title 없음 goodsNo=%s body=%d자 (%s...)", goods_no,
+            len(body_text), body_text[:60].replace("\n", " "),
+        )
         return None
 
     # 가격: ① body "N,NNN원" ② tx_num ③ data-qa 할인가
@@ -52,6 +62,10 @@ def fetch_goods(goods_no: str) -> dict | None:
         if tx:
             price = int(tx.group(1).replace(",", ""))
     if not price:
+        logger.warning(
+            "올리브영 가격 미발견 goodsNo=%s body=%d자 (%s...)", goods_no,
+            len(body_text), body_text[:60].replace("\n", " "),
+        )
         return None
 
     return {
@@ -86,7 +100,7 @@ def run_once() -> tuple[int, int]:
 
     attempted = 0
     success = 0
-    for product in stale[:10]:
+    for product in stale[:3]:  # 배치 3건 — Render 512MB 메모리 예산 (v0.16.5)
         if product.id.startswith("oyrun:"):
             continue
         attempted += 1  # 실제 fetch 시도 1건
