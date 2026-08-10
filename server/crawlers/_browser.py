@@ -8,11 +8,15 @@
 import logging
 import subprocess
 import sys
+import threading
 
 logger = logging.getLogger("crawler")
 
-_pw = None
-_browser = None
+# 스레드 로컬 브라우저 상태 — Playwright sync API는 시작 스레드에서만 사용 가능.
+# uvicorn은 요청을 스레드풀로 처리하므로 전역 브라우저를 공유하면
+# "cannot switch to a different thread" 오류 발생 (운영 실측, v0.16.9 T-122d).
+# → 스레드마다 독립 브라우저를 생성/해제한다 (worker 배치 스레드·admin diag 요청 스레드).
+_thread_local = threading.local()
 
 _PY = sys.executable or "python"
 
@@ -61,36 +65,39 @@ def _install_bundled(with_deps: bool = False):
 
 
 def get_browser():
-    """브라우저 지연 생성 + 자가 설치(백업).
+    """브라우저 지연 생성 + 자가 설치(백업). 스레드 로컬 — 스레드별 독립 브라우저.
 
     우선순위: ① 시스템 Chrome(로컬 macOS) ② 번들 Chromium(Render) ③ 부재 시 download 후 재시도.
     ④ 그래도 실패하면 --with-deps 시도는 안전하게 실패시키고(블로킹 방지) launch 실패를 그대로 노출.
     """
-    global _pw, _browser
-    if _browser is not None:
-        return _browser
+    browser = getattr(_thread_local, "browser", None)
+    pw = getattr(_thread_local, "pw", None)
+    if browser is not None:
+        return browser
 
-    from playwright.sync_api import sync_playwright
+    if pw is None:
+        from playwright.sync_api import sync_playwright
 
-    _pw = sync_playwright().start()
+        pw = sync_playwright().start()
+        _thread_local.pw = pw
     try:
         # 로컬 macOS: 시스템 Chrome (실측 — 기본 UA 차단 회피에 유리)
-        _browser = _pw.chromium.launch(channel="chrome", headless=True, args=_LAUNCH_ARGS)
+        browser = pw.chromium.launch(channel="chrome", headless=True, args=_LAUNCH_ARGS)
         logger.info("브라우저: 시스템 Chrome")
     except Exception as exc:  # noqa: BLE001 — Chrome 미설치(Render 등)면 번들 Chromium 재시도
         logger.warning("시스템 Chrome 없음(%s) → Playwright 번들 Chromium 폴백", exc)
         try:
-            _browser = _pw.chromium.launch(headless=True, args=_LAUNCH_ARGS)
+            browser = pw.chromium.launch(headless=True, args=_LAUNCH_ARGS)
         except Exception:
             _install_bundled(with_deps=False)
             try:
-                _browser = _pw.chromium.launch(headless=True, args=_LAUNCH_ARGS)
+                browser = pw.chromium.launch(headless=True, args=_LAUNCH_ARGS)
             except Exception as final_exc:  # noqa: BLE001
                 # OS deps 부족이 원인일 수 있으나 root가 아니면 전용 설치가 불가.
                 # 블로킹(600s) 대신 짧게 실패시키고, 설치 처방을 로그로 안내한다.
                 _install_bundled(with_deps=True)
                 try:
-                    _browser = _pw.chromium.launch(headless=True, args=_LAUNCH_ARGS)
+                    browser = pw.chromium.launch(headless=True, args=_LAUNCH_ARGS)
                 except Exception:
                     logger.error(
                         "번들 Chromium launch 실패: %s — Render 'Build Command'에 "
@@ -99,25 +106,28 @@ def get_browser():
                     )
                     raise
         logger.info("브라우저: Playwright 번들 Chromium")
-    return _browser
+    _thread_local.browser = browser
+    return browser
 
 
 def close_browser():
-    """브라우저/Playwright 리소스 해제 — 배치 완료 후 호출해 512MB OOM(운영 실측) 방지."""
-    global _pw, _browser
-    if _browser is not None:
+    """현재 스레드의 브라우저/Playwright 리소스 해제 — 배치/진단 완료 후 호출해
+    512MB OOM(운영 실측) 및 스레드 전환 오류 방지."""
+    browser = getattr(_thread_local, "browser", None)
+    pw = getattr(_thread_local, "pw", None)
+    if browser is not None:
         try:
-            _browser.close()
+            browser.close()
         except Exception:  # noqa: BLE001 — 해제 실패는 무시 (다음 배치에서 재생성)
             logger.warning("브라우저 종료 중 예외 (무시)", exc_info=True)
-        _browser = None
-    if _pw is not None:
+        _thread_local.browser = None
+    if pw is not None:
         try:
-            _pw.stop()
+            pw.stop()
         except Exception:  # noqa: BLE001
             logger.warning("playwright 종료 중 예외 (무시)", exc_info=True)
-        _pw = None
-    logger.info("브라우저 리소스 해제 완료")
+        _thread_local.pw = None
+    logger.info("브라우저 리소스 해제 완료 (스레드 %s)", threading.get_ident())
 
 
 def new_context(user_agent: str, locale: str = "ko-KR"):
