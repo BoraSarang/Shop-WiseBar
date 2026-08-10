@@ -1,11 +1,12 @@
 # 똑바(Shop WiseBar) 변경 이력
 
-## v0.16.12 (2026-08-10) — [server] 크롤러 워커를 Render 별도 worker 서비스로 분리 — /health 30초 지연·재시작 루프 근본 해결 (T-123)
-> 운영 실측: 배치 실행 중 `/health`가 11.4초→31.0초로 지연되며 Render 헬스 체크(5초) 실패 → 인스턴스 강제 재시작 반복 (10:47~10:48 UTC). 근본 원인은 Dockerfile CMD가 **같은 컨테이너**에서 uvicorn + worker(Playwright Chrome)를 `&`로 동시 실행해, Chrome이 512MB를 압박하면 컨테이너 전체 = /health 가 swap/지연되는 구조였음.
-- [원인] `server/Dockerfile` CMD — `uvicorn ... & python -m crawlers.worker`. 같은 컨테이너라 web의 /health가 렌더러 메모리 압박을 그대로 받음.
-- [fix-server] `Dockerfile` CMD → **uvicorn 단독**. `render.yaml` → **web + worker 두 서비스** 정의 (worker는 `command: python -m crawlers.worker`, healthCheckPath 없음). web은 Chrome 메모리와 완전 격리 → `/health` 항상 빠름, worker OOM 시에도 web 보호.
-- [검증] 로컬 `python -m crawlers.worker --once` — oliveyoung 2건 수집(19.3s), naver 0건, 정상. **B000000231506(뷰앤디 넥세라) 크롤링 성공** — v0.16.11 AB 필터와 일관.
-- [배포] Render 대시보드에서 render.yaml Apply(블루프린트 재동기화) 또는 worker 서비스 수동 생성 필요 — web 재배포만으로는 서비스 추가가 안 됨.
+## v0.16.12 (2026-08-10) — [server] 크롤러 워커 배치 일시 정지 + 재개 방법 2종 준비 (T-123)
+> 운영 실측: 배치 실행 중 `/health` 11.4→31.0초 지연 → Render 헬스 체크(5s) 실패 → 재시작 루프. 근본 원인은 단일 512MB 컨테이너에 uvicorn+Playwright(Chrome)를 같이 돌려 Chrome이 메모리를 압박하는 구조였음. **일시 정지** 후 재개 방법 2가지(① Render worker $7/월, ② 로컬 macOS 크롤러 무료)를 준비.
+- [상태] 운영 `crawler_config.enabled=false` 적용 완료 (API 재조회 false 확정). 배치 미동작 → Playwright 미기동 → `/health` 0.3~0.8초 안정.
+- [준비①] `render.yaml` — web은 `command`로 **uvicorn 단독**(Chrome 격리) + `shop-wisebar-worker` 서비스 정의($7/월, Blueprint Sync로 생성) — **chatRefresh 전까지 미활성**.
+- [준비②] `scripts/run-local-crawler.sh` + `scripts/com.shopwisebar.crawler.plist` — 로컬 macOS 무료 크롤러 (launchd 상시 등록, Playwright 로컬 Chrome 사용). `.env`(server/, gitignore)에 DATABASE_URL 실측 입력.
+- [검증] `./scripts/run-local-crawler.sh --once` — oliveyoung 2건 수집(19.0s), **B000000258149(바디핌, B+12 필터) 포함 성공**, naver 0건. Render web과 독립임 확인.
+- [주의] ①과 ②를 동시에 켜면 배치 2회 중복 — **한 가지만 활성화**. 재개 시 사용자가 `PUT /admin/crawler/config {"enabled":true}` 후 worker 구동 필요.
 - 문서: PLAN_v0.16.12_server.md.
 
 ## v0.16.11 (2026-08-10) — [extension] 올리브영 B+12자리 goodsNo 누락 수정 (기획세트 등)

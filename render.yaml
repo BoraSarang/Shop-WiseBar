@@ -18,6 +18,8 @@ services:
     dockerfilePath: ./server/Dockerfile
     dockerContext: .
     healthCheckPath: /health
+    # v0.16.12 — web은 uvicorn 단독 (worker 미포함) — Chrome 메모리와 격리, /health 안정 유지.
+    command: sh -c 'uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}'
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -27,6 +29,29 @@ services:
       - key: CORS_ORIGINS
         value: chrome-extension://ogbofhjdiiodafcbbowjdniaikapebhe,https://borasarang.github.io
 
-  # v0.16.12 (T-123, 롤백) — 단일 컨테이너 유지. 크롤러 배치는 일시 정지(crawler_config.enabled=false).
-  #   worker 프로세스는 컨테이너와 함께 떠있지만 enabled=false면 Playwright를 안 띄우므로,
-  #   메모리 압박·/health 지연·재시작 루프 없음. 이후 근본 해결 전환 전까지 유지.
+  # v0.16.12 (T-123) — 크롤러 워커 배치 정지(일시): crawler_config.enabled=false (운영 반영 완료).
+  #   두 가지 재개 방법을 모두 준비해 두었음 — 활성화는 오직 한 가지만 선택할 것 (중복 구동 금지):
+  #
+  #   ① Render worker 서비스 (유료 $7/월): 아래 worker 서비스 정의 사용
+  #      - 위 web은 command로 uvicorn 단독 실행(worker 미포함) → Chrome 격리 → /health 항상 빠름
+  #      - Render Dashboard → Blueprint Sync 시 shop-wisebar-worker 자동 생성
+  #      - 생성 후 PUT /admin/crawler/config {enabled:true} 로 재개
+  #
+  #   ② 로컬 macOS 크롤러 (무료): scripts/run-local-crawler.sh + com.shopwisebar.crawler.plist
+  #      - 이 맥에서 Playwright(로컬 Chrome)로 배치 수행 — 이 맥이 켜져 있어야 함
+  #      - launchctl load 후 PUT /admin/crawler/config {enabled:true}
+  #
+  #   ※ ①과 ②를 동시에 켜면 배치가 2번 돌 수 있음. 반드시 한 가지만 활성화할 것.
+
+  - type: worker
+    name: shop-wisebar-worker
+    runtime: docker
+    plan: free
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    command: python -m crawlers.worker
+    healthCheckPath: ""
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+        comment: web 서비스와 동일한 Neon 연결 문자열

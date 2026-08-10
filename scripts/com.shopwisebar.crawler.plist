@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>Label</key>
+        <string>com.shopwisebar.crawler</string>
+        <key>ProgramArguments</key>
+        <array>
+                <string>/bin/bash</string>
+                <string>/Users/lee/Documents/Apps/Shop WiseBar/scripts/run-local-crawler.sh</string>
+        </array>
+        <key>WorkingDirectory</key>
+        <string>/Users/lee/Documents/Apps/Shop WiseBar/server</string>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>KeepAlive</key>
+        <true/>
+        <key>StandardOutPath</key>
+        <string>/tmp/shopwisebar-crawler.log</string>
+        <key>StandardErrorPath</key>
+        <string>/tmp/shopwisebar-crawler.err.log</string>
+</dict>
+</plist>
