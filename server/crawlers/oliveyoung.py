@@ -63,7 +63,7 @@ def fetch_goods(goods_no: str) -> dict | None:
             ctx.close()  # 컨텍스트 누적으로 인한 메모리 누적 방지 (운영 OOM 대응)
     except Exception as exc:
         logger.warning("올리브영 fetch 실패 goodsNo=%s: %s", goods_no, exc)
-        return {"status": None, "error": f"브라우저 오류: {type(exc).__name__}"}
+        return {"status": None, "error": f"브라우저 오류: {type(exc).__name__}: {exc}"}
 
     if not name:
         # 진단: og:title 없음 = 봇 챌린지 미해결/블록 페이지 등
@@ -141,7 +141,8 @@ def fetch_goods_diag(goods_no: str) -> dict:
         finally:
             ctx.close()
     except Exception as exc:
-        return {"goods_no": goods_no, "status": None, "error": f"브라우저 오류: {type(exc).__name__}"}
+        return {"goods_no": goods_no, "status": None,
+                "error": f"브라우저 오류: {type(exc).__name__}: {exc}"}
 
     if og:
         name = og
