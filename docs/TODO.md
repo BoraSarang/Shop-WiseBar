@@ -2,15 +2,15 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
-## T-121 — 크롤러 이력 3상태(성공/실패/상품없음) + 실패 사유 (v0.16.8) — 🔵 진행 (2026-08-10)
+## T-121 — 크롤러 이력 3상태(성공/실패/상품없음) + 실패 사유 (v0.16.8) — ✅ 완료 (2026-08-10)
 > 사용자 요구: 크롤러 응답이 성공/실패만이 아니라 **성공/실패/상품 없음 3상태**여야 하며, 실패면 **실패 사유**를 알고 싶어 함. 현재는 크롤러가 내부적으로 ok/gone/None을 구분하지만 `run_once`가 (attempted, success) 2수로 합산해 gone을 실패로 퉁치고, crawler_runs에 사유도 없음. 상세: `docs/plans/PLAN_v0.16.8_crawler-status.md`
-- [ ] **T-121a** 서버: `CrawlerRun.gone`(default 0) + `CrawlerRun.error`(nullable text) 모델 + `main.py _ensure_columns` 마이그레이션
-- [ ] **T-121b** 서버: oliveyoung/naver `run_once` → `(attempted, success, gone, error)` 반환 (fetch None 시 사유 수집)
-- [ ] **T-121c** 서버: `worker._run_batch` — gone/error 저장 + 실패 시 error 기록
-- [ ] **T-121d** 서버: `admin.crawler_logs` 응답에 gone/error (+ 테스트)
-- [ ] **T-121e** macOS: `CrawlerLog` gone/error + `CrawlerView.logRow` 3상태 배지 + 실패 사유 표시
-- [ ] **T-121f** 검증: pytest 회귀 + xcodebuild + 로컬/운영 실측 (소멸 상품 gone 표시)
-- [ ] **T-121g** 문서: CHANGELOG v0.16.8 / TODO / ENDPOINTS 반영 + 커밋·push + 배포
+- [x] **T-121a** 서버: `CrawlerRun.gone`(default 0) + `CrawlerRun.error`(nullable text) 모델 + `main.py _ensure_columns` 마이그레이션
+- [x] **T-121b** 서버: oliveyoung/naver `run_once` → `(attempted, success, gone, error)` 반환 (fetch None → `{status:None, error:사유}`)
+- [x] **T-121c** 서버: `worker._run_batch` — gone/error 저장 + 실패 시 error 기록
+- [x] **T-121d** 서버: `admin.crawler_logs` 응답에 gone/error (+ 테스트 — **76건 통과**)
+- [x] **T-121e** macOS: `CrawlerLog` gone/error + `CrawlerView.logRow` 3상태 배지(`@ViewBuilder` — 다중 분기 opaque 타입 오류 수정) + 실패 사유 — **xcodebuild BUILD SUCCEEDED**
+- [x] **T-121f** 검증: pytest 76건 + xcodebuild 성공 + **운영 실측 — oliveyoung 0/3 `gone=3 failed=0` (상품없음이 실패와 구분됨)**
+- [x] **T-121g** 문서: CHANGELOG v0.16.8 / TODO / ENDPOINTS 반영 + 커밋·push(8be379c, 3cc88a7) + 배포(0.16.8 health ok)
 
 ## T-120 — 운영 크롤러 브라우저 폴백 (v0.16.3→v0.16.6) — 🔵 진행 (2026-08-10)
 > 운영 로그: oliveyoung 10건/naver 5건 전부 실패·0.9초 — Render 컨테이너에 시스템 Chrome 없어 `_get_browser()`의 `channel="chrome"` launch 즉시 실패 + `playwright`가 requirements.txt에 없어 운영 미설치(import 실패가 fetch 실패로 흡수). → Render(linux)가 Playwright 번들 Chromium으로 수집 가능하게 폴백 + 빌드 명령에 playwright 설치.

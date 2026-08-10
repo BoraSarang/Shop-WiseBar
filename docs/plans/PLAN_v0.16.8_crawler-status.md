@@ -1,6 +1,6 @@
 # PLAN_v0.16.8_crawler-status — 크롤러 이력 3상태(성공/실패/상품없음) + 실패 사유
 
-> 상태: 🔵 진행 — 2026-08-10
+> 상태: ✅ 완료 — 2026-08-10 (커밋 8be379c server / 3cc88a7 macos, 배포 0.16.8)
 > 버전: v0.16.8 (server) — macOS 매니저 크롤러 이력 행 개선
 
 ## 1. 개요
@@ -33,19 +33,19 @@
 
 ## 4. 구현 단계 (T-번호)
 
-- [ ] **T-121a** 서버: `CrawlerRun.gone`(default 0) + `CrawlerRun.error`(nullable text) 모델 + `main.py _ensure_columns` 마이그레이션
-- [ ] **T-121b** 서버: `oliveyoung.run_once`/`naver.run_once` → `(attempted, success, gone, error)` 반환 (fetch None 시 사유 수집 — 브라우저 예외 메시지/이유)
-- [ ] **T-121c** 서버: `worker._run_batch` — gone/error 저장 + 실패 시 error 기록
-- [ ] **T-121d** 서버: `admin.crawler_logs` 응답에 gone/error (+ 테스트)
-- [ ] **T-121e** macOS: `CrawlerLog` gone/error + `CrawlerView.logRow` 3상태 배지("성공"/"실패"/"상품 없음") + 실패 사유 표시
-- [ ] **T-121f** 검증: pytest 회귀 + xcodebuild + 로컬/운영 실측(소멸 상품 gone 표시)
-- [ ] **T-121g** 문서: CHANGELOG v0.16.8 / TODO / ENDPOINTS 반영 + 커밋·push + 배포
+- [x] **T-121a** 서버: `CrawlerRun.gone`(default 0) + `CrawlerRun.error`(nullable text) 모델 + `main.py _ensure_columns` 마이그레이션
+- [x] **T-121b** 서버: `oliveyoung.run_once`/`naver.run_once` → `(attempted, success, gone, error)` 반환 (fetch None 시 사유 수집 — 브라우저 예외 메시지/이유)
+- [x] **T-121c** 서버: `worker._run_batch` — gone/error 저장 + 실패 시 error 기록
+- [x] **T-121d** 서버: `admin.crawler_logs` 응답에 gone/error (+ 테스트)
+- [x] **T-121e** macOS: `CrawlerLog` gone/error + `CrawlerView.logRow` 3상태 배지("성공"/"실패"/"상품 없음") + 실패 사유 표시
+- [x] **T-121f** 검증: pytest 회귀 + xcodebuild + 로컬/운영 실측(소멸 상품 gone 표시)
+- [x] **T-121g** 문서: CHANGELOG v0.16.8 / TODO / ENDPOINTS 반영 + 커밋·push + 배포
 
 ## 5. 테스트 계획
 
-- 서버: `test_crawler.py` — run_once 4튜플 / gone·error 반영 / logs 응답 필드
-- macOS: xcodebuild 성공
-- 운영: `/admin/crawler/logs` 응답에 gone>0 (소멸 상품) 구분 확인
+- 서버: `test_crawler.py` — run_once 4튜플 / gone·error 반영 / logs 응답 필드 (76건 통과)
+- macOS: xcodebuild BUILD SUCCEEDED (사용자 콘솔) — `@ViewBuilder`로 다중 분기 opaque 타입 오류 수정
+- 운영: `/admin/crawler/logs` — **oliveyoung 0/3 `gone=3 failed=0`** (13:29 KST, 상품없음이 실패와 구분됨)
 
 ## 6. 롤백 계획
 
