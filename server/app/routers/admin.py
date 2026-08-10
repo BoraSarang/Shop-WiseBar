@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from crawlers.oliveyoung import fetch_goods_diag
 from app.database import get_db
 from app.datetimeutil import KST, kst_date
 from app.models import (
@@ -293,3 +294,45 @@ def crawler_logs(limit: int = 50, db: Session = Depends(get_db)) -> dict:
         for r in rows
     ]
     return {"logs": logs}
+
+
+@router.get("/admin/crawler/diag/products")
+def crawler_diag_products(limit: int = 200, db: Session = Depends(get_db)) -> dict:
+    """진단(T-122a): 운영 DB 상품 스테일 현황 — 어떤 상품이 배치 후보인지 확인.
+
+    배치 후보 = last_checked_at NULL 또는 60분 이상 경과 (worker run_once와 동일 기준).
+    gone/error 반복으로 count=0 고착 원인 파악용.
+    """
+    limit = max(1, min(int(limit), 500))
+    rows = db.execute(
+        select(Product).filter(Product.mall == "oliveyoung")
+        .order_by(Product.last_checked_at.asc().nulls_first())
+        .limit(limit)
+    ).scalars().all()
+    now = datetime.now(timezone.utc)
+    stale_after = 60 * 60
+    items = []
+    stale_cnt = 0
+    for p in rows:
+        lc = p.last_checked_at
+        stale = lc is None or (now - lc).total_seconds() > stale_after
+        if stale:
+            stale_cnt += 1
+        items.append({
+            "id": p.id,
+            "stale": stale,
+            "last_checked_at": lc.astimezone(KST).isoformat() if lc else None,
+            "last_price": p.last_price,
+            "name": (p.name or "")[:40],
+        })
+    return {"total": len(rows), "stale": stale_cnt, "items": items}
+
+
+@router.get("/admin/crawler/diag/fetch/{goods_no}")
+def crawler_diag_fetch(goods_no: str) -> dict:
+    """진단(T-122a): 단일 상품을 실제 크롤링해 렌더 결과를 상세 반환.
+
+    운영(미국 IP)에서 상품 페이지가 어떤 식으로 렌더되는지(body 원문/og:title) 확인해
+    gone/error 오판 여부를 판정한다. 브라우저를 띄우므로 응답까지 수십 초 소요.
+    """
+    return fetch_goods_diag(goods_no)

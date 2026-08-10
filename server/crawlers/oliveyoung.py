@@ -107,6 +107,73 @@ def fetch_goods(goods_no: str) -> dict | None:
     }
 
 
+def fetch_goods_diag(goods_no: str) -> dict:
+    """진단(T-122a): 단일 상품 렌더 결과 상세 — 미국 IP 오판 여부 확정용.
+
+    fetch_goods가 내부에서 판단한 status/price 에 더해 원본 body_text 와 og:title 을
+    반환해 "왜 gone/error 로 판정됐는지" 를 운영에서 바로 확인한다.
+    반환: {goods_no, status, error, price, name, body_len, body_preview, title}
+    """
+    url = (
+        "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do"
+        f"?goodsNo={goods_no}"
+    )
+    body_text = ""
+    name = None
+    error = None
+    status = None
+    price = None
+    try:
+        ctx = new_context(user_agent=UA, locale="ko-KR")
+        try:
+            page = ctx.new_page()
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            for _ in range(4):
+                page.wait_for_timeout(5000)
+                body_text = page.evaluate("document.body ? document.body.innerText : ''")
+                challenge = "잠시만 기다려" in body_text or "접속 정보를 확인" in body_text
+                if not challenge:
+                    break
+            name_match = page.query_selector('meta[property="og:title"]')
+            image_match = page.query_selector('meta[property="og:image"]')
+            og = name_match.get_attribute("content") if name_match else None
+            image = image_match.get_attribute("content") if image_match else None
+        finally:
+            ctx.close()
+    except Exception as exc:
+        return {"goods_no": goods_no, "status": None, "error": f"브라우저 오류: {type(exc).__name__}"}
+
+    if og:
+        name = og
+    if not name:
+        status, error = None, f"og:title 없음 body={len(body_text)}자"
+    elif name == _GONE_TITLE or "찾을 수 없" in body_text:
+        status = "gone"
+    else:
+        m = re.search(r"([0-9][0-9,]*)\s*원", body_text)
+        if m:
+            price = int(m.group(1).replace(",", ""))
+        if not price:
+            tx = re.search(r'<em class="tx_num">([0-9,]+)</em>', body_text)
+            if tx:
+                price = int(tx.group(1).replace(",", ""))
+        if not price:
+            tiny = len(body_text) < 180
+            status, error = (("gone", None) if tiny else (None, f"가격 미발견 body={len(body_text)}자"))
+        else:
+            status = "ok"
+    return {
+        "goods_no": goods_no,
+        "status": status,
+        "error": error,
+        "price": price,
+        "name": name,
+        "image": image,
+        "body_len": len(body_text),
+        "body_preview": body_text[:200].replace("\n", " "),
+    }
+
+
 def run_once() -> tuple[int, int, int, str | None]:
     """갱신 만료된 올리브영 상품 1배치 수집.
 
