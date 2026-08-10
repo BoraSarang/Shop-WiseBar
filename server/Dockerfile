@@ -32,10 +32,9 @@ RUN pip install --no-cache-dir -r requirements.txt \
 COPY server/ .
 
 EXPOSE 8000
-# v0.16.12 (T-123) — 크롤러 워커는 Render 별도 worker 서비스로 분리.
-#   단일 컨테이너에 uvicorn+worker(Playwright Chrome) 동시 실행 시 512MB를 압박해
-#   /health가 30초로 지연되고 Render 헬스 체크(5초)가 실패해 재시작 루프를 일으켰음 (운영 실측).
-#   → web 서비스는 uvicorn만 → Chrome 메모리와 완전 격리 → /health 항상 빠름.
-#   worker 서비스(같은 이미지)는 `command: python -m crawlers.worker`로 별도 시작 (render.yaml).
+# v0.16.12 (T-123, 롤백) — 단일 컨테이너로 유지. 크롤러 배치는 **일시 정지** 상태
+#   (crawler_config.enabled=false). worker 프로세스는 떠있지만 enabled일 때만 Playwright를
+#   한 배치에 띄우므로, disabled 동안은 메모리 압박 없음 → /health 지연·재시작 루프 방지.
+#   ※ 이후 근본 해결(별도 worker 서비스 $7/월 또는 로컬 크롤러) 전환 전까지 유지.
 # Render가 $PORT 주입 — 미정이면 8000 (로컬 컨테이너 테스트용)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} & python -m crawlers.worker"]

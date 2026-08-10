@@ -27,20 +27,6 @@ services:
       - key: CORS_ORIGINS
         value: chrome-extension://ogbofhjdiiodafcbbowjdniaikapebhe,https://borasarang.github.io
 
-  # v0.16.12 (T-123) — 크롤러 워커를 별도 worker 서비스로 분리.
-  #   같은 컨테이너에서 uvicorn+worker 실행 시 Playwright(Chrome)가 512MB를 압박해
-  #   /health 30초 지연 → Render 헬스 체크(5s) 실패 → 재시작 루프 (운영 실측 2026-08-10).
-  #   → web은 uvicorn만, worker는 크롤러만. worker가 OOM·지연돼도 web(/health)은 보호됨.
-  #   블루프린트 Apply 시 자동 생성됨 — 필요시 Render 대시보드에서 worker 서비스로도 생성 가능.
-  - type: worker
-    name: shop-wisebar-worker
-    runtime: docker
-    plan: free
-    dockerfilePath: ./server/Dockerfile
-    dockerContext: .
-    command: python -m crawlers.worker
-    healthCheckPath: ""
-    envVars:
-      - key: DATABASE_URL
-        sync: false
-        comment: web 서비스와 동일한 Neon 연결 문자열
+  # v0.16.12 (T-123, 롤백) — 단일 컨테이너 유지. 크롤러 배치는 일시 정지(crawler_config.enabled=false).
+  #   worker 프로세스는 컨테이너와 함께 떠있지만 enabled=false면 Playwright를 안 띄우므로,
+  #   메모리 압박·/health 지연·재시작 루프 없음. 이후 근본 해결 전환 전까지 유지.
