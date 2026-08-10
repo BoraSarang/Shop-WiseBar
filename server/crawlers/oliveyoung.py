@@ -42,12 +42,12 @@ def _open_goods_page(goods_no: str, url: str) -> tuple | None:
     try:
         page = ctx.new_page()
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
         except Exception as exc:  # noqa: BLE001 — 타임아웃 등이어도 아래 렌더 대기로 커버
             logger.warning("올리브영 goto 지연 goodsNo=%s: %s (렌더 대기 지속)", goods_no, type(exc).__name__)
         body_text = ""
-        # 챌린지 자동 해결 + SPA 렌더 대기 — 미국 IP는 해결이 느리므로 8회(40s)까지 (v0.16.9)
-        for _ in range(8):
+        # 챌린지 자동 해결 + SPA 렌더 대기 — 미국 IP는 해결이 느리지만 4회(20s)까지만 (v0.16.10, 512MB OOM 방지)
+        for _ in range(4):
             try:
                 page.wait_for_timeout(5000)
                 body_text = page.evaluate("document.body ? document.body.innerText : ''")
@@ -228,7 +228,9 @@ def run_once() -> tuple[int, int, int, str | None]:
     success = 0
     gone = 0
     errors: list[str] = []
-    for product in stale[:6]:  # 배치 6건 — v0.16.5(3건)→v0.16.9 확대: 순차·컨텍스트 1개 + 리소스차단이라 메모리 안전, 소멸 소진 2배 속도
+    for product in stale[:2]:  # 배치 2건 — Render 512MB OOM(운영 실측, 2026-08-10) 방지.
+        #   6건 순차여도 크로미움 렌더러가 배치 지속시간 만큼 생존 → 렌더러 누적 OOM.
+        #   소멸 상품 없애고 정상 13자만 있으니 2건으로 충분 (v0.16.10).
         if product.id.startswith("oyrun:"):
             continue
         attempted += 1  # 실제 fetch 시도 1건
