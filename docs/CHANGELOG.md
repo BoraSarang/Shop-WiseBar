@@ -1,5 +1,13 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.12 (2026-08-10) — [server] 크롤러 워커를 Render 별도 worker 서비스로 분리 — /health 30초 지연·재시작 루프 근본 해결 (T-123)
+> 운영 실측: 배치 실행 중 `/health`가 11.4초→31.0초로 지연되며 Render 헬스 체크(5초) 실패 → 인스턴스 강제 재시작 반복 (10:47~10:48 UTC). 근본 원인은 Dockerfile CMD가 **같은 컨테이너**에서 uvicorn + worker(Playwright Chrome)를 `&`로 동시 실행해, Chrome이 512MB를 압박하면 컨테이너 전체 = /health 가 swap/지연되는 구조였음.
+- [원인] `server/Dockerfile` CMD — `uvicorn ... & python -m crawlers.worker`. 같은 컨테이너라 web의 /health가 렌더러 메모리 압박을 그대로 받음.
+- [fix-server] `Dockerfile` CMD → **uvicorn 단독**. `render.yaml` → **web + worker 두 서비스** 정의 (worker는 `command: python -m crawlers.worker`, healthCheckPath 없음). web은 Chrome 메모리와 완전 격리 → `/health` 항상 빠름, worker OOM 시에도 web 보호.
+- [검증] 로컬 `python -m crawlers.worker --once` — oliveyoung 2건 수집(19.3s), naver 0건, 정상. **B000000231506(뷰앤디 넥세라) 크롤링 성공** — v0.16.11 AB 필터와 일관.
+- [배포] Render 대시보드에서 render.yaml Apply(블루프린트 재동기화) 또는 worker 서비스 수동 생성 필요 — web 재배포만으로는 서비스 추가가 안 됨.
+- 문서: PLAN_v0.16.12_server.md.
+
 ## v0.16.11 (2026-08-10) — [extension] 올리브영 B+12자리 goodsNo 누락 수정 (기획세트 등)
 > 배포 검증 중 발견: 운영 DB에 `B000000258149`(바디핌 EMS 리프팅컷 97,000원), `B000000231506`(뷰앤디 넥세라 178,000원) 등 **B 접두사 상품**이 extension(실제 상세페이지)으로 정상 등록돼 있는데, v0.16.10 필터가 `^[AB]\d{12}$`가 아닌 `^[A]\d{12}$`로 좁게 만들어 B 상품을 추가 등록/수집에서 누락시켰음.
 - [근거] 서버 `crawlers/oliveyoung.py` 첫머리 docstring이 이미 "goodsNo 규약: **A+12자리 또는 B+12자리(13자)**"로 명시 — 확장 필터만 A를 고정해 과잉 차단.
