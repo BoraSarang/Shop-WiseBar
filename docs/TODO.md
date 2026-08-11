@@ -2,6 +2,13 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-125 — 네이버 brand 상품 0건 버그 + Browserless 컨텍스트 레이스 수정 (v0.16.14) — ✅ 완료 (2026-08-11)
+> 재개 검증(로컬 `--once`) 중 발견 — **naver 배치가 계속 0건**인 원인 수정 + Browserless CDP 연속 상품 처리 실패 수정.
+- [x] **T-125a** `crawlers/naver.py` — 후보 쿼리에 `url LIKE '%brand.naver.com%'` 추가. 원인: null smartstore 상품이 candidates 30을 점유 → brand 상품(389건 전체 stale)이 후보에서 영원히 밀림.
+- [x] **T-125b** `crawlers/_browser.py` — Browserless는 `contexts[0]` 재사용(상품별 new_context 금지) + `close_context()` 헬퍼 신설. 원인: CDP 컨텍스트 close가 공유 클라우드 세션을 닫아 TargetClosedError.
+- [x] **T-125c** 검증: `BROWSERLESS_TOKEN` 미설정(시스템 Chrome 폴백) — oliveyoung 2건 + 네이버 3건(199000·7900·79900원) 전부 수집 (33.7s).
+- [ ] **T-125d** 상시 재개는 보류 — Browserless 무료 티어는 연속 세션·새 탭 쿼터 제한 확인. 재개 시 로컬 macOS 크롤러(무료) 또는 Browserless 유료 플랜 중 선택.
+
 ## T-124 — Browserless 연동 — 크롤러 Chrome 클라우드 이전 (v0.16.13) — ✅ 완료 (2026-08-11)
 > 사용자 요구: Render 512MB 컨테이너 안에서 Chrome이 메모리를 압박해 `/health` 지연·재시작 루프를 일으키는 근본 구조 문제를, **브라우저를 Browserless 클라우드로 이전**해 해결. Browserless Setup Assistant 분석 기반으로 **Path D(기존 Playwright 코드 재포인팅)** 선택. 상세: `docs/plans/PLAN_v0.16.13_browserless.md`
 - [x] **T-124a** `.env`(server/, gitignore)에 `BROWSERLESS_TOKEN` 실값 + `.env.example`은 키만 등록 (시크릿 커밋 금지)

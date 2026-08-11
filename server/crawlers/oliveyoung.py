@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.database import SessionLocal
 from app.models import PricePoint, Product
-from crawlers._browser import new_context
+from crawlers._browser import close_context, new_context
 
 logger = logging.getLogger("crawler")
 
@@ -61,7 +61,7 @@ def _open_goods_page(goods_no: str, url: str) -> tuple | None:
         return ctx, page, body_text
     except Exception as exc:
         try:
-            ctx.close()
+            close_context(ctx)
         except Exception:  # noqa: BLE001
             pass
         logger.warning("올리브영 페이지 열기 실패 goodsNo=%s: %s", goods_no, exc)
@@ -104,7 +104,7 @@ def fetch_goods(goods_no: str) -> dict | None:
     try:
         name, image = _read_meta(page)
     finally:
-        ctx.close()  # 컨텍스트 누적으로 인한 메모리 누적 방지 (운영 OOM 대응)
+        close_context(ctx)  # Browserless 재사용 컨텍스트는 닫지 않고 페이지만 정리 (v0.16.13)
 
     if not name:
         # 진단: og:title 없음 = 봇 챌린지 미해결/블록 페이지 등
@@ -166,7 +166,7 @@ def fetch_goods_diag(goods_no: str) -> dict:
     try:
         og, image = _read_meta(page)
     finally:
-        ctx.close()
+        close_context(ctx)
 
     name = og
     status = None

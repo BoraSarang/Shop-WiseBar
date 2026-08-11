@@ -184,19 +184,21 @@ def new_context(user_agent: str, locale: str = "ko-KR"):
     """
     browser = get_browser()
     if _is_browserless(browser):
-        # Browserless CDP(stealth)는 browser.new_context()를 새 타겟으로 지원 (v0.16.13 실측).
-        # 상품별로 컨텍스트를 새로 만들어야 처리 후 ctx.close()가 다음 상품에 영향을 주지 않는다.
-        try:
-            ctx = browser.new_context(user_agent=user_agent, locale=locale)
-        except Exception:  # noqa: BLE001 — 일부 CDP 브라우저는 기본 컨텍스트만 지원 → 재사용 폴백
-            existing = browser.contexts[0] if browser.contexts else None
-            if existing is None:
-                raise
-            ctx = existing
+        # Browserless CDP(stealth) — 컨텍스트를 새로 만들면 기존 컨텍스트 close 시 공유 클라우드가
+        # 브라우저 세션을 닫아버려 다음 상품 처리 시 TargetClosedError (v0.16.13 운영 실측).
+        # → 기본 컨텍스트 1개를 항상 재사용하고, 이전 탐색 페이지는 닫아 메모리 누적을 방지한다.
+        ctx = browser.contexts[0] if browser.contexts else None
+        if ctx is None:
+            raise RuntimeError("Browserless CDP 브라우저에 컨텍스트가 없음")
+        for page in list(ctx.pages):
             try:
-                ctx.set_extra_http_headers({"User-Agent": user_agent})
-            except Exception as ua_exc:  # noqa: BLE001 — 서드파티 미지원 시 무시
-                logger.debug("User-Agent 헤더 주입 실패(무시): %s", ua_exc)
+                page.close()
+            except Exception:  # noqa: BLE001 — 해제 실패는 무시
+                pass
+        try:
+            ctx.set_extra_http_headers({"User-Agent": user_agent})
+        except Exception as ua_exc:  # noqa: BLE001 — 서드파티 미지원 시 무시
+            logger.debug("User-Agent 헤더 주입 실패(무시): %s", ua_exc)
         _install_route_block(ctx)
         return ctx
     ctx = browser.new_context(user_agent=user_agent, locale=locale)
@@ -234,3 +236,22 @@ def _is_browserless(browser) -> bool:
         return os.environ.get(BROWSERLESS_TOKEN_ENV, "").strip() != "" and len(browser.contexts) == 1
     except Exception:  # noqa: BLE001
         return False
+
+
+def close_context(ctx):
+    """상품 처리 후 컨텍스트 정리 — 로컬은 close, Browserless는 재사용 컨텍스트 유지.
+
+    v0.16.13 (T-124): Browserless CDP 기본 컨텍스트를 close하면 공유 클라우드가 브라우저 세션을
+    함께 닫아 다음 상품에서 TargetClosedError (운영 실측). → 페이지만 닫고 컨텍스트는 남긴다.
+    """
+    try:
+        if _is_browserless(get_browser()):
+            for page in list(ctx.pages):
+                try:
+                    page.close()
+                except Exception:  # noqa: BLE001
+                    pass
+            return
+        ctx.close()
+    except Exception as exc:  # noqa: BLE001 — 정리 실패는 다음 상품을 배척하지 않도록 무시
+        logger.warning("컨텍스트 정리 중 예외 (무시): %s", exc)

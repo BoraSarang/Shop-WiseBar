@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from app.database import SessionLocal
 from app.models import PricePoint, Product
-from crawlers._browser import new_context
+from crawlers._browser import close_context, new_context
 
 logger = logging.getLogger("crawler")
 
@@ -76,7 +76,7 @@ def fetch(url: str) -> dict | None:
             name = name_match.get_attribute("content") if name_match else None
             image = image_match.get_attribute("content") if image_match else None
         finally:
-            ctx.close()  # 컨텍스트 누적으로 인한 메모리 누적 방지 (운영 OOM 대응)
+            close_context(ctx)  # Browserless 재사용 컨텍스트는 닫지 않고 페이지만 정리 (v0.16.13)
     except Exception as exc:
         logger.warning("네이버 fetch 실패 %s: %s", url, exc)
         return {"status": None, "error": f"브라우저 오류: {type(exc).__name__}"}
@@ -98,7 +98,7 @@ def run_once() -> tuple[int, int, int, str | None]:
     now = time.time()
     with SessionLocal() as db:
         candidates = db.query(Product) \
-            .filter(Product.mall == "naver") \
+            .filter(Product.mall == "naver", Product.url.like("%brand.naver.com%")) \
             .order_by(Product.last_checked_at.asc().nulls_first()) \
             .limit(10 * 3) \
             .all()

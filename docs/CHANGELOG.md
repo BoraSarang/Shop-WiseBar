@@ -1,5 +1,13 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.14 (2026-08-11) — [server] 네이버 브랜드상품 0건 버그 + Browserless 컨텍스트 레이스 수정 (T-125)
+> 재개 검증(로컬 `--once`) 중 발견한 2건 수정. 로컬 시스템 Chrome 폴백으로 oliveyoung 2건 + 네이버 brand 상품 3건 수집 성공.
+- [fix-server] `crawlers/naver.py` — 후보 쿼리에 `url LIKE '%brand.naver.com%'` 필터 추가. **원인**: mall='naver' 후보 30건을 `last_checked_at` 오름차순으로 가져오는데 null(미확인) smartstore 광고성 상품이 30을 점유 → brand 상품(389건 전체 stale)이 영원히 후보에 못 들어가 naver 배치가 계속 0건이었음.
+- [fix-server] `crawlers/_browser.py` — `new_context()`: Browserless CDP에서 상품별 `browser.new_context()`를 만들지 않고 **기본 컨텍스트(`contexts[0]`)를 재사용** + 이전 페이지 close. `close_context()` 헬퍼 신설 — Browserless는 페이지만 정리(컨텍스트 유지), 로컬은 `ctx.close()`. **원인**: CDP 재사용 컨텍스트를 close하면 공유 클라우드가 브라우저 세션을 함께 닫아 다음 상품에서 `TargetClosedError`/`Failed to open a new tab`.
+- [주의] Browserless 무료 티어(production-sfo 공유)는 **연속 세션·새 탭 쿼터 제한**이 있어 2번째 배치부터 실패하는 것을 확인 — 상시 운영은 로컬 macOS 크롤러(무료, BROWSERLESS_TOKEN 미설정 → 시스템 Chrome) 또는 Browserless 유료 플랜 필요.
+- [검증] `BROWSERLESS_TOKEN` 설정 상태: oliveyoung 2건 성공 후 2차 배치부터 세션 쿼터 실패. 토큰 미설정(폴백): oliveyoung 2건 + 네이버 3건(199000·7900·79900원) 전부 수집 (33.7s).
+- 문서: PLAN_v0.16.13_browserless.md 갱신, TODO(T-125), session 로그, CHANGELOG.
+
 ## v0.16.13 (2026-08-11) — [server] Browserless 연동 — 크롤러 Chrome을 클라우드로 이전 (T-124)
 > 근본 구조 해결: Render 512MB 컨테이너 안에서 Playwright Chrome이 메모리를 압박해 `/health` 지연·재시작 루프를 일으키던 문제를, **브라우저를 Browserless(production-sfo.browserless.io)로 이전**해 컨테이너에서 Chrome을 완전히 제거.
 - [방식] Browserless Setup Assistant 분석 기반 — **Path D(기존 Playwright 코드 재포인팅)** 선택, `launch()` → `connect_over_cdp()` 최소 변경. BAP/재작성 없음.
