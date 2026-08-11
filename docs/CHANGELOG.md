@@ -6,6 +6,7 @@
 - [fix-server] `crawlers/_browser.py` — `new_context()`: Browserless CDP에서 상품별 `browser.new_context()`를 만들지 않고 **기본 컨텍스트(`contexts[0]`)를 재사용** + 이전 페이지 close. `close_context()` 헬퍼 신설 — Browserless는 페이지만 정리(컨텍스트 유지), 로컬은 `ctx.close()`. **원인**: CDP 재사용 컨텍스트를 close하면 공유 클라우드가 브라우저 세션을 함께 닫아 다음 상품에서 `TargetClosedError`/`Failed to open a new tab`.
 - [주의] Browserless 무료 티어(production-sfo 공유)는 **연속 세션·새 탭 쿼터 제한**이 있어 2번째 배치부터 실패하는 것을 확인 — 상시 운영은 로컬 macOS 크롤러(무료, BROWSERLESS_TOKEN 미설정 → 시스템 Chrome) 또는 Browserless 유료 플랜 필요.
 - [검증] `BROWSERLESS_TOKEN` 설정 상태: oliveyoung 2건 성공 후 2차 배치부터 세션 쿼터 실패. 토큰 미설정(폴백): oliveyoung 2건 + 네이버 3건(199000·7900·79900원) 전부 수집 (33.7s).
+- [fix-server] `app/config.py` — `APP_VERSION` 0.16.9→**0.16.14** (v0.16.13 배포 시 미갱신으로 /health가 구버전 노출 — 이번 배포에서 정상화).
 - 문서: PLAN_v0.16.13_browserless.md 갱신, TODO(T-125), session 로그, CHANGELOG.
 
 ## v0.16.13 (2026-08-11) — [server] Browserless 연동 — 크롤러 Chrome을 클라우드로 이전 (T-124)
