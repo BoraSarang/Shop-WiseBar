@@ -1,5 +1,17 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.13 (2026-08-11) — [server] Browserless 연동 — 크롤러 Chrome을 클라우드로 이전 (T-124)
+> 근본 구조 해결: Render 512MB 컨테이너 안에서 Playwright Chrome이 메모리를 압박해 `/health` 지연·재시작 루프를 일으키던 문제를, **브라우저를 Browserless(production-sfo.browserless.io)로 이전**해 컨테이너에서 Chrome을 완전히 제거.
+- [방식] Browserless Setup Assistant 분석 기반 — **Path D(기존 Playwright 코드 재포인팅)** 선택, `launch()` → `connect_over_cdp()` 최소 변경. BAP/재작성 없음.
+- [fix-server] `crawlers/_browser.py` — `BROWSERLESS_TOKEN` 설정 시 `wss://production-sfo.browserless.io/chromium/stealth?token=...` 로 CDP 연결.
+  - **stealth 경로** 사용: Browserless가 자동화 플래그·지문을 CDP 레벨에서 조정 → 올리브영 Cloudflare 챌린지 우회 (운영 실측, 첫 시도 non-stealth는 90자 챌린지 응답).
+  - `new_context()` — CDP 브라우저는 `browser.new_context(user_agent, locale)`을 새 타겟으로 지원 → 상품별 컨텍스트 분리. 일부 CDP가 미지원 시 `contexts[0]` 재사용 폴백 + `set_extra_http_headers` UA 주입.
+  - token 미설정 시 **기존 로컬 launch 폴백 유지** (회귀 없음).
+- [검증] 로컬 `--once`: Browserless stealth로 oliveyoung **2건 수집 성공** (챌린지 우회, 프로세스-미실행). token 미설정 폴백 → 시스템 Chrome 정상. Render 컨테이너 메모리 부담 0.
+- [배포] Render web/worker 서비스 `Environment`에 `BROWSERLESS_TOKEN` 추가 필요(대시보드, git 무노출). `.env`(로컬, gitignore)에만 실값 — `.env.example`은 키만.
+- [보안] token은 커밋·로그·스크린샷에 노출 금지. MCP 확장 시 `.cursor/mcp.json` 등 gitignore 확인 후 진행.
+- 문서: PLAN_v0.16.13_browserless.md, TODO(T-124), session 로그, CHANGELOG.
+
 ## v0.16.12 (2026-08-10) — [server] 크롤러 워커 배치 일시 정지 + 재개 방법 2종 준비 (T-123)
 > 운영 실측: 배치 실행 중 `/health` 11.4→31.0초 지연 → Render 헬스 체크(5s) 실패 → 재시작 루프. 근본 원인은 단일 512MB 컨테이너에 uvicorn+Playwright(Chrome)를 같이 돌려 Chrome이 메모리를 압박하는 구조였음. **일시 정지** 후 재개 방법 2가지(① Render worker $7/월, ② 로컬 macOS 크롤러 무료)를 준비.
 - [상태] 운영 `crawler_config.enabled=false` 적용 완료 (API 재조회 false 확정). 배치 미동작 → Playwright 미기동 → `/health` 0.3~0.8초 안정.

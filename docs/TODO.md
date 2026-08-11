@@ -2,6 +2,15 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-124 — Browserless 연동 — 크롤러 Chrome 클라우드 이전 (v0.16.13) — ✅ 완료 (2026-08-11)
+> 사용자 요구: Render 512MB 컨테이너 안에서 Chrome이 메모리를 압박해 `/health` 지연·재시작 루프를 일으키는 근본 구조 문제를, **브라우저를 Browserless 클라우드로 이전**해 해결. Browserless Setup Assistant 분석 기반으로 **Path D(기존 Playwright 코드 재포인팅)** 선택. 상세: `docs/plans/PLAN_v0.16.13_browserless.md`
+- [x] **T-124a** `.env`(server/, gitignore)에 `BROWSERLESS_TOKEN` 실값 + `.env.example`은 키만 등록 (시크릿 커밋 금지)
+- [x] **T-124b** `crawlers/_browser.py` — `BROWSERLESS_TOKEN` 설정 시 `connect_over_cdp(wss://production-sfo.browserless.io/chromium/stealth)` 분기 + 실패 시 기존 로컬 launch 폴백
+- [x] **T-124c** `new_context()` — CDP 브라우저는 `browser.new_context(user_agent, locale)` 우선, 미지원 시 `contexts[0]` 재사용 + `set_extra_http_headers` UA 주입 폴백
+- [x] **T-124d** 검증: `--once` — **oliveyoung 2건 수집 성공(Browserless stealth로 챌린지 우회)**, naver 0건, token 미설정 폴백 → 시스템 Chrome 정상 (회귀 없음)
+- [x] **T-124e** Render web/worker `Environment`에 `BROWSERLESS_TOKEN` 추가 안내 (대시보드, git 무노출)
+- [x] **T-124f** 문서: CHANGELOG v0.16.13 / TODO / PLAN_v0.16.13 / session 로그 반영
+
 ## T-121 — 크롤러 이력 3상태(성공/실패/상품없음) + 실패 사유 (v0.16.8) — ✅ 완료 (2026-08-10)
 > 사용자 요구: 크롤러 응답이 성공/실패만이 아니라 **성공/실패/상품 없음 3상태**여야 하며, 실패면 **실패 사유**를 알고 싶어 함. 현재는 크롤러가 내부적으로 ok/gone/None을 구분하지만 `run_once`가 (attempted, success) 2수로 합산해 gone을 실패로 퉁치고, crawler_runs에 사유도 없음. 상세: `docs/plans/PLAN_v0.16.8_crawler-status.md`
 - [x] **T-121a** 서버: `CrawlerRun.gone`(default 0) + `CrawlerRun.error`(nullable text) 모델 + `main.py _ensure_columns` 마이그레이션
