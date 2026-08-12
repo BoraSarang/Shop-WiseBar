@@ -2,6 +2,19 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
+## T-126 — 똑바 매니저 관리 고도화 (P0/P1/P2) (v0.16.15) — 🔵 진행 (2026-08-12)
+> 사용자 승인: 매니저 관리 항목 4개 축 전부 선택. P0 수집상품 인사이트+서비스 헬스 → P1 사용자 활동 → P2 가격 동향.
+> 상세: `docs/plans/PLAN_v0.16.15_manager.md`
+- [x] **T-126a** PLAN_v0.16.15 작성 + TODO 등록 (문서 우선)
+- [x] **T-126b** P0 서버: `/admin/health` + `/admin/crawler/summary` (+ tests)
+- [x] **T-126c** P0 서버: `/admin/products/top` + `/admin/products/{id}` (+ tests)
+- [x] **T-126d** P0 macOS: HealthView + Insight/Stats 확장 + APIClient/AppModel
+- [x] **T-126e** P1 서버: 스키마+heartbeat+`/admin/users` (+ tests)
+- [x] **T-126f** P1 확장: heartbeat 병합 + 배치 device_id 포함
+- [x] **T-126g** P1 macOS: 사용자 화면
+- [x] **T-126h** P2 서버: `/admin/price-compare` (+ tests) + macOS 인사이트 확장
+- [ ] **T-126i** 검증: pytest 전체 + xcodebuild + 운영 실데이터 + 배포(0.16.15)
+
 ## T-125 — 네이버 brand 상품 0건 버그 + Browserless 컨텍스트 레이스 수정 (v0.16.14) — ✅ 완료 (2026-08-11)
 > 재개 검증(로컬 `--once`) 중 발견 — **naver 배치가 계속 0건**인 원인 수정 + Browserless CDP 연속 상품 처리 실패 수정.
 - [x] **T-125a** `crawlers/naver.py` — 후보 쿼리에 `url LIKE '%brand.naver.com%'` 추가. 원인: null smartstore 상품이 candidates 30을 점유 → brand 상품(389건 전체 stale)이 후보에서 영원히 밀림.

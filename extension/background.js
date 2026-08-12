@@ -246,7 +246,7 @@ async function sendBatchChunk(chunk, parentId) {
   clearTimeout(warmTimer);
   const res = await api("/products/batch", {
     method: "POST",
-    body: JSON.stringify({ items: chunk }),
+    body: JSON.stringify({ items: chunk, device_id: await getDeviceId() }),
     timeoutMs: 90000,   // Render 콜드스타트 최대 ~60s + 재시도 대기 여유 (C)
     maxAttempts: 2,     // 멱등 upsert라 재시도 허용 (B)
   });
@@ -397,6 +397,11 @@ async function pollAlerts() {
   await flushPendingRelated();
 
   const deviceId = await getDeviceId();
+  // v0.16.15 (T-126) — 활동 하트비트 (last_seen_at 갱신). 실패해도 폴링은 계속.
+  try {
+    await api(`/devices/${encodeURIComponent(deviceId)}/heartbeat`, { method: "POST" });
+  } catch { /* heartbeat 실패는 무해 */ }
+
   const { lastAlertAt } = await chrome.storage.local.get("lastAlertAt");
   const since = lastAlertAt ? `?since=${encodeURIComponent(lastAlertAt)}` : "";
 

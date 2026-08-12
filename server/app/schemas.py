@@ -43,10 +43,12 @@ class BatchItemIn(BaseModel):
     image: str | None = None
     source: str | None = Field(None, max_length=16)
     price: int | None = Field(None, gt=0)
+    device_id: str | None = Field(None, max_length=36)  # v0.16.15 (T-126) — 수집 출처 기기 (사용자 활동 추적)
 
 
 class ProductBatchIn(BaseModel):
     items: list[BatchItemIn] = Field(..., max_length=50)
+    device_id: str | None = Field(None, max_length=36)  # v0.16.15 (T-126) — 수집 기기 (항목별 미지정 시 주입)
 
 
 class ProductOut(BaseModel):

@@ -1,8 +1,10 @@
 # 기기 라우터 — 익명 기기ID 발급 (회원가입 없음, Fallcent와 동일 방식)
+# v0.16.15 (T-126): POST /devices/{id}/heartbeat — 활동 시각 기록 (P1 사용자 추적)
 # PLATFORM: server
 import uuid
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -22,3 +24,16 @@ def create_device(
         db.add(Device(id=device_id))
         db.commit()
     return DeviceOut(device_id=device_id)
+
+
+@router.post("/devices/{device_id}/heartbeat")
+def device_heartbeat(device_id: str, db: Session = Depends(get_db)) -> dict:
+    """활동 하트비트 — 기기의 last_seen_at을 갱신 (확장 5분 폴링이 매번 호출).
+    미등록 기기면 자동 등록하고, 이미 등록됐으면 last_seen_at만 갱신."""
+    device = db.get(Device, device_id)
+    if device is None:
+        device = Device(id=device_id)
+        db.add(device)
+    device.last_seen_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"device_id": device_id, "status": "ok", "last_seen_at": device.last_seen_at.isoformat()}

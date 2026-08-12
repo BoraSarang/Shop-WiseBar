@@ -20,6 +20,7 @@ class Device(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)  # 익명 UUID
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)  # v0.16.15 (T-126) — 최근 활동
 
     watches: Mapped[list["Watch"]] = relationship(back_populates="device", cascade="all, delete-orphan")
 
@@ -51,6 +52,7 @@ class PricePoint(Base):
     variant: Mapped[str | None] = mapped_column(String(128), nullable=True)  # 쿠팡 옵션(itemId) 등 — 옵션별 가격 분리
     price: Mapped[int] = mapped_column(Integer)
     source: Mapped[str] = mapped_column(String(16), default="client")  # client | crawler
+    device_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)  # v0.16.15 (T-126) — 수집 출처 기기
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     product: Mapped[Product] = relationship(back_populates="price_points")

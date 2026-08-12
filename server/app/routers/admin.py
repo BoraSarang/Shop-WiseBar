@@ -1,16 +1,18 @@
 # 관리자(Admin) 조회 라우터 — macOS ShopWiseBarManager 앱용 집계 엔드포인트 (v0.15.0, T-115a)
 # v0.16.0 (T-117): 크롤러 제어/모니터링 엔드포인트 추가 (config/run/logs)
+# v0.16.15 (T-126): P0 관리 고도화 — /admin/health, /admin/crawler/summary, /admin/products/top, /admin/products/{id}
 # 읽기 전용 + 크롤러 제어. 로컬/운영 스키마 공통(SQLAlchemy 모델) 기준 집계만 수행.
 # PLATFORM: server
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from crawlers.oliveyoung import fetch_goods_diag
-from app.database import get_db
+from app.config import APP_VERSION
+from app.database import engine, get_db
 from app.datetimeutil import KST, kst_date
 from app.models import (
     Alert,
@@ -23,6 +25,10 @@ from app.models import (
     ProductRelation,
     Watch,
 )
+from app.routers.products import _match_alternatives
+
+# v0.16.15 (T-126) — 서버 시작 시각 (프로세스 기준, UTC)
+_SERVER_STARTED_AT = datetime.now(timezone.utc).isoformat()
 
 router = APIRouter()
 
@@ -206,6 +212,196 @@ def admin_insight(days: int = 30, db: Session = Depends(get_db)) -> dict:
     }
 
 
+# ── P0 관리 고도화 (v0.16.15, T-126) ─────────────────────────────────────────
+
+
+@router.get("/admin/health")
+def admin_health(db: Session = Depends(get_db)) -> dict:
+    """서버 온라인 상태 — 버전·시작 시각·DB 연결·최근 수집/크롤러 시각 (KST)."""
+    db_ok = True
+    db_error = None
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:  # noqa: BLE001
+        db_ok = False
+        db_error = str(exc)
+    last_capture = db.execute(select(func.max(PricePoint.captured_at))).scalar()
+    last_run = db.execute(select(func.max(CrawlerRun.run_at))).scalar()
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "version": APP_VERSION,
+        "started_at": _SERVER_STARTED_AT,
+        "db": {"ok": db_ok, "error": db_error},
+        "last_capture_at": last_capture.astimezone(KST).isoformat() if last_capture else None,
+        "last_crawler_run_at": last_run.astimezone(KST).isoformat() if last_run else None,
+    }
+
+
+@router.get("/admin/crawler/summary")
+def crawler_summary(hours: int = 24, db: Session = Depends(get_db)) -> dict:
+    """크롤러 요약 — 최근 N시간 배치 성공률·실패·상품없음·평균 소요 + 최근 실행 + 스테일 상품 수."""
+    hours = max(1, min(int(hours), 168))
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    runs = db.execute(
+        select(CrawlerRun).where(CrawlerRun.run_at >= since).order_by(CrawlerRun.run_at.desc())
+    ).scalars().all()
+    last_24h = {
+        "runs": len(runs),
+        "success": sum(1 for r in runs if r.success),
+        "failed": sum(1 for r in runs if not r.success),
+        "gone": sum(r.gone for r in runs),
+        "count": sum(r.count for r in runs),
+        "avg_duration_ms": round(sum(r.duration_ms for r in runs) / len(runs)) if runs else 0,
+    }
+    last_runs = [
+        {
+            "mall": r.mall,
+            "success": r.success,
+            "count": r.count,
+            "gone": r.gone,
+            "error": r.error,
+            "duration_ms": r.duration_ms,
+            "trigger": r.trigger,
+            "run_at": r.run_at.astimezone(KST).isoformat(),
+        }
+        for r in runs[:20]
+    ]
+    # 스테일 상품 수 — 배치 후보 = last_checked_at NULL 또는 N분 경과 (worker run_once 기준)
+    now = datetime.now(timezone.utc)
+    stale_after = 60 * 60
+    cand = db.execute(select(Product).where(Product.mall.in_(["oliveyoung", "naver"]))).scalars().all()
+    stale = sum(1 for p in cand if p.last_checked_at is None or (now - p.last_checked_at).total_seconds() > stale_after)
+    return {"hours": hours, "last_24h": last_24h, "last_runs": last_runs, "stale_products": stale}
+
+
+@router.get("/admin/products/top")
+def admin_products_top(limit: int = 20, db: Session = Depends(get_db)) -> dict:
+    """수집 상품 인사이트 — 많이 수집된 상품(가격포인트+찜 TOP) + 최근 수집 + 품절/복귀.
+
+    - most_collected: price_points 건수 내림차순 (동률 시 찜 수 보조)
+    - recent: last_checked_at 최신순
+    - sold_out: 품절 중 최신순
+    - restocked: 품절→복귀 최신순
+    """
+    limit = max(1, min(int(limit), 100))
+
+    # 가격포인트 건수
+    pc = dict(db.execute(
+        select(PricePoint.product_id, func.count(PricePoint.id))
+        .group_by(PricePoint.product_id)
+    ).all())
+    # 찜 수
+    wc = dict(db.execute(
+        select(Watch.product_id, func.count(Watch.id)).group_by(Watch.product_id)
+    ).all())
+
+    def item_rows(ids: list[str]) -> list[dict]:
+        if not ids:
+            return []
+        prods = {p.id: p for p in db.execute(select(Product).where(Product.id.in_(ids))).scalars()}
+        out = []
+        for pid in ids:
+            p = prods.get(pid)
+            if p is None:
+                continue
+            out.append({
+                "product_id": pid,
+                "mall": p.mall,
+                "name": p.name,
+                "url": p.url,
+                "image": p.image,
+                "last_price": p.last_price,
+                "sold_out_at": p.sold_out_at.astimezone(KST).isoformat() if p.sold_out_at else None,
+                "back_on_sale_at": p.back_on_sale_at.astimezone(KST).isoformat() if p.back_on_sale_at else None,
+                "last_checked_at": p.last_checked_at.astimezone(KST).isoformat() if p.last_checked_at else None,
+                "price_count": pc.get(pid, 0),
+                "watch_count": wc.get(pid, 0),
+            })
+        return out
+
+    # ① 많이 수집된 상품 — 가격포인트 내림차순, 동률 시 찜 수
+    most = sorted(pc.keys(), key=lambda pid: (pc[pid], wc.get(pid, 0)), reverse=True)[:limit]
+    # ② 최근 수집
+    recent = [
+        r[0] for r in db.execute(
+            select(Product.id).where(Product.last_checked_at.is_not(None))
+            .order_by(Product.last_checked_at.desc()).limit(limit)
+        ).all()
+    ]
+    # ③ 품절 중
+    sold_out = [
+        r[0] for r in db.execute(
+            select(Product.id).where(Product.sold_out_at.is_not(None))
+            .order_by(Product.sold_out_at.desc()).limit(limit)
+        ).all()
+    ]
+    # ④ 품절→복귀
+    restocked = [
+        r[0] for r in db.execute(
+            select(Product.id).where(Product.back_on_sale_at.is_not(None))
+            .order_by(Product.back_on_sale_at.desc()).limit(limit)
+        ).all()
+    ]
+
+    return {
+        "most_collected": item_rows(most),
+        "recent": item_rows(recent),
+        "sold_out": item_rows(sold_out),
+        "restocked": item_rows(restocked),
+    }
+
+
+@router.get("/admin/products/{product_id}")
+def admin_product_detail(product_id: str, db: Session = Depends(get_db)) -> dict:
+    """단일 상품 드릴다운 — 메타 + 가격 통계 + 최근 가격 이력 + 몰 간 비교."""
+    p = db.get(Product, product_id)
+    if p is None:
+        raise HTTPException(status_code=404, detail="상품을 찾을 수 없습니다.")
+    min_price = db.scalar(select(func.min(PricePoint.price)).where(PricePoint.product_id == product_id))
+    avg_price = db.scalar(select(func.avg(PricePoint.price)).where(PricePoint.product_id == product_id))
+    price_count = db.scalar(select(func.count(PricePoint.id)).where(PricePoint.product_id == product_id)) or 0
+    watch_count = db.scalar(select(func.count(Watch.id)).where(Watch.product_id == product_id)) or 0
+    prices = [
+        {
+            "price": r.price,
+            "source": r.source,
+            "captured_at": r.captured_at.astimezone(KST).isoformat(),
+        }
+        for r in db.execute(
+            select(PricePoint).where(PricePoint.product_id == product_id)
+            .order_by(PricePoint.captured_at.desc()).limit(30)
+        ).scalars()
+    ]
+    alternatives = [
+        {
+            "product_id": a.id,
+            "mall": a.mall,
+            "name": a.name,
+            "last_price": a.last_price,
+            "url": a.url,
+        }
+        for a in _match_alternatives(db, p)
+    ]
+    return {
+        "product_id": p.id,
+        "mall": p.mall,
+        "name": p.name,
+        "url": p.url,
+        "image": p.image,
+        "normalized_name": p.normalized_name,
+        "last_price": p.last_price,
+        "sold_out_at": p.sold_out_at.astimezone(KST).isoformat() if p.sold_out_at else None,
+        "back_on_sale_at": p.back_on_sale_at.astimezone(KST).isoformat() if p.back_on_sale_at else None,
+        "created_at": p.created_at.astimezone(KST).isoformat() if p.created_at else None,
+        "min_price": int(min_price) if min_price is not None else None,
+        "avg_price": round(float(avg_price)) if avg_price is not None else None,
+        "price_count": price_count,
+        "watch_count": watch_count,
+        "prices": prices,
+        "alternatives": alternatives,
+    }
+
+
 # ── 크롤러 제어/모니터링 (v0.16.0, T-117) ──────────────────────────────────────
 
 
@@ -328,6 +524,48 @@ def crawler_diag_products(limit: int = 200, db: Session = Depends(get_db)) -> di
     return {"total": len(rows), "stale": stale_cnt, "items": items}
 
 
+@router.get("/admin/users")
+def admin_users(db: Session = Depends(get_db)) -> dict:
+    """사용자 활동 (P1, v0.16.15) — 기기별 활성 상태·찜 수·수집 건수·최근 활동.
+
+    last_seen_at이 24시간 이내면 active. device_id 컬럼(가격포인트)이 없던
+    과거 데이터는 수집 건수에 집계되지 않는다 (heartbeat 시작 시점부터 누적).
+    """
+    now = datetime.now(timezone.utc)
+    devices = db.execute(select(Device)).scalars().all()
+    watch_counts = dict(db.execute(
+        select(Watch.device_id, func.count(Watch.id)).group_by(Watch.device_id)
+    ).all())
+    capture_counts = dict(db.execute(
+        select(PricePoint.device_id, func.count(PricePoint.id))
+        .where(PricePoint.device_id.is_not(None))
+        .group_by(PricePoint.device_id)
+    ).all())
+    users = []
+    active = 0
+    for d in devices:
+        last = d.last_seen_at
+        if last is not None and last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        is_active = last is not None and (now - last).total_seconds() <= 24 * 3600
+        if is_active:
+            active += 1
+        users.append({
+            "device_id": d.id,
+            "created_at": d.created_at.astimezone(KST).isoformat() if d.created_at else None,
+            "last_seen_at": last.astimezone(KST).isoformat() if last else None,
+            "active": is_active,
+            "watches": watch_counts.get(d.id, 0),
+            "captures": capture_counts.get(d.id, 0),
+        })
+    users.sort(key=lambda u: (u["last_seen_at"] is not None, u["last_seen_at"] or ""), reverse=True)
+    return {
+        "total": len(users),
+        "active_24h": active,
+        "users": users,
+    }
+
+
 @router.get("/admin/crawler/diag/fetch/{goods_no}")
 def crawler_diag_fetch(goods_no: str) -> dict:
     """진단(T-122a): 단일 상품을 실제 크롤링해 렌더 결과를 상세 반환.
@@ -336,3 +574,57 @@ def crawler_diag_fetch(goods_no: str) -> dict:
     gone/error 오판 여부를 판정한다. 브라우저를 띄우므로 응답까지 수십 초 소요.
     """
     return fetch_goods_diag(goods_no)
+
+
+# ── P2 가격 동향 비교 (v0.16.15, T-126) ───────────────────────────────────────
+
+
+@router.get("/admin/price-compare")
+def admin_price_compare(limit: int = 30, db: Session = Depends(get_db)) -> dict:
+    """가격 동향 비교 — 한 상품이 여러 몰에 존재할 때 몰 간 현재가 차이를 보여줌.
+
+    normalized_name(동일상품)으로 묶어 2개 이상 몰에 있는 상품만 집계. 각 그룹에서
+    최저가 몰 대비 다른 몰이 얼마나 비싼지(오버프라이스 %)를 계산. _match_alternatives와
+    동일한 정규화명 기반 동적 매칭을 사용한다.
+    """
+    limit = max(1, min(int(limit), 100))
+    rows = db.execute(
+        select(Product)
+        .where(Product.normalized_name.is_not(None), Product.last_price.is_not(None))
+    ).scalars().all()
+
+    groups: dict[str, list[Product]] = {}
+    for p in rows:
+        groups.setdefault(p.normalized_name, []).append(p)
+
+    items = []
+    for name, prods in groups.items():
+        if len({p.mall for p in prods}) < 2:  # 몰이 2개 이상일 때만 비교 의미
+            continue
+        priced = [p for p in prods if p.last_price]
+        if len(priced) < 2:
+            continue
+        cheapest = min(priced, key=lambda p: p.last_price)
+        rows_out = []
+        for p in sorted(priced, key=lambda p: p.last_price):
+            diff = 0.0
+            if p.id != cheapest.id and cheapest.last_price:
+                diff = round((p.last_price - cheapest.last_price) / cheapest.last_price * 100, 1)
+            rows_out.append({
+                "product_id": p.id,
+                "mall": p.mall,
+                "name": p.name,
+                "price": p.last_price,
+                "url": p.url,
+                "diff_pct": diff,
+                "is_cheapest": p.id == cheapest.id,
+            })
+        items.append({
+            "normalized_name": name,
+            "name": (cheapest.name or name),
+            "cheapest_mall": cheapest.mall,
+            "cheapest_price": cheapest.last_price,
+            "rows": rows_out,
+        })
+    items.sort(key=lambda g: g["rows"][-1]["diff_pct"], reverse=True)  # 최대 차이순
+    return {"groups": items[:limit], "total_groups": len(items)}

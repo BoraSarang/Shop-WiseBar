@@ -1,5 +1,18 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.15 (2026-08-12) — [server][macos][extension] 똑바 매니저 관리 고도화 (T-126)
+> 사용자 승인: 매니저 관리 항목 4개 축 전부 선택 — P0 수집 인사이트 + 서비스 헬스 / P1 사용자 활동 / P2 가격 동향 비교.
+> 상세: `docs/plans/PLAN_v0.16.15_manager.md`
+- [feat-server] **P0 서비스 헬스**: `GET /admin/health` (버전·시작·DB·최근 수집/크롤러) + `GET /admin/crawler/summary` (최근 N시간 성공률·실패·상품없음·평균 소요·스테일 상품 수)
+- [feat-server] **P0 수집 상품 인사이트**: `GET /admin/products/top` (많이 수집된 상품 가격포인트+찜 TOP / 최근 수집 / 품절 중 / 품절→복귀) + `GET /admin/products/{id}` 드릴다운 (가격 통계·이력 + 몰 간 비교 alternatives)
+- [feat-server] **P1 사용자 활동 추적**: `devices.last_seen_at` + `price_points.device_id` 스키마 마이그레이션 (`_ensure_columns`, SQLite/PG) + `POST /devices/{id}/heartbeat` + `GET /admin/users` (기기별 활성·찜·수집·최근 활동)
+- [feat-server] **P2 가격 동향 비교**: `GET /admin/price-compare` — `normalized_name` 동일상품 몰 간 최저가 대비 차이 % (최대 차이순)
+- [feat-extension] `background.js` — 폴링(`pollAlerts`) 시작 시 heartbeat 병합 + `/products/batch`에 `device_id` 포함 (사용자 활동 연결)
+- [feat-macos] **"헬스" 탭 신규** (HealthView: 서버 상태·크롤러 요약·수집 랭킹) + **"사용자" 탭 신규** (UsersView: 기기 활동 + 몰 간 가격 비교) + APIClient/AppModel 확장
+- [test] test_admin 확장 (products/top·detail·health·crawler summary·users·price-compare) — **pytest 87건 통과** (기존 76 + 신규 11). macOS xcodebuild **BUILD SUCCEEDED**. extension `node --check` OK.
+- [fix-test] `test_trend_returns_days_series` 날짜 의존 제거 (하드코딩 과거일 → 오늘 KST 캡처) — trend 창(최근 7일)을 벗어난 고정일이 원인.
+- 문서: PLAN_v0.16.15 / TODO(T-126) / CHANGELOG / ENDPOINTS / DESIGN.
+
 ## v0.16.14 (2026-08-11) — [server] 네이버 브랜드상품 0건 버그 + Browserless 컨텍스트 레이스 수정 (T-125)
 > 재개 검증(로컬 `--once`) 중 발견한 2건 수정. 로컬 시스템 Chrome 폴백으로 oliveyoung 2건 + 네이버 brand 상품 3건 수집 성공.
 - [fix-server] `crawlers/naver.py` — 후보 쿼리에 `url LIKE '%brand.naver.com%'` 필터 추가. **원인**: mall='naver' 후보 30건을 `last_checked_at` 오름차순으로 가져오는데 null(미확인) smartstore 광고성 상품이 30을 점유 → brand 상품(389건 전체 stale)이 영원히 후보에 못 들어가 naver 배치가 계속 0건이었음.

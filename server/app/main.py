@@ -93,6 +93,13 @@ def _ensure_columns(engine) -> None:
                 conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN gone INTEGER DEFAULT 0"))
             if "error" not in cols:
                 conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN error VARCHAR(512)"))
+            # v0.16.15 (T-126) — 사용자 활동 추적: 기기 최근 활동 + 가격포인트 수집 출처 기기
+            cols = {r[1] for r in conn.execute(text("PRAGMA table_info(devices)"))}
+            if "last_seen_at" not in cols:
+                conn.execute(text("ALTER TABLE devices ADD COLUMN last_seen_at TIMESTAMP"))
+            cols = {r[1] for r in conn.execute(text("PRAGMA table_info(price_points)"))}
+            if "device_id" not in cols:
+                conn.execute(text("ALTER TABLE price_points ADD COLUMN device_id VARCHAR(36)"))
         else:
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS sold_out_at TIMESTAMPTZ"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS normalized_name VARCHAR(512)"))
@@ -101,6 +108,8 @@ def _ensure_columns(engine) -> None:
             conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN IF NOT EXISTS attempted INTEGER DEFAULT 0"))
             conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN IF NOT EXISTS gone INTEGER DEFAULT 0"))
             conn.execute(text("ALTER TABLE crawler_runs ADD COLUMN IF NOT EXISTS error VARCHAR(512)"))
+            conn.execute(text("ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ"))
+            conn.execute(text("ALTER TABLE price_points ADD COLUMN IF NOT EXISTS device_id VARCHAR(36)"))
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])

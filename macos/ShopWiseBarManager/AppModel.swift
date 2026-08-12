@@ -24,6 +24,19 @@ final class AppModel {
     var crawlerError: String?
     var crawlerBusy = false
 
+    // P0 관리 고도화 (v0.16.15)
+    var serverHealth: ServerHealth?
+    var crawlerSummary: CrawlerSummary?
+    var productsTop: ProductsTopResponse?
+    var healthState: LoadState = .idle
+    var healthError: String?
+
+    // P1 사용자 활동 (v0.16.15)
+    var users: AdminUsersResponse?
+    var priceCompare: PriceCompareResponse?
+    var usersState: LoadState = .idle
+    var usersError: String?
+
     // 서버 토글 (UserDefaults에 저장)
     var serverOverride: String {
         didSet {
@@ -39,6 +52,8 @@ final class AppModel {
     /// 탭 라우팅 섹션
     enum Section: String, CaseIterable, Identifiable {
         case dashboard = "대시보드"
+        case health = "헬스"
+        case users = "사용자"
         case insight = "인사이트"
         case stats = "통계"
         case deals = "공통 핫딜"
@@ -50,6 +65,8 @@ final class AppModel {
         var systemImage: String {
             switch self {
             case .dashboard: return "chart.bar"
+            case .health: return "heart.text.square"
+            case .users: return "person.2"
             case .insight: return "lightbulb"
             case .stats: return "sum"
             case .deals: return "tag"
@@ -94,6 +111,40 @@ final class AppModel {
         deals = (await d)?.deals ?? []
         lastUpdated = Date()
         state = .loaded
+    }
+
+    // MARK: P0 관리 고도화 (v0.16.15)
+
+    /// 헬스 탭 — 서버 상태 + 크롤러 요약 + 수집 상품 TOP 병렬 로딩 (개별 실패 무시)
+    func refreshHealth() async {
+        healthState = .loading
+        healthError = nil
+        async let h: ServerHealth? = try? api.serverHealth()
+        async let cs: CrawlerSummary? = try? api.crawlerSummary()
+        async let pt: ProductsTopResponse? = try? api.productsTop()
+        serverHealth = await h
+        crawlerSummary = await cs
+        productsTop = await pt
+        if serverHealth == nil && crawlerSummary == nil && productsTop == nil {
+            healthError = "서버 응답을 불러오지 못했습니다."
+        }
+        healthState = .loaded
+    }
+
+    // MARK: P1/P2 (v0.16.15)
+
+    /// 사용자 탭 — 기기별 활동 + 가격 동향 비교 병렬 로딩
+    func refreshUsers() async {
+        usersState = .loading
+        usersError = nil
+        async let u: AdminUsersResponse? = try? api.adminUsers()
+        async let pc: PriceCompareResponse? = try? api.priceCompare()
+        users = await u
+        priceCompare = await pc
+        if users == nil && priceCompare == nil {
+            usersError = "서버 응답을 불러오지 못했습니다."
+        }
+        usersState = .loaded
     }
 
     // MARK: 크롤러 (v0.16.1)

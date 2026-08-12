@@ -80,6 +80,19 @@
 | POST | `/admin/crawler/run` | 즉시 수집 요청 (v0.16.0) — `run_requested=true` 설정. worker가 다음 틱 내 1배치(oliveyoung+naver) 소비 → `{status:"requested"}` |
 | GET | `/admin/crawler/logs?limit=` | 크롤러 배치 이력 (v0.16.0, 기본 50/최대 200) — `{logs: [{mall, success, count, attempted, failed, gone, error, duration_ms, trigger, run_at(KST)}]}`. `attempted`/`failed` v0.16.2(T-119), `gone`/`error` v0.16.8(T-121) 추가 — **`failed = attempted - count - gone`** (상품없음은 실패 아님), `error` = 실패 사유(챌린지/타임아웃 등, 없으면 null) |
 
+### 관리 고도화 (v0.16.15, T-126)
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/admin/health` | 서버 상태 — `{status, version, started_at, db:{ok,error}, last_capture_at, last_crawler_run_at}` (KST) |
+| GET | `/admin/crawler/summary?hours=` | 크롤러 요약(기본 24/최대 168) — `{hours, last_24h:{runs,success,failed,gone,count,avg_duration_ms}, last_runs:[...], stale_products}` |
+| GET | `/admin/products/top?limit=` | 수집 상품 인사이트(기본 20/최대 100) — `{most_collected:[], recent:[], sold_out:[], restocked:[]}`. 항목: `{product_id, mall, name, url, image, last_price, sold_out_at, back_on_sale_at, last_checked_at, price_count, watch_count}` |
+| GET | `/admin/products/{id}` | 상품 드릴다운 — 메타 + `{min_price, avg_price, price_count, watch_count, prices:[{price,source,captured_at}], alternatives:[{product_id,mall,name,last_price,url}]}` (404 미존재) |
+| GET | `/admin/users` | 사용자 활동 — `{total, active_24h, users:[{device_id,created_at,last_seen_at,active,watches,captures}]}`. `active` = last_seen_at 24시간 이내 |
+| GET | `/admin/price-compare?limit=` | 가격 동향 비교(기본 30/최대 100) — `{groups:[{normalized_name,name,cheapest_mall,cheapest_price,rows:[{product_id,mall,name,price,url,diff_pct,is_cheapest}]}], total_groups}`. `diff_pct` = 최저가 몰 대비 오버프라이스 % |
+| POST | `/devices/{id}/heartbeat` | 활동 하트비트 — 미등록 기기 자동 등록, `last_seen_at` 갱신 → `{device_id,status,last_seen_at}` |
+
+> v0.16.15 (T-126): `/products/batch` 요청 body에 `device_id`(선택) 추가 — 상위 레벨 또는 항목별. 항목에 price 있으면 `price_points.device_id`에 기록 (사용자 활동 추적용).
+
 - `/admin/trend` 집계 기준: `captures` = `price_daily_stats.point_count` 합, `points` = `price_points` 건수, `new` = 신규 상품.
   일자 경계는 KST(UTC+9) 기준 — 그래프와 확장 로컬 표시가 하루 어긋나지 않도록 함.
 

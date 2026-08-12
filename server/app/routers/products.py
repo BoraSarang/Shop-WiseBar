@@ -343,7 +343,8 @@ def _upsert(db: Session, product_id: str, mall: str, url: str, name: str | None,
 # _upsert가 방금 add한(pending) Product를 재조회하면 None → AttributeError 500 (가격 dedup 시 항상).
 # T-95b: captured_at 파라미터 추가 — upload_price의 +1s 재시도가 코어 재사용 (별도 중복 제거)
 def _apply_price(db: Session, product: Product, price: int, source: str, variant: str | None,
-                 captured_at: datetime | None = None) -> None:
+                 captured_at: datetime | None = None,
+                 device_id: str | None = None) -> None:
     now = captured_at or datetime.now(timezone.utc).replace(microsecond=0)
     today = kst_date(now)  # v0.12.2 (T-102) — 일(daily) 경계를 KST 기준으로 (확장 그래프와 일치)
     variant_cond = PricePoint.variant.is_(None) if variant is None else PricePoint.variant == variant
@@ -357,6 +358,7 @@ def _apply_price(db: Session, product: Product, price: int, source: str, variant
         point = PricePoint(
             product_id=product.id, price=price, source=source,
             variant=variant, captured_at=now,
+            device_id=device_id,  # v0.16.15 (T-126) — 수집 출처 기기 (사용자 활동 추적)
         )
         db.add(point)
         db.flush()  # UNIQUE 충돌 시 IntegrityError propagate
@@ -412,13 +414,15 @@ def upsert_batch(payload: ProductBatchIn, db: Session = Depends(get_db)) -> Prod
         if item.product_id in seen:  # 같은 요청 내 중복 product_id는 첫 건만 (연관 카드 중복)
             continue
         seen.add(item.product_id)
+        item_device = item.device_id or payload.device_id  # v0.16.15 (T-126)
         # savepoint(begin_nested) — 항목 단위 격리. 실패 시 이 항목만 롤백되고
         # 이전에 성공한 항목은 보존 (단일 트랜잭션 커밋 유지)
         with db.begin_nested():
             try:
                 product = _upsert(db, item.product_id, item.mall, item.url, item.name, item.image, item.source)
                 if item.price and item.price > 0:
-                    _apply_price(db, product, item.price, item.source or "extension", None)
+                    _apply_price(db, product, item.price, item.source or "extension", None,
+                                 device_id=item_device)
                     price_count += 1
                 items.append(_product_out_basic(product))
                 upserted += 1

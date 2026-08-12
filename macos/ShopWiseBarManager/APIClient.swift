@@ -208,6 +208,202 @@ struct CrawlerLogsResponse: Decodable {
     let logs: [CrawlerLog]
 }
 
+// MARK: - P0 관리 고도화 (v0.16.15 서버 API)
+
+struct ServerHealth: Decodable {
+    let status: String
+    let version: String
+    let startedAt: String
+    let dbOk: Bool
+    let dbError: String?
+    let lastCaptureAt: String?
+    let lastCrawlerRunAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status, version
+        case startedAt = "started_at"
+        case dbOk = "db"
+        case dbError = "error"
+        case lastCaptureAt = "last_capture_at"
+        case lastCrawlerRunAt = "last_crawler_run_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decode(String.self, forKey: .status)
+        version = try c.decode(String.self, forKey: .version)
+        startedAt = try c.decode(String.self, forKey: .startedAt)
+        lastCaptureAt = try c.decodeIfPresent(String.self, forKey: .lastCaptureAt)
+        lastCrawlerRunAt = try c.decodeIfPresent(String.self, forKey: .lastCrawlerRunAt)
+        let db = try c.nestedContainer(keyedBy: CodingKeys.self, forKey: .dbOk)
+        dbOk = try db.decodeIfPresent(Bool.self, forKey: .dbOk) ?? true
+        dbError = try db.decodeIfPresent(String.self, forKey: .dbError)
+    }
+}
+
+struct CrawlerSummaryLast24h: Decodable {
+    let runs: Int
+    let success: Int
+    let failed: Int
+    let gone: Int
+    let count: Int
+    let avgDurationMs: Int
+
+    enum CodingKeys: String, CodingKey {
+        case runs, success, failed, gone, count
+        case avgDurationMs = "avg_duration_ms"
+    }
+}
+
+struct CrawlerSummaryRun: Decodable, Identifiable {
+    let mall: String
+    let success: Bool
+    let count: Int
+    let gone: Int
+    let error: String?
+    let durationMs: Int
+    let trigger: String
+    let runAt: String
+
+    var id: String { runAt + mall }
+
+    enum CodingKeys: String, CodingKey {
+        case mall, success, count, gone, error, trigger
+        case durationMs = "duration_ms"
+        case runAt = "run_at"
+    }
+}
+
+struct CrawlerSummary: Decodable {
+    let hours: Int
+    let last24h: CrawlerSummaryLast24h
+    let lastRuns: [CrawlerSummaryRun]
+    let staleProducts: Int
+
+    enum CodingKeys: String, CodingKey {
+        case hours
+        case last24h = "last_24h"
+        case lastRuns = "last_runs"
+        case staleProducts = "stale_products"
+    }
+}
+
+struct ProductTopItem: Decodable, Identifiable {
+    let productId: String
+    let mall: String
+    let name: String?
+    let url: String?
+    let image: String?
+    let lastPrice: Int?
+    let soldOutAt: String?
+    let backOnSaleAt: String?
+    let lastCheckedAt: String?
+    let priceCount: Int
+    let watchCount: Int
+
+    var id: String { productId }
+
+    enum CodingKeys: String, CodingKey {
+        case mall, name, url, image
+        case productId = "product_id"
+        case lastPrice = "last_price"
+        case soldOutAt = "sold_out_at"
+        case backOnSaleAt = "back_on_sale_at"
+        case lastCheckedAt = "last_checked_at"
+        case priceCount = "price_count"
+        case watchCount = "watch_count"
+    }
+}
+
+struct ProductsTopResponse: Decodable {
+    let mostCollected: [ProductTopItem]
+    let recent: [ProductTopItem]
+    let soldOut: [ProductTopItem]
+    let restocked: [ProductTopItem]
+
+    enum CodingKeys: String, CodingKey {
+        case mostCollected = "most_collected"
+        case recent, soldOut, restocked
+    }
+}
+
+// MARK: - P1 사용자 활동 (v0.16.15 서버 API)
+
+struct AdminUser: Decodable, Identifiable {
+    let deviceId: String
+    let createdAt: String?
+    let lastSeenAt: String?
+    let active: Bool
+    let watches: Int
+    let captures: Int
+
+    var id: String { deviceId }
+
+    enum CodingKeys: String, CodingKey {
+        case active, watches, captures
+        case deviceId = "device_id"
+        case createdAt = "created_at"
+        case lastSeenAt = "last_seen_at"
+    }
+}
+
+struct AdminUsersResponse: Decodable {
+    let total: Int
+    let active24h: Int
+    let users: [AdminUser]
+
+    enum CodingKeys: String, CodingKey {
+        case total, users
+        case active24h = "active_24h"
+    }
+}
+
+// MARK: - P2 가격 동향 비교 (v0.16.15 서버 API)
+
+struct PriceCompareRow: Decodable {
+    let productId: String
+    let mall: String
+    let name: String?
+    let price: Int
+    let url: String?
+    let diffPct: Double
+    let isCheapest: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case mall, name, price, url
+        case productId = "product_id"
+        case diffPct = "diff_pct"
+        case isCheapest = "is_cheapest"
+    }
+}
+
+struct PriceCompareGroup: Decodable, Identifiable {
+    let normalizedName: String
+    let name: String?
+    let cheapestMall: String
+    let cheapestPrice: Int
+    let rows: [PriceCompareRow]
+
+    var id: String { normalizedName }
+
+    enum CodingKeys: String, CodingKey {
+        case name, rows
+        case normalizedName = "normalized_name"
+        case cheapestMall = "cheapest_mall"
+        case cheapestPrice = "cheapest_price"
+    }
+}
+
+struct PriceCompareResponse: Decodable {
+    let groups: [PriceCompareGroup]
+    let totalGroups: Int
+
+    enum CodingKeys: String, CodingKey {
+        case groups
+        case totalGroups = "total_groups"
+    }
+}
+
 enum APIError: LocalizedError {
     case invalidURL
     case bad(String)
@@ -296,6 +492,35 @@ private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async
         try await get("/api/v1/admin/insight", query: [URLQueryItem(name: "days", value: String(days))])
     }
     func deals() async throws -> DealsResponse { try await get("/api/v1/deals/public") }
+
+    // MARK: P0 관리 고도화 (v0.16.15)
+
+    func serverHealth() async throws -> ServerHealth {
+        try await get("/api/v1/admin/health")
+    }
+
+    func crawlerSummary(hours: Int = 24) async throws -> CrawlerSummary {
+        try await get("/api/v1/admin/crawler/summary",
+                      query: [URLQueryItem(name: "hours", value: String(hours))])
+    }
+
+    func productsTop(limit: Int = 20) async throws -> ProductsTopResponse {
+        try await get("/api/v1/admin/products/top",
+                      query: [URLQueryItem(name: "limit", value: String(limit))])
+    }
+
+    // MARK: P1 사용자 활동 (v0.16.15)
+
+    func adminUsers() async throws -> AdminUsersResponse {
+        try await get("/api/v1/admin/users")
+    }
+
+    // MARK: P2 가격 동향 비교 (v0.16.15)
+
+    func priceCompare(limit: Int = 30) async throws -> PriceCompareResponse {
+        try await get("/api/v1/admin/price-compare",
+                      query: [URLQueryItem(name: "limit", value: String(limit))])
+    }
 
     // MARK: 크롤러 (v0.16.0)
 

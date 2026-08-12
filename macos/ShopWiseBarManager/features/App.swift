@@ -42,6 +42,8 @@ struct ContentView: View {
     private var content: some View {
         switch selection {
         case .dashboard: DashboardView()
+        case .health: HealthView()
+        case .users: UsersView()
         case .insight: InsightView()
         case .stats: StatsView()
         case .deals: DealsView()

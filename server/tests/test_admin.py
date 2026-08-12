@@ -37,7 +37,13 @@ class TestAdminOverview:
 
 class TestAdminTrend:
     def test_trend_returns_days_series(self, client):
-        _seed(client, "p1", "naver", "트렌드 A", 10000, "2026-08-05T10:00:00Z")
+        # v0.16.15: 날짜 의존 제거 — 하드코딩 과거일 대신 오늘(KST) 캡처로 "최근 7일" 창에 포함되게
+        from datetime import datetime, timezone
+
+        from app.datetimeutil import KST
+
+        today_kst = datetime.now(KST).replace(hour=10, minute=0, second=0).isoformat()
+        _seed(client, "p1", "naver", "트렌드 A", 10000, today_kst)
         r = client.get("/api/v1/admin/trend?days=7")
         assert r.status_code == 200
         body = r.json()
@@ -77,3 +83,104 @@ class TestAdminInsight:
         assert body["alert_distribution"] == []
         assert body["recent_alerts"] == []
         assert body["top_drops"] == []
+
+
+class TestAdminProductsTop:
+    def test_empty(self, client):
+        r = client.get("/api/v1/admin/products/top").json()
+        assert r["most_collected"] == []
+        assert r["recent"] == []
+        assert r["sold_out"] == []
+        assert r["restocked"] == []
+
+    def test_most_collected_ranked(self, client):
+        _seed(client, "p1", "naver", "많이수집A", 10000, "2026-08-05T10:00:00Z")
+        _seed(client, "p1", "naver", "많이수집A", 9000, "2026-08-05T11:00:00Z")
+        _seed(client, "p2", "coupang", "적게수집B", 5000, "2026-08-05T12:00:00Z")
+        r = client.get("/api/v1/admin/products/top").json()
+        assert r["most_collected"][0]["product_id"] == "p1"
+        assert r["most_collected"][0]["price_count"] >= 2
+        assert r["recent"]
+
+    def test_sold_out_and_restocked(self, client):
+        client.post("/api/v1/products", json={
+            "product_id": "so1", "mall": "oliveyoung", "url": "https://x/so1", "name": "품절상품",
+        })
+        r = client.post("/api/v1/products/so1/sold-out", json={"sold_out": True})
+        assert r.status_code in (200, 201)
+        body = client.get("/api/v1/admin/products/top").json()
+        assert any(i["product_id"] == "so1" for i in body["sold_out"])
+
+
+class TestAdminProductDetail:
+    def test_detail(self, client):
+        _seed(client, "p1", "naver", "상세A", 10000, "2026-08-05T10:00:00Z")
+        r = client.get("/api/v1/admin/products/p1")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["product_id"] == "p1"
+        assert body["min_price"] == 10000
+        assert body["price_count"] >= 1
+        assert body["alternatives"] == []
+
+    def test_detail_missing(self, client):
+        assert client.get("/api/v1/admin/products/nope").status_code == 404
+
+
+class TestAdminHealth:
+    def test_health(self, client):
+        r = client.get("/api/v1/admin/health")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] in ("ok", "degraded")
+        assert body["version"]
+        assert body["db"]["ok"] is True
+
+
+class TestAdminCrawlerSummary:
+    def test_summary_empty(self, client):
+        r = client.get("/api/v1/admin/crawler/summary?hours=24")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["last_24h"]["runs"] == 0
+        assert "stale_products" in body
+
+
+class TestAdminUsers:
+    def test_heartbeat_marks_active(self, client):
+        client.post("/api/v1/devices", json={"device_id": "u1"})
+        r = client.post("/api/v1/devices/u1/heartbeat")
+        assert r.status_code == 200
+        assert r.json()["status"] == "ok"
+        body = client.get("/api/v1/admin/users").json()
+        u = next(x for x in body["users"] if x["device_id"] == "u1")
+        assert u["active"] is True
+        assert u["last_seen_at"] is not None
+
+    def test_users_lists_devices(self, client):
+        client.post("/api/v1/devices", json={"device_id": "u2"})
+        body = client.get("/api/v1/admin/users").json()
+        assert body["total"] >= 1
+        u = next(x for x in body["users"] if x["device_id"] == "u2")
+        assert u["active"] is False
+        assert u["captures"] == 0
+
+
+class TestAdminPriceCompare:
+    def test_empty(self, client):
+        r = client.get("/api/v1/admin/price-compare")
+        assert r.status_code == 200
+        assert r.json()["groups"] == []
+
+    def test_cross_mall_groups(self, client):
+        # 동일 정규화명(같은 url 규약 X — normalized_name으로 묶임)
+        _seed(client, "naver1", "naver", "정규화 상품", 10000, "2026-08-10T10:00:00Z")
+        _seed(client, "coupang1", "coupang", "정규화 상품", 8000, "2026-08-10T11:00:00Z")
+        r = client.get("/api/v1/admin/price-compare").json()
+        assert r["total_groups"] >= 1
+        g = r["groups"][0]
+        assert g["cheapest_mall"] == "coupang"
+        by_mall = {row["mall"]: row for row in g["rows"]}
+        assert by_mall["coupang"]["diff_pct"] == 0.0
+        assert by_mall["coupang"]["is_cheapest"] is True
+        assert by_mall["naver"]["diff_pct"] == 25.0  # (10000-8000)/8000*100
