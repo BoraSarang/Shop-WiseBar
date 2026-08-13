@@ -13,7 +13,7 @@
 - [x] **T-126f** P1 확장: heartbeat 병합 + 배치 device_id 포함
 - [x] **T-126g** P1 macOS: 사용자 화면
 - [x] **T-126h** P2 서버: `/admin/price-compare` (+ tests) + macOS 인사이트 확장
-- [ ] **T-126i** 검증: pytest 전체 + xcodebuild + 운영 실데이터 + 배포(0.16.15)
+- [x] **T-126i** 검증: pytest 전체 + xcodebuild + 운영 실데이터 + 배포(0.16.15) — **완료 (2026-08-14)**: pytest 87건, xcodebuild SUCCEEDED, `/health` v0.16.15 확인(운영), 신규 엔드포인트 6종 실데이터 응답 확인
 
 ## T-125 — 네이버 brand 상품 0건 버그 + Browserless 컨텍스트 레이스 수정 (v0.16.14) — ✅ 완료 (2026-08-11)
 > 재개 검증(로컬 `--once`) 중 발견 — **naver 배치가 계속 0건**인 원인 수정 + Browserless CDP 연속 상품 처리 실패 수정.
