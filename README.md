@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <b>Chrome</b> MV3 확장 · <b>웨일(Whale)</b> 스토어 등록 완료 (v0.12.2)
+  <b>Chrome</b> MV3 확장 · <b>웨일(Whale)</b> 스토어 등록 완료 (v0.16.11)
 </p>
 
 ---
@@ -48,7 +48,7 @@
 
 ### 웨일 스토어 (등록 완료 — T-96d)
 
-- [웨일 스토어 똑바 (Shop WiseBar)](https://store.whale.naver.com/detail/ecaggnboamlnefkmnpddpcoiaidkppog) — **심사 통과 후 게재 완료** (v0.12.2, 2026-08-07).
+- [웨일 스토어 똑바 (Shop WiseBar)](https://store.whale.naver.com/detail/ecaggnboamlnefkmnpddpcoiaidkppog) — **심사 통과 후 게재 완료** (v0.16.11).
 - 웨일 브라우저에서 "똑바"로 검색해 바로 설치할 수 있습니다.
 
 ### Chrome / Edge / Whale (개발자 모드)
