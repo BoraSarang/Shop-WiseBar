@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 @main
 struct ShopWiseBarManagerApp: App {
@@ -91,12 +92,36 @@ struct SidebarView: View {
                     Text("똑바 매니저 · v\(Bundle.main.versionString)")
                         .font(DS.Font.xxs)
                         .foregroundStyle(.white.opacity(0.4))
+                    links
                 }
                 .padding(.horizontal, DS.Space.s3)
                 .padding(.bottom, DS.Space.s3)
             }
         }
         .frame(width: 240)
+    }
+
+    private var links: some View {
+        HStack(spacing: DS.Space.s3) {
+            linkButton("GitHub Pages", url: "https://borasarang.github.io/Shop-WiseBar/")
+            linkButton("GitHub 저장소", url: "https://github.com/BoraSarang/Shop-WiseBar")
+        }
+        .padding(.top, DS.Space.s1)
+    }
+
+    private func linkButton(_ label: String, url: String) -> some View {
+        Button {
+            guard let u = URL(string: url) else { return }
+            NSWorkspace.shared.open(u)
+        } label: {
+            HStack(spacing: 3) {
+                Text(label).font(DS.Font.xxs)
+                Image(systemName: "arrow.up.right").font(.system(size: 8))
+            }
+            .foregroundStyle(.white.opacity(0.55))
+        }
+        .buttonStyle(.plain)
+        .help(url)
     }
 
     private var brand: some View {
