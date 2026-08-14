@@ -50,9 +50,12 @@ def fetch(url: str) -> dict | None:
             price = None
             body_text = ""
             try:
-                page.goto(url, wait_until="networkidle", timeout=45000)  # 가격 지연 로드 대기 (실측)
+                # v0.16.17: networkidle(45s) → domcontentloaded(30s) — 네이버 상품 페이지는
+                # 광고/추적 스크립트가 계속 로드되어 networkidle이 잘 뜨지 않아 상품당 10s+ 지연.
+                # 가격은 아래 스크롤 대기 루프가 커버 (JS 지연 렌더링 — 실측)
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception:
-                page.goto(url, wait_until="domcontentloaded", timeout=30000)  # networkidle 타임아웃 폴백
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)  # 타임아웃 폴백
             # 가격 텍스트가 뜰 때까지 스크롤 대기
             for _ in range(MAX_PRICE_WAIT):
                 body_text = page.evaluate("document.body ? document.body.innerText : ''")

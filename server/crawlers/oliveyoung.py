@@ -51,10 +51,11 @@ def _open_goods_page(goods_no: str, url: str) -> tuple | None:
         except Exception as exc:  # noqa: BLE001 — 타임아웃 등이어도 아래 렌더 대기로 커버
             logger.warning("올리브영 goto 지연 goodsNo=%s: %s (렌더 대기 지속)", goods_no, type(exc).__name__)
         body_text = ""
-        # 챌린지 자동 해결 + SPA 렌더 대기 — 미국 IP는 해결이 느리지만 4회(20s)까지만 (v0.16.10, 512MB OOM 방지)
+        # 챌린지 자동 해결 + SPA 렌더 대기 — 미국 IP는 해결이 느리지만 4회(12s)까지만 (v0.16.10, 512MB OOM 방지)
+        # v0.16.17: 폴링 5s → 3s — 정상 페이지는 1차 폴링에 바로 진행(실측 평균 13s/건 → 단축)
         for _ in range(4):
             try:
-                page.wait_for_timeout(5000)
+                page.wait_for_timeout(3000)
                 body_text = page.evaluate("document.body ? document.body.innerText : ''")
             except Exception as exc:  # noqa: BLE001 — 페이지 재생성 등 일시 상태
                 logger.warning("올리브영 렌더 대기 예외 goodsNo=%s (%d회): %s", goods_no, _ + 1, type(exc).__name__)
