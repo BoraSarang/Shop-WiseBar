@@ -55,9 +55,10 @@ struct InsightView: View {
     }
 
     private func alertCards(_ alerts: [AlertItem]) -> [InsightCard] {
-        alerts.map { a in
+        alerts.enumerated().map { i, a in
             InsightCard(
-                id: a.productId,
+                // product_id 중복(같은 상품 여러 알림) 대비 고유 id — ForEach 중복 방지 (v0.16.16)
+                id: "\(a.productId)-\(i)",
                 name: Self.displayName(a.name, mall: a.mall, productId: a.productId),
                 productId: a.productId,
                 image: a.image,
@@ -71,9 +72,10 @@ struct InsightView: View {
     }
 
     private func dropCards(_ drops: [DropItem]) -> [InsightCard] {
-        drops.map { d in
+        drops.enumerated().map { i, d in
             InsightCard(
-                id: d.productId,
+                // 상품별 최신 포인트만 포함하나 동일 상품 중복 방어 — 고유 id (v0.16.16)
+                id: "\(d.productId)-\(i)",
                 name: Self.displayName(d.name, mall: d.mall, productId: d.productId),
                 productId: d.productId,
                 image: d.image,

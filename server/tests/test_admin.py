@@ -245,3 +245,25 @@ class TestAdminInsightMeta:
             assert "image" in item
             assert "url" in item
             assert "mall" in item
+
+    def test_recent_alerts_dedupe_same_product(self, client, db_session):
+        """같은 상품의 반복 알림은 최신 1건만 노출 (v0.16.16 T-127)."""
+        # 두 상품에 각각 여러 번 알림 발생 (watch 생성 없이 Alert 직접 주입)
+        from datetime import datetime, timezone
+
+        from app import models
+
+        for pid in ("dup1", "dup2"):
+            _seed(client, pid, "naver", f"중복 상품 {pid}", 30000, "2026-08-11T10:00:00Z")
+        now = datetime.now(timezone.utc)
+        for pid in ("dup1", "dup2"):
+            for price in (30000, 29000, 28000):
+                db_session.add(models.Alert(product_id=pid, alert_type="target_reached",
+                                            price=price, previous_price=price + 1000,
+                                            device_id="test-dev", created_at=now))
+        db_session.commit()
+        r = client.get("/api/v1/admin/insight")
+        assert r.status_code == 200
+        pids = [a["product_id"] for a in r.json()["recent_alerts"]]
+        assert len(pids) == 2  # 상품별 최신 1건만
+        assert len(set(pids)) == 2

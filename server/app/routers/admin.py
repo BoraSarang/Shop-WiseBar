@@ -170,6 +170,9 @@ def admin_insight(days: int = 30, db: Session = Depends(get_db)) -> dict:
     recent = db.execute(
         select(Alert).where(Alert.created_at >= since).order_by(Alert.created_at.desc()).limit(20)
     ).scalars().all()
+    # v0.16.16 (T-127) — 동일 상품은 최신 알림 1건만 노출 (같은 상품 반복 알림 중복 제거)
+    seen: set[str] = set()
+    recent = [a for a in recent if not (a.product_id in seen or seen.add(a.product_id))]
     # v0.16.16 (T-127) — 상품 메타 조인: 알림 product_id → 상품명/이미지/URL/몰 (N+1 방지 단일 조회)
     alert_products = {
         p.id: p for p in db.execute(

@@ -118,6 +118,13 @@ struct CrawlerView: View {
                 }
                 .buttonStyle(.bordered)
                 .help("전체 로그를 클립보드에 복사")
+                Button {
+                    model.clearLocalBatchLog()
+                } label: {
+                    Label("로그 지우기", systemImage: "trash")
+                }
+                .buttonStyle(.bordered)
+                .help("로그를 비우기")
                 statusDot
             }
             Text("이 맥에서 run-local-crawler.sh로 수집합니다. 수동으로 시작/종료하며, 수집 대상 목록 페이지도 함께 파싱합니다.")

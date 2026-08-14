@@ -277,6 +277,10 @@ final class AppModel {
         localBatchLog += text
     }
 
+    func clearLocalBatchLog() {
+        localBatchLog = "로컬 크롤러 로그를 비웠습니다."
+    }
+
     /// 로컬 크롤러 Process 생성 — stdout/stderr를 파이프로 연결해 실시간 로그 콜백
     private static func makeLocalCrawlerProcess(once: Bool = false,
                                                 onOutput: @escaping @Sendable (String) -> Void) throws -> Process {
