@@ -28,7 +28,20 @@ body {
   padding: 8px 14px; background: #1a1d23; border-bottom: 1px solid #2a2f3a;
   flex-shrink: 0;
 }
-.d-filters label { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #8fa0c4; white-space: nowrap; flex-shrink: 0; }
+
+/* 로그 수집 상태 배너 (v0.16.16) */
+.d-status {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; font-size: 12px; flex-shrink: 0;
+  background: #2a2120; border-bottom: 1px solid #2a2f3a;
+}
+.d-status.d-on { background: #17251d; }
+.d-status-dot { width: 9px; height: 9px; border-radius: 50%; background: #ff6b6b; flex-shrink: 0; }
+.d-status.d-on .d-status-dot { background: #4ade80; }
+.d-status #statusText { color: #ffb4a2; flex: 1; }
+.d-status.d-on #statusText { color: #7dd8a8; }
+.d-status #toggleBtn { border-color: #6b3a3a; color: #ff6b6b; }
+.d-status.d-on #toggleBtn { border-color: #3a4254; color: #c8d3e8; }.d-filters label { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #8fa0c4; white-space: nowrap; flex-shrink: 0; }
 .d-filters select, .d-filters input {
   background: #232833; color: #c8d3e8; border: 1px solid #3a4254;
   border-radius: 5px; padding: 2px 6px; font-size: 11px;

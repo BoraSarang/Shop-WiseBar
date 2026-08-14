@@ -8,6 +8,24 @@ const $ = (id) => document.getElementById(id);
 let logs = []; // 최근 원본 entry (필터 전)
 let paused = false;
 
+// 로그 수집 상태 배너 — debugEnabled 표시 + 토글 (v0.16.16)
+function updateStatus() {
+  const on = !!DebugLogger.isEnabled();
+  const status = $("d-status");
+  const text = $("statusText");
+  const btn = $("toggleBtn");
+  status.classList.toggle("d-on", on);
+  btn.textContent = on ? "끄기" : "켜기";
+  text.textContent = on
+    ? "로그 수집 켜짐 — 저장 중 (옵션 페이지에서도 토글 가능)"
+    : "로그 수집 꺼짐 — 로그가 쌓이지 않습니다. 켜기를 눌러 수집을 시작하세요.";
+}
+
+// 폴링마다 storage의 최신 enabled를 반영 (다른 창에서 토글한 경우에도)
+function syncStatus() {
+  DebugLogger.syncEnabled(() => updateStatus());
+}
+
 function esc(s) {
   return String(s)
     .replace(/&/g, "&amp;")
@@ -75,7 +93,10 @@ function render() {
   const rows = filtered();
   const el = $("log");
   if (!rows.length) {
-    el.textContent = "(로그 없음 — 쇼핑탭을 방문하거나 상품을 수집하면 여기에 쌓입니다)";
+    const collecting = DebugLogger.isEnabled();
+    el.textContent = collecting
+      ? "(로그 없음 — 쇼핑탭을 방문하거나 상품을 수집하면 여기에 쌓입니다)"
+      : "(로그 없음 — 로그 수집이 꺼져 있습니다. 상단의 켜기 버튼을 눌러 수집을 시작하세요)";
     $("count").textContent = "0";
     return;
   }
@@ -124,6 +145,15 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   $("copyBtn").addEventListener("click", copyAll);
   $("clearBtn").addEventListener("click", clearAll);
+  $("toggleBtn").addEventListener("click", () => {
+    DebugLogger.setEnabled(!DebugLogger.isEnabled());
+    updateStatus();
+    refresh();
+  });
+  updateStatus();
   refresh();
-  setInterval(refresh, 2000); // 2초 폴링 — 닫기 전까지 계속 누적/갱신
+  setInterval(() => {
+    syncStatus(); // 다른 창에서 토글한 상태 반영
+    refresh();
+  }, 2000); // 2초 폴링 — 닫기 전까지 계속 누적/갱신
 });

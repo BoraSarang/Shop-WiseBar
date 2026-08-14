@@ -162,6 +162,18 @@ const DebugLogger = (() => {
       }
       return enabled;
     },
+    // storage에서 최신 enabled를 다시 읽는다 (다른 창/탭에서 토글한 경우 반영, v0.16.16)
+    syncEnabled(cb) {
+      try {
+        chrome.storage.local.get(ENABLE_KEY, (v) => {
+          enabled = !!(v && v[ENABLE_KEY]);
+          if (cb) cb(enabled);
+        });
+      } catch {
+        if (cb) cb(enabled);
+      }
+      return enabled;
+    },
     debug(...a) {
       if (!enabled) return;
       enqueue("DEBUG", a, console.log);
