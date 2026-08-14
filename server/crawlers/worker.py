@@ -69,17 +69,19 @@ def _run_batch(trigger: str) -> None:
     """전체 몰 배치 실행 (세션 미보유) + 몰별 결과를 새 세션으로 기록.
 
     배치 완료 후 close_browser() — 512MB OOM 방지 (v0.16.5), 다음 배치 시 재생성된다.
+    시작 시 몰별 수집 대상 개수를 먼저 로그로 노출 (v0.16.16).
     """
     for mall, runner in _RUNNERS:
         started = time.monotonic()
+        logger.info("배치 %s 시작 (트리거=%s) — 수집 대상 확인 중", mall, trigger)
         try:
             # v0.16.2 (T-119) — run_once 는 (attempted, success) 반환
             # v0.16.8 (T-121) — 4튜플 (attempted, success, gone, error) — 실패 사유 기록
             attempted, count, gone, error = runner()
             duration_ms = int((time.monotonic() - started) * 1000)
             _record_run(mall, trigger, True, count, attempted, gone, error, duration_ms)
-            logger.info("배치 %s: %d건 수집 / %d건 시도 / %s (%.1fs)",
-                        mall, count, attempted,
+            logger.info("배치 %s 완료: %d건 시도 / %d건 수집 / %s (%.1fs)",
+                        mall, attempted, count,
                         f"소멸 {gone}건" if gone else "오류 " + error if error else "정상",
                         duration_ms / 1000)
         except Exception as exc:  # noqa: BLE001 — 몰 1건 실패가 워커를 죽이지 않도록 개별 격리

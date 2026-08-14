@@ -228,18 +228,22 @@ def run_once() -> tuple[int, int, int, str | None]:
     success = 0
     gone = 0
     errors: list[str] = []
-    for product in stale[:2]:  # 배치 2건 — Render 512MB OOM(운영 실측, 2026-08-10) 방지.
-        #   6건 순차여도 크로미움 렌더러가 배치 지속시간 만큼 생존 → 렌더러 누적 OOM.
-        #   소멸 상품 없애고 정상 13자만 있으니 2건으로 충분 (v0.16.10).
-        if product.id.startswith("oyrun:"):
-            continue
+    batch = [p for p in stale[:2] if not p.id.startswith("oyrun:")]  # 배치 2건 — Render 512MB OOM(운영 실측, 2026-08-10) 방지.
+    logger.info("올리브영 수집 대상 %d건 (스테일 %d건)", len(batch), len(stale))
+    for i, product in enumerate(batch, start=1):
         attempted += 1  # 실제 fetch 시도 1건
+        logger.info("올리브영 수집 시도 %d/%d goodsNo=%s", i, len(batch), product.id)
+        t0 = time.monotonic()
         result = fetch_goods(product.id)
+        dt = time.monotonic() - t0
         if result is None or result.get("status") is None:
             errors.append(result["error"] if result else "알 수 없는 오류")
+            logger.warning("올리브영 수집 실패 %d/%d %s (%.1fs) — %s", i, len(batch), product.id, dt,
+                           result["error"] if result else "알 수 없는 오류")
             continue  # 일시 오류 — 다음 배치에서 재시도
         if result["status"] == "gone":
             gone += 1  # 소멸(판매종료) 건수 — 실패로 취급하지 않음 (v0.16.8)
+            logger.info("올리브영 소멸 %d/%d %s (%.1fs)", i, len(batch), product.id, dt)
             # 소멸 확정 상품은 7일 후에만 재확인 (v0.16.9) — 
             #   기존 60분마다 스테일로 부활해 소멸 상품이 배치를 계속 점유하는 문제 해결.
             #   판매 재개 시 7일 내 자동 감지된다 (fetch → ok 가격 수집 → last_checked_at 갱신).
@@ -268,6 +272,6 @@ def run_once() -> tuple[int, int, int, str | None]:
             if result["image"] and not fresh.image:
                 fresh.image = result["image"]
             db.commit()
-            print(f"수집 완료: {fresh.id} → {result['price']}원")
+            logger.info("올리브영 수집 완료 %d/%d %s → %s원 (%.1fs)", i, len(batch), fresh.id, result["price"], dt)
             success += 1
     return attempted, success, gone, "; ".join(dict.fromkeys(errors)) or None

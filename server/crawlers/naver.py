@@ -117,17 +117,22 @@ def run_once() -> tuple[int, int, int, str | None]:
     success = 0
     gone = 0
     errors: list[str] = []
-    for product in stale[:3]:  # 배치 3건 — Render 512MB 메모리 예산 (v0.16.5)
-        # 네이버 전용: 브랜드/스마트스토어 URL만 대상
-        if not (product.url and "naver.com" in product.url and "brand.naver.com" in product.url):
-            continue
+    batch = [p for p in stale[:3] if p.url and "naver.com" in p.url and "brand.naver.com" in p.url]  # 배치 3건 — Render 512MB 메모리 예산 (v0.16.5)
+    logger.info("네이버 수집 대상 %d건 (스테일 %d건)", len(batch), len(stale))
+    for i, product in enumerate(batch, start=1):
         attempted += 1  # 실제 fetch 시도 1건
+        logger.info("네이버 수집 시도 %d/%d %s", i, len(batch), product.id)
+        t0 = time.monotonic()
         result = fetch(product.url)
+        dt = time.monotonic() - t0
         if result is None or result.get("status") is None:
             errors.append(result["error"] if result else "알 수 없는 오류")
+            logger.warning("네이버 수집 실패 %d/%d %s (%.1fs) — %s", i, len(batch), product.id, dt,
+                           result["error"] if result else "알 수 없는 오류")
             continue
         if result["status"] == "gone":
             gone += 1  # 상품 삭제 — 실패로 취급하지 않음 (v0.16.8)
+            logger.info("네이버 소멸 %d/%d %s (%.1fs)", i, len(batch), product.id, dt)
             # last_checked_at만 갱신해 1시간마다 재시도 중단 (v0.16.7)
             with SessionLocal() as db:
                 fresh = db.get(Product, product.id)
@@ -154,6 +159,6 @@ def run_once() -> tuple[int, int, int, str | None]:
             if result["image"] and not fresh.image:
                 fresh.image = result["image"]
             db.commit()
-            print(f"네이버 수집: {fresh.id} → {result['price']}원")
+            logger.info("네이버 수집 완료 %d/%d %s → %s원 (%.1fs)", i, len(batch), fresh.id, result["price"], dt)
             success += 1
     return attempted, success, gone, "; ".join(dict.fromkeys(errors)) or None
