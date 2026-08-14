@@ -2,6 +2,8 @@
 # PLATFORM: server
 from datetime import date, datetime, timedelta, timezone
 
+import urllib.parse
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -294,12 +296,39 @@ def upsert_product(payload: ProductUpsertIn, device_id: str | None = None, db: S
 
 
 # v0.10.4 (T-93) — 단일 상품 upsert 코어. 배치에서도 재사용 (트랜잭션 커밋은 호출자가)
+def _clean_card_url(url: str, mall: str) -> str:
+    """업로드 URL의 검색 추적 파라미터 제거 (v0.16.17).
+
+    확장이 검색 카드 링크의 href를 그대로 저장해 nl-query/NaPm 같은 추적 파라미터가
+    DB에 쌓이는 것을 방어. 서버 방어라 확장(웹스토어) 배포가 늦어도 즉시 적용된다.
+    """
+    if not url:
+        return url
+    try:
+        parts = urllib.parse.urlsplit(url)
+        if mall == "naver" and "/products/" in parts.path:
+            # 네이버 상품 페이지는 products/{id} 경로만으로 접근 가능 — 쿼리 전체 제거
+            return urllib.parse.urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+        if mall == "oliveyoung" and "goodsNo=" in parts.query:
+            # 올리브영은 goodsNo가 필수 — 그것만 남기고 나머지 추적 파라미터 제거
+            goods = urllib.parse.parse_qs(parts.query).get("goodsNo", [""])[0]
+            if goods:
+                return urllib.parse.urlunsplit(
+                    (parts.scheme, parts.netloc, parts.path, f"goodsNo={goods}", ""))
+    except Exception:  # noqa: BLE001 — 정리 실패는 원본 유지
+        pass
+    return url
+
+
 def _upsert(db: Session, product_id: str, mall: str, url: str, name: str | None,
             image: str | None, source: str | None) -> Product:
     # v0.9.3 — DB 컬럼 최대 길이(Postgres는 초과 시 IntegrityError 500, SQLite는 무시)에
     #          맞춰 잘라 저장한다. 네이버 연관 카드의 장황한 상품명이 name(512)을 넘는 경우
     #          '연관 상품 업로드 실패 HTTP 500' + 관계 저장 누락이 발생했었음
-    url = (url or "")[:1024]
+    # v0.16.17 — 확장이 검색 카드 링크를 그대로 보내는 오염(추적 파라미터)을 저장 전에 정리.
+    #   네이버: products/{id} 경로만 필요 → 쿼리 제거 / 올리브영: goodsNo만 유지.
+    #   확장 배포(웹스토어 심사)가 늦어도 서버에서 즉시 방어 (운영 실측 537건 오염)
+    url = _clean_card_url((url or "")[:1024], mall)
     name = (name or "")[:512]
     image = (image or "")[:1024]
     # v0.13.0 (T-106) — 상품명 정규화 (크로스몰 매칭용). name 변경 시 재계산
