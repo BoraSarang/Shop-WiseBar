@@ -9,6 +9,11 @@
   네이버 · 쿠팡 · 올리브영 어디서든 <strong>지금 사도 되는 가격</strong>을 놓치지 마세요.
 </p>
 
+> ## ⏸️ 프로젝트 종료 (Archived · 2026-08-15)
+> 이 저장소는 **읽기 전용 아카이브**로 전환되었습니다. (타사 스크래핑 차단·가격 오탐의 구조적 한계로 종료 결정)
+> 이후 타 프로젝트에서 재사용하기 위한 최종 정리는 **[docs/ARCHIVE.md](docs/ARCHIVE.md)** 를 참고하세요.
+> 시스템 구성 · 기술 스택 · 실행 방법 · 실측 교훈(쇼핑몰 크롤링 차단, 가격 오탐 방어 설계)을 기록해 두었습니다.
+
 <p align="center">
   <a href="https://borasarang.github.io/Shop-WiseBar/">랜딩 페이지</a> ·
   <a href="releases/latest">릴리스</a> ·
