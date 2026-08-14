@@ -21,7 +21,6 @@
 
 <p align="center">
   <a href="https://borasarang.github.io/Shop-WiseBar/">랜딩 페이지</a> ·
-  <a href="releases/latest">릴리스</a> ·
   <a href="docs/PRD.md">PRD</a> ·
   <a href="docs/DESIGN.md">기술 설계</a> ·
   <a href="docs/store/STORE_LISTING.md">스토어 리스팅</a>
