@@ -94,8 +94,10 @@ def get_browser():
         pw = sync_playwright().start()
         _thread_local.pw = pw
 
+    # 로컬 워커(LOCAL_WORKER=1)는 Browserless를 쓰지 않는다 — 공유 클라우드 실측 불안정
+    # (TargetClosedError·Failed to open new tab, 2026-08-14) + 무료 로컬 Chrome 우선 (v0.16.16)
     browserless_token = os.environ.get(BROWSERLESS_TOKEN_ENV, "").strip()
-    if browserless_token:
+    if browserless_token and os.environ.get("LOCAL_WORKER") != "1":
         browser = _connect_browserless(pw, browserless_token)
         if browser is not None:
             _thread_local.browser = browser
