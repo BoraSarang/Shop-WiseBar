@@ -37,15 +37,13 @@ enum DS {
         }
     }
 
-    // MARK: 타이포 (SF Pro 권장 사이즈)
+    // MARK: 타이포 — 4단계 단순화 (라이트 미니멀, v0.16.17)
     enum Font {
-        static let xxs = SwiftUI.Font.system(size: 10)
-        static let xs = SwiftUI.Font.system(size: 11)
-        static let sm = SwiftUI.Font.system(size: 12)
-        static let base = SwiftUI.Font.system(size: 13)
-        static let md = SwiftUI.Font.system(size: 15)
-        static let lg = SwiftUI.Font.system(size: 17)
-        static let xl = SwiftUI.Font.system(size: 20, weight: .semibold)
+        static let title = SwiftUI.Font.system(size: 20, weight: .semibold)
+        static let section = SwiftUI.Font.system(size: 15, weight: .semibold)
+        static let body = SwiftUI.Font.system(size: 13)
+        static let caption = SwiftUI.Font.system(size: 11)
+        static let caption2 = SwiftUI.Font.system(size: 10)
 
         static func title(_ size: CGFloat) -> SwiftUI.Font {
             SwiftUI.Font.system(size: size, weight: .semibold)
@@ -78,7 +76,7 @@ struct MallBadge: View {
     let mall: String
     var body: some View {
         Text(Self.display(mall))
-            .font(DS.Font.xs)
+            .font(DS.Font.caption)
             .foregroundStyle(.white)
             .padding(.horizontal, DS.Space.s2)
             .padding(.vertical, 2)
@@ -100,7 +98,7 @@ struct AlertBadge: View {
     let type: String
     var body: some View {
         Text(Self.label(type))
-            .font(DS.Font.xs)
+            .font(DS.Font.caption)
             .foregroundStyle(.white)
             .padding(.horizontal, DS.Space.s2)
             .padding(.vertical, 2)

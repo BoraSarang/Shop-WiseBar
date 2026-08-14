@@ -61,15 +61,11 @@ final class AppModel {
         case idle, loading, loaded, failed(String)
     }
 
-    /// 탭 라우팅 섹션
+    /// 탭 라우팅 섹션 — 디자인 리뉴얼: 9개 → 5개 통합 (v0.16.17)
     enum Section: String, CaseIterable, Identifiable {
-        case dashboard = "대시보드"
-        case health = "헬스"
-        case users = "사용자"
-        case insight = "인사이트"
-        case stats = "통계"
-        case deals = "공통 핫딜"
-        case collect = "수집"
+        case overview = "개요"
+        case status = "상태"
+        case products = "상품"
         case crawler = "크롤러"
         case settings = "설정"
 
@@ -77,13 +73,9 @@ final class AppModel {
 
         var systemImage: String {
             switch self {
-            case .dashboard: return "chart.bar"
-            case .health: return "heart.text.square"
-            case .users: return "person.2"
-            case .insight: return "lightbulb"
-            case .stats: return "sum"
-            case .deals: return "tag"
-            case .collect: return "tray.and.arrow.down"
+            case .overview: return "chart.bar"
+            case .status: return "gauge"
+            case .products: return "tag"
             case .crawler: return "gearshape.2"
             case .settings: return "gearshape"
             }

@@ -1,41 +1,62 @@
 import SwiftUI
 
-/// 대시보드 — 전체 개요 카드 + 수집 트렌드 미니 차트
+/// 개요 — 핵심 지표 카드 + 수집 트렌드 미니 차트 (라이트 미니멀, v0.16.17)
 struct DashboardView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DS.Space.s4) {
-                PageHeader(title: "대시보드", subtitle: "전체 데이터 현황 (운영 서버)")
-                overviewGrid
-                if let trend = model.trend {
-                    TrendChartView(days: trend.days)
+            VStack(alignment: .leading, spacing: DS.Space.s5) {
+                PageHeader(title: "개요", subtitle: "전체 데이터 현황 (운영 서버)")
+
+                if let o = model.overview {
+                    keyMetrics(o)
+                    if let trend = model.trend {
+                        TrendChartView(days: trend.days)
+                    }
+                    extraLine(o)
+                } else {
+                    ProgressView("데이터 로딩 중…")
+                        .frame(maxWidth: .infinity, maxHeight: 300)
                 }
             }
             .padding(DS.Space.s5)
         }
     }
 
-    private var overviewGrid: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: DS.Space.s3), count: 3), spacing: DS.Space.s3) {
-            if let o = model.overview {
-                StatCard(title: "상품", value: "\(o.products)", color: DS.Color.primary, icon: "cube.box")
-                StatCard(title: "찜 (관심상품)", value: "\(o.watches)", color: DS.Color.mallNaver, icon: "star")
-                StatCard(title: "가격포인트", value: "\(o.pricePoints)", color: DS.Color.mallCoupang, icon: "chart.line.downtrend.xyaxis")
-                StatCard(title: "가격책정 상품", value: "\(o.priced)", color: DS.Color.success, icon: "checkmark.circle")
-                StatCard(title: "품절 중", value: "\(o.soldOut)", color: DS.Color.danger, icon: "exclamationmark.triangle")
-                StatCard(title: "알림 발생", value: "\(o.alerts)", color: .orange, icon: "bell")
-                StatCard(title: "기기", value: "\(o.devices)", color: .gray, icon: "iphone")
-                StatCard(title: "일별 통계", value: "\(o.dailyStats)", color: .indigo, icon: "calendar")
-                StatCard(title: "연관 관계", value: "\(o.relations)", color: .teal, icon: "link")
-            } else {
-                ForEach(0..<9, id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: DS.Radius.lg)
-                        .fill(.quaternary.opacity(0.5))
-                        .frame(height: 88)
-                }
-            }
+    /// 핵심 4개 지표 카드
+    private func keyMetrics(_ o: Overview) -> some View {
+        HStack(spacing: DS.Space.s3) {
+            StatCard(title: "상품", value: "\(o.products)", color: DS.Color.primary, icon: "cube.box")
+            StatCard(title: "찜 (관심상품)", value: "\(o.watches)", color: DS.Color.mallNaver, icon: "star")
+            StatCard(title: "가격포인트", value: "\(o.pricePoints)", color: DS.Color.mallCoupang, icon: "chart.line.downtrend.xyaxis")
+            StatCard(title: "알림 발생", value: "\(o.alerts)", color: .orange, icon: "bell")
+        }
+    }
+
+    /// 나머지 지표 — 컴팩트 라인
+    private func extraLine(_ o: Overview) -> some View {
+        HStack(spacing: DS.Space.s4) {
+            miniStat("가격책정", "\(o.priced)")
+            miniStat("품절 중", "\(o.soldOut)")
+            miniStat("기기", "\(o.devices)")
+            miniStat("일별 통계", "\(o.dailyStats)")
+            miniStat("연관 관계", "\(o.relations)")
+            Spacer()
+        }
+        .padding(.horizontal, DS.Space.s4)
+        .padding(.vertical, DS.Space.s3)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: DS.Radius.lg)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private func miniStat(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(value).font(DS.Font.body.weight(.semibold)).monospacedDigit()
+            Text(label).font(DS.Font.caption2).foregroundStyle(.secondary)
         }
     }
 }
@@ -47,7 +68,7 @@ struct TrendChartView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s3) {
             Text("수집 트렌드 (최근 \(days.count)일)")
-                .font(DS.Font.lg.weight(.semibold))
+                .font(DS.Font.section)
             HStack(alignment: .bottom, spacing: 2) {
                 ForEach(days, id: \.date) { d in
                     VStack {
@@ -59,7 +80,11 @@ struct TrendChartView: View {
             legend
         }
         .padding(DS.Space.s4)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: DS.Radius.lg)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
     }
 
     private var legend: some View {
@@ -68,7 +93,7 @@ struct TrendChartView: View {
             LegendItem(color: DS.Color.danger, label: "가격 변동")
             LegendItem(color: DS.Color.success, label: "신규 상품")
         }
-        .font(DS.Font.xs)
+        .font(DS.Font.caption)
     }
 }
 

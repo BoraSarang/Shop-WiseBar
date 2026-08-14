@@ -45,7 +45,7 @@ struct CrawlerView: View {
                 Image(systemName: "gearshape.2.fill")
                     .foregroundStyle(DS.Color.primary)
                 Text("수집 설정")
-                    .font(DS.Font.md.weight(.semibold))
+                    .font(DS.Font.section)
                 Spacer()
                 statusPill(cfg)
             }
@@ -54,7 +54,7 @@ struct CrawlerView: View {
                 // 주기 선택
                 VStack(alignment: .leading, spacing: DS.Space.s1) {
                     Text("수집 주기")
-                        .font(DS.Font.sm)
+                        .font(DS.Font.caption)
                         .foregroundStyle(.secondary)
                     Picker("수집 주기", selection: intervalBinding(interval: cfg.intervalSeconds)) {
                         ForEach(Self.intervalOptions, id: \.0) { option in
@@ -70,9 +70,9 @@ struct CrawlerView: View {
                 Toggle(isOn: enabledBinding(cfg.enabled)) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("활성화")
-                            .font(DS.Font.sm)
+                            .font(DS.Font.caption)
                         Text(cfg.enabled ? "주기에 따라 자동 수집" : "자동 수집 중지")
-                            .font(DS.Font.xs)
+                            .font(DS.Font.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -97,7 +97,7 @@ struct CrawlerView: View {
             }
         }
         .padding(DS.Space.s4)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+        .cardStyle
     }
 
     // MARK: 로컬 배치 (v0.16.16, T-127)
@@ -108,7 +108,7 @@ struct CrawlerView: View {
                 Image(systemName: "terminal")
                     .foregroundStyle(DS.Color.primary)
                 Text("로컬 배치")
-                    .font(DS.Font.md.weight(.semibold))
+                    .font(DS.Font.section)
                 Spacer()
                 Button {
                     NSPasteboard.general.clearContents()
@@ -128,7 +128,7 @@ struct CrawlerView: View {
                 statusDot
             }
             Text("이 맥에서 run-local-crawler.sh로 수집합니다. 수동으로 시작/종료하며, 수집 대상 목록 페이지도 함께 파싱합니다.")
-                .font(DS.Font.xs)
+                .font(DS.Font.caption)
                 .foregroundStyle(.secondary)
 
             HStack(spacing: DS.Space.s3) {
@@ -181,7 +181,7 @@ struct CrawlerView: View {
             .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: DS.Radius.md))
         }
         .padding(DS.Space.s4)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+        .cardStyle
     }
 
     private var statusDot: some View {
@@ -190,7 +190,7 @@ struct CrawlerView: View {
                 .fill(model.localBatchRunning ? DS.Color.success : DS.Color.danger)
                 .frame(width: 8, height: 8)
             Text(model.localBatchRunning ? "실행 중" : "중지")
-                .font(DS.Font.xs)
+                .font(DS.Font.caption)
                 .foregroundStyle(.secondary)
         }
     }
@@ -219,7 +219,7 @@ struct CrawlerView: View {
                 .fill(cfg.enabled ? DS.Color.success : DS.Color.danger)
                 .frame(width: 8, height: 8)
             Text(cfg.enabled ? "자동 수집 중" : "중지")
-                .font(DS.Font.xs)
+                .font(DS.Font.caption)
                 .foregroundStyle(.secondary)
         }
     }
@@ -232,9 +232,9 @@ struct CrawlerView: View {
                 Image(systemName: "clock.arrow.circlepath")
                     .foregroundStyle(DS.Color.primary)
                 Text("실행 이력")
-                    .font(DS.Font.md.weight(.semibold))
+                    .font(DS.Font.section)
                 Text("최근 \(model.crawlerLogs.count)건")
-                    .font(DS.Font.xs)
+                    .font(DS.Font.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button {
@@ -248,7 +248,7 @@ struct CrawlerView: View {
 
             if model.crawlerLogs.isEmpty {
                 Text("아직 실행 이력이 없습니다.")
-                    .font(DS.Font.sm)
+                    .font(DS.Font.caption)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, DS.Space.s3)
             } else {
@@ -263,13 +263,13 @@ struct CrawlerView: View {
             }
         }
         .padding(DS.Space.s4)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+        .cardStyle
     }
 
     private func logRow(_ log: CrawlerLog) -> some View {
         HStack(spacing: DS.Space.s3) {
             Text(log.mall)
-                .font(DS.Font.xs)
+                .font(DS.Font.caption)
                 .foregroundStyle(.white)
                 .padding(.horizontal, DS.Space.s2)
                 .padding(.vertical, 2)
@@ -297,7 +297,7 @@ struct CrawlerView: View {
                         .foregroundStyle(DS.Color.danger)
                 }
             }
-            .font(DS.Font.sm.weight(.medium))
+            .font(DS.Font.body.weight(.medium))
             .monospacedDigit()
 
             Spacer()
@@ -305,7 +305,7 @@ struct CrawlerView: View {
             // v0.16.8 (T-121) — 실패 사유 (있을 때만)
             if let error = log.error, !error.isEmpty {
                 Text(error)
-                    .font(DS.Font.xs)
+                    .font(DS.Font.caption)
                     .foregroundStyle(DS.Color.danger)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -314,16 +314,16 @@ struct CrawlerView: View {
             }
 
             Text(triggerLabel(log.trigger))
-                .font(DS.Font.xs)
+                .font(DS.Font.caption)
                 .foregroundStyle(.secondary)
 
             Text(durationText(log.durationMs))
-                .font(DS.Font.xs)
+                .font(DS.Font.caption)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
 
             Text(log.runAt)
-                .font(DS.Font.xs)
+                .font(DS.Font.caption)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         }
@@ -373,7 +373,7 @@ struct CrawlerView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(DS.Color.danger)
             Text(message)
-                .font(DS.Font.sm)
+                .font(DS.Font.caption)
                 .foregroundStyle(DS.Color.danger)
             Spacer()
         }
