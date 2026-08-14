@@ -5,6 +5,11 @@
 <h1 align="center">똑바 · Shop WiseBar</h1>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/status-archived-inactive?style=for-the-badge&color=6e7681&logo=github" alt="Archived" />
+  <img src="https://img.shields.io/badge/service-ended-2026--08--15-inactive?style=for-the-badge&color=6e7681" alt="Service ended" />
+</p>
+
+<p align="center">
   쇼핑몰 상품의 가격을 자동으로 추적하고, 내려가면 바로 알려드려요.<br/>
   네이버 · 쿠팡 · 올리브영 어디서든 <strong>지금 사도 되는 가격</strong>을 놓치지 마세요.
 </p>

@@ -183,3 +183,28 @@ h2 { font-size: clamp(26px, 4vw, 38px); text-align: center; letter-spacing: -.02
   .step-img { max-width: 360px; margin: 0 auto; }
   .hero-stats { gap: 32px; }
 }
+/* ── 종료 배너 (2026-08-15 아카이브) ───────────────────── */
+.archive-banner {
+  background: linear-gradient(135deg, #2a1f38 0%, #3a2533 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+  font-size: 13px;
+}
+.archive-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  text-align: center;
+}
+.archive-banner strong { color: #ffd9a0; white-space: nowrap; }
+.archive-banner span { color: var(--muted); }
+.archive-banner a { color: var(--primary-bright); text-decoration: none; }
+.archive-banner a:hover { text-decoration: underline; }
+.hero-badge.archive {
+  background: rgba(255, 217, 160, .12);
+  border-color: rgba(255, 217, 160, .35);
+  color: #ffd9a0;
+}
+.hero-badge.archive .dot { background: #ffb4a0; box-shadow: 0 0 10px #ffb4a0; }
