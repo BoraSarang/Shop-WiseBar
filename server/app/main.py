@@ -8,7 +8,7 @@ from app.config import APP_VERSION, settings
 from app.database import Base, engine
 from app.logging_setup import setup_logging, started_at
 from app.models import CrawlerConfig
-from app.routers import admin, devices, products, recommendations, relations, watches
+from app.routers import admin, devices, products, recommendations, relations, stats, watches
 from app.routers.products import _backfill_normalized_names
 from app.routers.recommendations import INDEX_SQLS
 
@@ -31,6 +31,7 @@ app.include_router(watches.router, prefix="/api/v1")
 app.include_router(recommendations.router, prefix="/api/v1")
 app.include_router(relations.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(stats.router, prefix="/api/v1")
 
 # v0.10.3 (T-91a) — 요청 로그 미들웨어 + 전역 예외 핸들러 (E-SRV-GEN-1001)
 setup_logging(app)
