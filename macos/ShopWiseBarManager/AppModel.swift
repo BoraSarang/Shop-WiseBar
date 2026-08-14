@@ -37,6 +37,15 @@ final class AppModel {
     var usersState: LoadState = .idle
     var usersError: String?
 
+    // 통계 (v0.16.19, T-129)
+    var collectByMall: CollectByMallResponse?
+    var priceMovement: PriceMovementResponse?
+    var topMovers: TopMoversResponse?
+    var userStats: UserStatsResponse?
+    var statsState: LoadState = .idle
+    var statsError: String?
+    var statsDays = 30
+
     // 서버 토글 (UserDefaults에 저장)
     var serverOverride: String {
         didSet {
@@ -67,6 +76,7 @@ final class AppModel {
         case status = "상태"
         case products = "상품"
         case crawler = "크롤러"
+        case stats = "통계"
         case settings = "설정"
 
         var id: String { rawValue }
@@ -77,6 +87,7 @@ final class AppModel {
             case .status: return "gauge"
             case .products: return "tag"
             case .crawler: return "gearshape.2"
+            case .stats: return "chart.bar.xaxis"
             case .settings: return "gearshape"
             }
         }
@@ -152,6 +163,27 @@ final class AppModel {
             usersError = "서버 응답을 불러오지 못했습니다."
         }
         usersState = .loaded
+    }
+
+    // MARK: 통계 (v0.16.19, T-129)
+
+    /// 통계 탭 — 수집(몰별)/가격 동향/TOP 변동/사용자 병렬 로딩 (기간 변경 시 재호출)
+    func refreshStats(days: Int? = nil) async {
+        if let days { statsDays = days }
+        statsState = .loading
+        statsError = nil
+        async let cb: CollectByMallResponse? = try? api.collectByMall(days: statsDays)
+        async let pm: PriceMovementResponse? = try? api.priceMovement(days: statsDays)
+        async let tm: TopMoversResponse? = try? api.topMovers()
+        async let us: UserStatsResponse? = try? api.userStats(days: statsDays)
+        collectByMall = await cb
+        priceMovement = await pm
+        topMovers = await tm
+        userStats = await us
+        if collectByMall == nil && priceMovement == nil && topMovers == nil && userStats == nil {
+            statsError = "서버 응답을 불러오지 못했습니다."
+        }
+        statsState = .loaded
     }
 
     // MARK: 크롤러 (v0.16.1)

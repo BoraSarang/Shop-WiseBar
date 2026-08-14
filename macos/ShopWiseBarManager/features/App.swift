@@ -56,6 +56,7 @@ struct ContentView: View {
         case .status: HealthView()
         case .products: InsightView()
         case .crawler: CrawlerView()
+        case .stats: StatsView()
         case .settings: SettingsView()
         }
     }

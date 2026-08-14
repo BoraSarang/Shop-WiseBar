@@ -121,6 +121,86 @@ struct InsightResponse: Decodable {
     }
 }
 
+// MARK: - 통계 (v0.16.19, T-129)
+
+struct MallDay: Decodable {
+    let date: String
+    let coupang: Int
+    let naver: Int
+    let oliveyoung: Int
+}
+
+struct CollectByMallResponse: Decodable {
+    let days: [MallDay]
+}
+
+struct MovementDay: Decodable {
+    let date: String
+    let up: Int
+    let down: Int
+    let flat: Int
+}
+
+struct PriceMovementResponse: Decodable {
+    let days: [MovementDay]
+}
+
+struct MoverItem: Decodable, Identifiable {
+    let productId: String
+    let price: Int
+    let previous: Int
+    let changePct: Double
+    let name: String?
+    let image: String?
+    let url: String?
+    let mall: String?
+
+    var id: String { productId }
+
+    enum CodingKeys: String, CodingKey {
+        case price, previous
+        case productId = "product_id"
+        case changePct = "change_pct"
+        case name, image, url, mall
+    }
+}
+
+struct TopMoversResponse: Decodable {
+    let drops: [MoverItem]
+    let risers: [MoverItem]
+}
+
+struct UserStatDay: Decodable {
+    let date: String
+    let newDevices: Int
+    let active7d: Int
+    let newWatches: Int
+
+    enum CodingKeys: String, CodingKey {
+        case date
+        case newDevices = "new_devices"
+        case active7d = "active_7d"
+        case newWatches = "new_watches"
+    }
+}
+
+struct UserStatsTotals: Decodable {
+    let devices: Int
+    let active24h: Int
+    let active7d: Int
+
+    enum CodingKeys: String, CodingKey {
+        case devices
+        case active24h = "active_24h"
+        case active7d = "active_7d"
+    }
+}
+
+struct UserStatsResponse: Decodable {
+    let days: [UserStatDay]
+    let totals: UserStatsTotals
+}
+
 // 핫딜 피드 (deals/public 재사용)
 struct DealItem: Decodable, Identifiable {
     let productId: String
@@ -508,6 +588,27 @@ private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async
         try await get("/api/v1/admin/insight", query: [URLQueryItem(name: "days", value: String(days))])
     }
     func deals() async throws -> [DealItem] { try await get("/api/v1/deals/public") }
+
+    // MARK: 통계 (v0.16.19, T-129)
+
+    func collectByMall(days: Int = 30) async throws -> CollectByMallResponse {
+        try await get("/api/v1/admin/stats/collect-by-mall",
+                      query: [URLQueryItem(name: "days", value: String(days))])
+    }
+
+    func priceMovement(days: Int = 30) async throws -> PriceMovementResponse {
+        try await get("/api/v1/admin/stats/price-movement",
+                      query: [URLQueryItem(name: "days", value: String(days))])
+    }
+
+    func topMovers() async throws -> TopMoversResponse {
+        try await get("/api/v1/admin/stats/top-movers")
+    }
+
+    func userStats(days: Int = 30) async throws -> UserStatsResponse {
+        try await get("/api/v1/admin/stats/users",
+                      query: [URLQueryItem(name: "days", value: String(days))])
+    }
 
     // MARK: P0 관리 고도화 (v0.16.15)
 
