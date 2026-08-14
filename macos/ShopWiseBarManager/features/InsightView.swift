@@ -28,6 +28,7 @@ struct InsightView: View {
             }
         }
         .task {
+            DebugLogger.log("상품/인사이트 화면 표시됨", level: .info, tag: "FEATURE")
             if model.insight == nil { await model.refresh() }
             if model.priceCompare == nil { await model.refreshUsers() }
         }

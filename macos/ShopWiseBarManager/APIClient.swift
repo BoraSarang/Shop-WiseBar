@@ -532,6 +532,8 @@ final class APIClient: @unchecked Sendable {
     }
 
 private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async throws -> T {
+        let start = Date()
+        DebugLogger.log("\(path)", level: .debug, tag: "API→")
         var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
         comps.path += path
         if !query.isEmpty { comps.queryItems = query }
@@ -539,14 +541,22 @@ private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async
         var req = URLRequest(url: url)
         req.timeoutInterval = 15
         let (data, resp) = try await URLSession.shared.data(for: req)
-        guard let http = resp as? HTTPURLResponse else { throw APIError.invalidURL }
+        guard let http = resp as? HTTPURLResponse else {
+            DebugLogger.log("invalid response \(path)", level: .error, tag: "API")
+            throw APIError.invalidURL
+        }
+        let ms = Int(Date().timeIntervalSince(start) * 1000)
         guard (200 ..< 300).contains(http.statusCode) else {
+            DebugLogger.log("\(http.statusCode) \(path) (\(ms)ms)", level: .error, tag: "API")
             throw APIError.http(http.statusCode)
         }
+        DebugLogger.log("\(http.statusCode) \(path) (\(ms)ms)", level: .info, tag: "API←")
         return try JSONDecoder().decode(T.self, from: data)
     }
 
     private func put<T: Decodable>(_ path: String, body: (some Encodable)? = nil) async throws -> T {
+        let start = Date()
+        DebugLogger.log("\(path)", level: .debug, tag: "API→")
         var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
         comps.path += path
         guard let url = comps.url else { throw APIError.invalidURL }
@@ -558,14 +568,22 @@ private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async
         }
         req.timeoutInterval = 15
         let (data, resp) = try await URLSession.shared.data(for: req)
-        guard let http = resp as? HTTPURLResponse else { throw APIError.invalidURL }
+        guard let http = resp as? HTTPURLResponse else {
+            DebugLogger.log("invalid response \(path)", level: .error, tag: "API")
+            throw APIError.invalidURL
+        }
+        let ms = Int(Date().timeIntervalSince(start) * 1000)
         guard (200 ..< 300).contains(http.statusCode) else {
+            DebugLogger.log("\(http.statusCode) \(path) (\(ms)ms)", level: .error, tag: "API")
             throw APIError.http(http.statusCode)
         }
+        DebugLogger.log("\(http.statusCode) \(path) (\(ms)ms)", level: .info, tag: "API←")
         return try JSONDecoder().decode(T.self, from: data)
     }
 
     private func post(_ path: String) async throws {
+        let start = Date()
+        DebugLogger.log("\(path)", level: .debug, tag: "API→")
         var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
         comps.path += path
         guard let url = comps.url else { throw APIError.invalidURL }
@@ -574,8 +592,13 @@ private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async
         req.timeoutInterval = 15
         let (_, resp) = try await URLSession.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
-            throw APIError.http((resp as? HTTPURLResponse)?.statusCode ?? -1)
+            let code = (resp as? HTTPURLResponse)?.statusCode ?? -1
+            let ms = Int(Date().timeIntervalSince(start) * 1000)
+            DebugLogger.log("\(code) \(path) (\(ms)ms)", level: .error, tag: "API")
+            throw APIError.http(code)
         }
+        let ms = Int(Date().timeIntervalSince(start) * 1000)
+        DebugLogger.log("\(http.statusCode) \(path) (\(ms)ms)", level: .info, tag: "API←")
     }
 
     func overview() async throws -> Overview { try await get("/api/v1/admin/overview") }

@@ -50,6 +50,7 @@ struct StatsView: View {
             .padding(DS.Space.s5)
         }
         .task {
+            DebugLogger.log("통계 화면 표시됨 (기간: \(period.label))", level: .info, tag: "FEATURE")
             if model.collectByMall == nil {
                 await model.refreshStats()
             }
@@ -66,6 +67,7 @@ struct StatsView: View {
         .frame(width: 240)
         .labelsHidden()
         .onChange(of: period) { _, newValue in
+            DebugLogger.log("통계 기간 \(newValue.label) 선택", level: .info, tag: "FEATURE")
             Task { await model.refreshStats(days: newValue.rawValue) }
         }
     }

@@ -33,7 +33,10 @@ struct CrawlerView: View {
             Spacer()
         }
         .padding(DS.Space.s5)
-        .task { await model.refreshCrawler() }
+        .task {
+            DebugLogger.log("크롤러 화면 표시됨", level: .info, tag: "FEATURE")
+            await model.refreshCrawler()
+        }
     }
 
     // MARK: 설정 카드

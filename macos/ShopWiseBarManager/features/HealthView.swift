@@ -23,7 +23,10 @@ struct HealthView: View {
             }
             .padding(DS.Space.s5)
         }
-        .task { if model.healthState != .loaded { await model.refreshHealth() } }
+        .task {
+            DebugLogger.log("상태 화면 표시됨", level: .info, tag: "FEATURE")
+            if model.healthState != .loaded { await model.refreshHealth() }
+        }
     }
 
     // MARK: 서버 상태

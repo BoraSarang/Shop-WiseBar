@@ -13,6 +13,16 @@ struct ShopWiseBarManagerApp: App {
             existing.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
             exit(0)
         }
+
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            let mods = event.modifierFlags.intersection([.command, .shift])
+            if mods == [.command, .shift],
+               event.charactersIgnoringModifiers?.lowercased() == "d" {
+                DebugPanelController.shared.toggle()
+                return nil
+            }
+            return event
+        }
     }
 
     var body: some Scene {

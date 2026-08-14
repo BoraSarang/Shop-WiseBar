@@ -21,6 +21,7 @@ struct SettingsView: View {
             .padding(DS.Space.s5)
         }
         .onAppear {
+            DebugLogger.log("설정 화면 표시됨", level: .info, tag: "FEATURE")
             serverText = model.serverOverride
             launchState = SMAppService.mainApp.status
         }
