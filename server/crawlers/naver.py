@@ -5,6 +5,7 @@
 # 대상: brand.naver.com (브랜드스토어). smartstore.naver.com 은 후속 단계.
 # PLATFORM: server
 import logging
+import os
 import re
 import time
 from datetime import datetime, timezone
@@ -113,11 +114,14 @@ def run_once() -> tuple[int, int, int, str | None]:
         if now - p.last_checked_at.timestamp() > 60 * 60:
             stale.append(p)
 
+    # 배치 크기 — 기본 3건(Render 512MB 메모리 예산, v0.16.5).
+    # 로컬 워커는 CRAWLER_BATCH_LIMIT로 확대 (시스템 Chrome + 메모리 제약 없음, v0.16.16).
+    batch_limit = int(os.environ.get("CRAWLER_BATCH_LIMIT", "3"))
     attempted = 0
     success = 0
     gone = 0
     errors: list[str] = []
-    batch = [p for p in stale[:3] if p.url and "naver.com" in p.url and "brand.naver.com" in p.url]  # 배치 3건 — Render 512MB 메모리 예산 (v0.16.5)
+    batch = [p for p in stale[:batch_limit] if p.url and "naver.com" in p.url and "brand.naver.com" in p.url]
     logger.info("네이버 수집 대상 %d건 (스테일 %d건)", len(batch), len(stale))
     for i, product in enumerate(batch, start=1):
         attempted += 1  # 실제 fetch 시도 1건

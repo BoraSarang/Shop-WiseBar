@@ -6,6 +6,7 @@
 #   last_checked_at 갱신만 해 다음 배치 재시도 방지 (운영: 소멸 상품이 1시간마다 0건 반복 실측).
 # PLATFORM: server
 import logging
+import os
 import re
 import time
 from datetime import datetime, timedelta, timezone
@@ -208,6 +209,9 @@ def run_once() -> tuple[int, int, int, str | None]:
       attempted 시도 건수 / success 성공 건수 / gone 상품없음(소멸) 건수 / error 실패 사유(없으면 None).
     실패 = attempted - success - gone (fetch 불가·일시 오류 — 다음 배치에서 재시도).
     """
+    # 배치 크기 — 기본 2건(Render 512MB OOM 방지, 운영 실측 2026-08-10).
+    # 로컬 워커는 CRAWLER_BATCH_LIMIT로 확대 (시스템 Chrome + 메모리 제약 없음, v0.16.16).
+    batch_limit = int(os.environ.get("CRAWLER_BATCH_LIMIT", "2"))
     now = time.time()
     with SessionLocal() as db:
         candidates = db.query(Product) \
@@ -228,7 +232,7 @@ def run_once() -> tuple[int, int, int, str | None]:
     success = 0
     gone = 0
     errors: list[str] = []
-    batch = [p for p in stale[:2] if not p.id.startswith("oyrun:")]  # 배치 2건 — Render 512MB OOM(운영 실측, 2026-08-10) 방지.
+    batch = [p for p in stale[:batch_limit] if not p.id.startswith("oyrun:")]
     logger.info("올리브영 수집 대상 %d건 (스테일 %d건)", len(batch), len(stale))
     for i, product in enumerate(batch, start=1):
         attempted += 1  # 실제 fetch 시도 1건
