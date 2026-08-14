@@ -23,6 +23,9 @@ set -euo pipefail
 BASE="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$BASE/server"
 
+# 로컬 워커 모드 — 운영 crawler_config.enabled와 무관하게 예약 배치를 수행한다 (v0.16.16)
+export LOCAL_WORKER=1
+
 # .env 로드 (load_dotenv가 app.config에서 실행하지만, 셸 변수로도 명시 노출)
 
 ARGS=()

@@ -10,6 +10,7 @@
 # PLATFORM: server
 import argparse
 import logging
+import os
 import time
 from datetime import datetime, timezone
 
@@ -155,7 +156,12 @@ def main() -> None:
         return
 
     logger.info("크롤러 워커 시작 (틱 %ss, 몰: %s)", TICK_SECONDS, ",".join(CRAWLABLE_MALLS))
+    # 로컬 워커(run-local-crawler.sh)는 운영 enabled 설정과 무관하게 수집한다 (v0.16.16)
+    local = os.environ.get("LOCAL_WORKER") == "1"
+    if local:
+        logger.info("로컬 워커 모드 — 운영 enabled와 무관하게 예약 배치 실행")
     last_batch_run: float | None = None
+    last_status: str | None = None  # 대기 로그 도배 방지 — 상태가 바뀔 때만 출력
     while True:
         try:
             with SessionLocal() as db:  # cfg 읽기는 세션을 짧게 열고 즉시 닫는다 (v0.16.9)
@@ -170,19 +176,23 @@ def main() -> None:
                 _run_batch(trigger="manual")
                 _run_targets(trigger="manual")
                 _consume_trigger()
-            elif enabled and (
+            elif (local or enabled) and (
                 last_batch_run is None or (time.time() - last_batch_run) >= interval
             ):
                 # 예약 배치 — 주기는 cfg.interval_seconds (실시간 반영)
                 last_batch_run = time.time()
                 _run_batch(trigger="schedule")
+                if local:
+                    _run_targets(trigger="schedule")
             else:
-                # 비활성/대기 사유를 INFO로 노출 (INFO 레벨 로그로는 안 보이던 문제 해결)
+                # 비활성/대기 상태 — 상태가 바뀔 때만 1회 출력 (매 틱 도배 방지)
                 reason = "수집 비활성 (enabled=false — 설정 탭에서 활성화 또는 1회 실행)"
-                if enabled and last_batch_run is not None:
+                if (local or enabled) and last_batch_run is not None:
                     remaining = max(0, int(interval - (time.time() - last_batch_run)))
                     reason = f"예약 대기 (다음 배치 {remaining//60}분 후)"
-                logger.info("워커 대기: %s", reason)
+                if reason != last_status:
+                    logger.info("워커 대기: %s", reason)
+                    last_status = reason
         except Exception:  # noqa: BLE001 — 배치 실패가 루프를 죽이지 않도록 최상위 격리
             logger.exception("루프 오류")
         time.sleep(TICK_SECONDS)
