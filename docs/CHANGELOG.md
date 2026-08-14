@@ -1,5 +1,17 @@
 # 똑바(Shop WiseBar) 변경 이력
 
+## v0.16.16 (2026-08-14) — [server][macos] 매니저 로컬 배치 실행기 + 인사이트 리스트/그리드 + AI 보류 (T-127)
+> 사용자 결정: ①로컬 배치는 **수동 실행/종료** (매니저가 Process 직접 제어), ②매니저 앱 로그인 자동 실행은 **설정 토글**(SMAppService), ③AI 도입은 **보류**하고 관리자 기능 우선.
+> 상세: `docs/plans/PLAN_v0.16.16_manager.md`
+- [ai] **AI 도입 보류 기록** — `docs/AI_MODELS.json` note 갱신 (관리자 기능 우선, AI 재결정은 추후). LLM 미사용 유지.
+- [feat-server] **수집 대상 페이지** — `CrawlTarget` 모델 + `GET/POST /admin/crawl/targets` + `DELETE /admin/crawl/targets/{id}` (프리셋 네이버 메인·올리브영 랭킹 + 커스텀 URL, 중복 409/검증 422). 로컬 크롤러 `worker._run_targets`가 enabled target을 순회해 목록 페이지에서 상품 카드(ID·이름·가격) 추출 → 신규 등록/기존 갱신, `crawler_runs`에 `trigger="target"` 기록.
+- [feat-server] **인사이트 상품 메타** — `/admin/insight`의 `recent_alerts`/`top_drops`에 상품명·이미지·URL·몰 조인 (N+1 방지 단일 조회).
+- [feat-macos] **로컬 배치 섹션** (크롤러 탭) — 시작/중지/1회 실행(Process) + 상태 표시 + 로그 뷰어. **설정 탭 신규** — 로그인 자동 실행(SMAppService) + 서버 오버라이드 UI.
+- [feat-macos] **인사이트 상품 카드 개편** — 이미지+이름+가격+몰 카드, **그리드/리스트 토글**, 클릭 시 상품 열기.
+- [test] crawl/targets(생성·검증·중복·삭제) + insight 메타 5건 추가 — **pytest 92건 통과** (기존 87 + 신규 5). macOS xcodebuild **BUILD SUCCEEDED**.
+- [error] `error_message_ko.json`에 `E-SRV-STOR-1001/1002`, `E-MAC-PROC-1001/1002` 추가.
+- 문서: PLAN_v0.16.16 / TODO(T-127) / CHANGELOG / ENDPOINTS.
+
 ## v0.16.15 (2026-08-12) — [server][macos][extension] 똑바 매니저 관리 고도화 (T-126)
 > 사용자 승인: 매니저 관리 항목 4개 축 전부 선택 — P0 수집 인사이트 + 서비스 헬스 / P1 사용자 활동 / P2 가격 동향 비교.
 > 상세: `docs/plans/PLAN_v0.16.15_manager.md`

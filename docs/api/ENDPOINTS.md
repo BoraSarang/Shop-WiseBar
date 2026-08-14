@@ -90,6 +90,11 @@
 | GET | `/admin/users` | 사용자 활동 — `{total, active_24h, users:[{device_id,created_at,last_seen_at,active,watches,captures}]}`. `active` = last_seen_at 24시간 이내 |
 | GET | `/admin/price-compare?limit=` | 가격 동향 비교(기본 30/최대 100) — `{groups:[{normalized_name,name,cheapest_mall,cheapest_price,rows:[{product_id,mall,name,price,url,diff_pct,is_cheapest}]}], total_groups}`. `diff_pct` = 최저가 몰 대비 오버프라이스 % |
 | POST | `/devices/{id}/heartbeat` | 활동 하트비트 — 미등록 기기 자동 등록, `last_seen_at` 갱신 → `{device_id,status,last_seen_at}` |
+| GET | `/admin/crawl/targets` | 수집 대상 목록 (v0.16.16) — `{targets:[{id,mall,label,url,enabled,created_at}]}` enabled 우선 |
+| POST | `/admin/crawl/targets` | 수집 대상 등록 (v0.16.16) — `{mall: naver\|oliveyoung\|custom, label, url, enabled?}`. 422 검증(잘못된 mall/URL), 409 중복 URL |
+| DELETE | `/admin/crawl/targets/{id}` | 수집 대상 삭제 (v0.16.16) — 200 idempotent |
+
+> v0.16.16 (T-127): `/admin/insight` 응답의 `recent_alerts`/`top_drops` 항목에 상품 메타 `name/image/url/mall` 포함 (없으면 null). 로컬 크롤러(`run-local-crawler.sh`)가 enabled target을 순회, 목록 페이지에서 상품 카드 추출해 신규 등록/기존 갱신 — 결과는 `crawler_runs.trigger="target"`으로 기록.
 
 > v0.16.15 (T-126): `/products/batch` 요청 body에 `device_id`(선택) 추가 — 상위 레벨 또는 항목별. 항목에 price 있으면 `price_points.device_id`에 기록 (사용자 활동 추적용).
 

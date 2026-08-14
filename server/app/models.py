@@ -155,3 +155,18 @@ class CrawlerConfig(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     run_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class CrawlTarget(Base):
+    """수집 대상 목록 페이지 (v0.16.16, T-127) — 로컬 크롤러가 파싱할 네이버 메인/올리브영 랭킹 등.
+    macOS 매니저에서 등록/조회하고, worker.run_targets_once()가 순회하며 신규 상품을 발견한다."""
+
+    __tablename__ = "crawl_targets"
+    __table_args__ = (UniqueConstraint("url", name="uq_crawl_target_url"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mall: Mapped[str] = mapped_column(String(32), default="custom")  # naver | oliveyoung | custom
+    label: Mapped[str] = mapped_column(String(128))
+    url: Mapped[str] = mapped_column(String(1024))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

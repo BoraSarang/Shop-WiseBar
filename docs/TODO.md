@@ -2,7 +2,19 @@
 
 > 재구성 v0.3.0 시작 (2026-08-03). 상태: 🔵 진행 / ✅ 완료 / ⏸ 보류
 
-## T-126 — 똑바 매니저 관리 고도화 (P0/P1/P2) (v0.16.15) — 🔵 진행 (2026-08-12)
+## T-127 — 매니저 로컬 배치 실행기 + 인사이트 리스트/그리드 + AI 보류 (v0.16.16) — 🔵 진행 (2026-08-14)
+> 사용자 결정: ①로컬 배치는 **수동 실행/종료** (매니저가 Process 직접 제어), ②매니저 앱 로그인 시 자동 실행은 **설정에 토글** 추가, ③AI 도입은 **보류**하고 관리자 기능 우선.
+> 상세: `docs/plans/PLAN_v0.16.16_manager.md`
+- [x] **T-127a** PLAN_v0.16.16 작성 + TODO 등록 + AI 보류 문서 기록 (AI_MODELS.json/CHANGELOG)
+- [x] **T-127b** 서버: `GET/POST /admin/crawl/targets` 수집 대상 페이지 (프리셋 네이버 메인·올리브영 랭킹 + 커스텀 URL) (+ tests)
+- [x] **T-127c** 서버: `/admin/insight` 상품 메타(name/image/url/mall) 조인 (+ tests)
+- [x] **T-127d** 로컬 크롤러: worker 목록 페이지 파싱 (target URL → 상품 카드 추출 → 신규 등록/기존 갱신)
+- [x] **T-127e** macOS: SettingsView — 로그인 자동 실행 토글(SMAppService) + 서버 오버라이드 UI
+- [x] **T-127f** macOS: 로컬 배치 섹션 — Process 시작/중지/1회 실행 + 상태·로그 표시
+- [x] **T-127g** macOS: InsightView 상품 카드 그리드/리스트 토글
+- [ ] **T-127h** 검증: pytest + xcodebuild + 로컬 크롤러 --once 실데이터 + ~/Applications 배포 + 커밋/push
+
+## T-126 — 똑바 매니저 관리 고도화 (P0/P1/P2) (v0.16.15) — ✅ 완료 (2026-08-14)
 > 사용자 승인: 매니저 관리 항목 4개 축 전부 선택. P0 수집상품 인사이트+서비스 헬스 → P1 사용자 활동 → P2 가격 동향.
 > 상세: `docs/plans/PLAN_v0.16.15_manager.md`
 - [x] **T-126a** PLAN_v0.16.15 작성 + TODO 등록 (문서 우선)

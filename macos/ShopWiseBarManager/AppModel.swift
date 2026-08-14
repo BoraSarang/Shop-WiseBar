@@ -45,6 +45,18 @@ final class AppModel {
         }
     }
 
+    // 로그인 시 자동 실행 (UserDefaults — SMAppService로 등록)
+    var launchAtLogin: Bool {
+        didSet {
+            UserDefaults.standard.set(launchAtLogin, forKey: "admin.launch.at.login")
+        }
+    }
+
+    // 로컬 배치 프로세스 (v0.16.16, T-127)
+    private(set) var localBatchRunning = false
+    private(set) var localBatchLog = "로컬 크롤러를 실행하면 로그가 여기에 표시됩니다."
+    private var localBatchProcess: Process?
+
     enum LoadState: Equatable {
         case idle, loading, loaded, failed(String)
     }
@@ -59,6 +71,7 @@ final class AppModel {
         case deals = "공통 핫딜"
         case collect = "수집"
         case crawler = "크롤러"
+        case settings = "설정"
 
         var id: String { rawValue }
 
@@ -72,6 +85,7 @@ final class AppModel {
             case .deals: return "tag"
             case .collect: return "tray.and.arrow.down"
             case .crawler: return "gearshape.2"
+            case .settings: return "gearshape"
             }
         }
     }
@@ -83,6 +97,7 @@ final class AppModel {
 
     init() {
         serverOverride = UserDefaults.standard.string(forKey: "admin.server.override") ?? ""
+        launchAtLogin = UserDefaults.standard.bool(forKey: "admin.launch.at.login")
     }
 
     var dataDescription: String {
@@ -101,14 +116,14 @@ final class AppModel {
         async let m: MallsResponse? = try? api.malls()
         async let c: CollectResponse? = try? api.collect()
         async let i: InsightResponse? = try? api.insight()
-        async let d: DealsResponse? = try? api.deals()
+        async let d: [DealItem]? = try? api.deals()
 
         overview = await o
         trend = await t
         malls = await m
         collect = await c
         insight = await i
-        deals = (await d)?.deals ?? []
+        deals = await d ?? []
         lastUpdated = Date()
         state = .loaded
     }
@@ -192,5 +207,110 @@ final class AppModel {
             crawlerError = error.localizedDescription
         }
         crawlerBusy = false
+    }
+
+    // MARK: 로컬 배치 (v0.16.16, T-127)
+
+    /// 로컬 크롤러 시작 (상시 루프) — Process로 run-local-crawler.sh 실행, stdout/stderr를 실시간 스트리밍
+    func startLocalBatch() {
+        guard !localBatchRunning else { return }
+        do {
+            let process = try Self.makeLocalCrawlerProcess { [weak self] text in
+                Task { @MainActor in
+                    self?.appendLocalLog(text)
+                }
+            }
+            try process.run()
+            localBatchProcess = process
+            localBatchRunning = true
+            localBatchLog = "로컬 크롤러 실행 중 (30초 틱 루프)\n"
+        } catch {
+            localBatchLog = "실행 실패: \(error.localizedDescription)\n"
+        }
+    }
+
+    /// 로컬 크롤러 1회 실행 — run-local-crawler.sh --once (stdout 실시간 표시)
+    func runLocalBatchOnce() async {
+        guard !localBatchRunning else { return }
+        localBatchLog = "1회 수집 시작…\n"
+        do {
+            let process = try Self.makeLocalCrawlerProcess(once: true) { [weak self] text in
+                Task { @MainActor in
+                    self?.appendLocalLog(text)
+                }
+            }
+            try process.run()
+            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                process.terminationHandler = { [weak self] _ in
+                    Task { @MainActor in
+                        self?.appendLocalLog("\n1회 수집 완료\n")
+                    }
+                    cont.resume()
+                }
+            }
+        } catch {
+            appendLocalLog("1회 수집 실패: \(error.localizedDescription)\n")
+        }
+    }
+
+    /// 로컬 크롤러 중지 — terminate 후 SIGKILL 폴백
+    func stopLocalBatch() {
+        guard localBatchRunning, let process = localBatchProcess else { return }
+        process.terminate()
+        DispatchQueue.global().asyncAfter(deadline: .now() + 3) { [weak self] in
+            let isStillRunning = self?.localBatchProcess?.isRunning ?? false
+            if isStillRunning {
+                kill(self?.localBatchProcess?.processIdentifier ?? -1, SIGKILL)
+            }
+            Task { @MainActor in
+                self?.localBatchRunning = false
+                self?.localBatchProcess = nil
+                self?.appendLocalLog("\n로컬 크롤러 종료\n")
+            }
+        }
+    }
+
+    private func appendLocalLog(_ text: String) {
+        if localBatchLog.count > 40_000 {  // 로그 뷰어 메모리 가드
+            localBatchLog = String(localBatchLog.suffix(20_000))
+        }
+        localBatchLog += text
+    }
+
+    /// 로컬 크롤러 Process 생성 — stdout/stderr를 파이프로 연결해 실시간 로그 콜백
+    private static func makeLocalCrawlerProcess(once: Bool = false,
+                                                onOutput: @escaping @Sendable (String) -> Void) throws -> Process {
+        let script = try Self.localCrawlerScriptURL()
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = once ? [script.path, "--once"] : [script.path]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
+            onOutput(text)
+        }
+        return process
+    }
+
+    /// 프로젝트 루트의 scripts/run-local-crawler.sh 경로 탐색 (개발/배포 위치 모두 대응)
+    private static func localCrawlerScriptURL() throws -> URL {
+        let candidates = [
+            URL(fileURLWithPath: NSHomeDirectory())
+                .appendingPathComponent("Documents/Apps/Shop WiseBar/scripts/run-local-crawler.sh"),
+            URL(fileURLWithPath: NSHomeDirectory())
+                .appendingPathComponent("Applications/ShopWiseBarManager.app")
+                .appendingPathComponent("Contents/Resources/scripts/run-local-crawler.sh"),
+        ]
+        for url in candidates {
+            if FileManager.default.fileExists(atPath: url.path) {
+                return url
+            }
+        }
+        throw NSError(domain: "LocalBatch", code: 1,
+                      userInfo: [NSLocalizedDescriptionKey: "run-local-crawler.sh를 찾지 못했습니다."])
     }
 }

@@ -23,6 +23,7 @@ struct CrawlerView: View {
 
             if let cfg = model.crawlerConfig {
                 settingsCard(cfg)
+                localBatchCard
                 logsCard
             } else {
                 ProgressView("데이터 로딩 중…")
@@ -96,6 +97,78 @@ struct CrawlerView: View {
         }
         .padding(DS.Space.s4)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+    }
+
+    // MARK: 로컬 배치 (v0.16.16, T-127)
+
+    private var localBatchCard: some View {
+        VStack(alignment: .leading, spacing: DS.Space.s3) {
+            HStack {
+                Image(systemName: "terminal")
+                    .foregroundStyle(DS.Color.primary)
+                Text("로컬 배치")
+                    .font(DS.Font.md.weight(.semibold))
+                Spacer()
+                statusDot
+            }
+            Text("이 맥에서 run-local-crawler.sh로 수집합니다. 수동으로 시작/종료하며, 수집 대상 목록 페이지도 함께 파싱합니다.")
+                .font(DS.Font.xs)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: DS.Space.s3) {
+                Button {
+                    model.startLocalBatch()
+                } label: {
+                    Label("시작", systemImage: "play.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(DS.Color.success)
+                .disabled(model.localBatchRunning)
+
+                Button {
+                    model.stopLocalBatch()
+                } label: {
+                    Label("중지", systemImage: "stop.fill")
+                }
+                .buttonStyle(.bordered)
+                .disabled(!model.localBatchRunning)
+
+                Button {
+                    Task { await model.runLocalBatchOnce() }
+                } label: {
+                    Label("1회 실행", systemImage: "bolt")
+                }
+                .buttonStyle(.bordered)
+                .disabled(model.localBatchRunning)
+
+                Spacer()
+            }
+
+            // 로그 뷰어
+            ScrollView {
+                Text(model.localBatchLog)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            .frame(maxHeight: 160)
+            .padding(DS.Space.s2)
+            .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        }
+        .padding(DS.Space.s4)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+    }
+
+    private var statusDot: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(model.localBatchRunning ? DS.Color.success : DS.Color.danger)
+                .frame(width: 8, height: 8)
+            Text(model.localBatchRunning ? "실행 중" : "중지")
+                .font(DS.Font.xs)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private func intervalBinding(interval: Int) -> Binding<Int> {

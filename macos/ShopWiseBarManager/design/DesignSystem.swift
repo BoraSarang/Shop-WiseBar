@@ -10,6 +10,7 @@ enum DS {
 
         static let danger = SwiftUI.Color(red: 0xe5 / 255, green: 0x48 / 255, blue: 0x4d / 255)
         static let success = SwiftUI.Color(red: 0x2d / 255, green: 0xd4 / 255, blue: 0xbf / 255)
+        static let warning = SwiftUI.Color(red: 0xf5 / 255, green: 0x9e / 255, blue: 0x2d / 255)
 
         static let mallNaver = SwiftUI.Color(red: 0x03 / 255, green: 0xc7 / 255, blue: 0x5a / 255)
         static let mallCoupang = SwiftUI.Color(red: 0x00 / 255, green: 0x74 / 255, blue: 0xe9 / 255)
@@ -28,6 +29,8 @@ enum DS {
             switch alertType {
             case "price_dropped": return danger
             case "back_in_stock": return success
+            case "target_reached": return primary
+            case "sold_out": return warning
             case "target_price": return primary
             default: return .secondary
             }
@@ -108,6 +111,8 @@ struct AlertBadge: View {
         switch type {
         case "price_dropped": return "가격 하락"
         case "back_in_stock": return "재입고"
+        case "target_reached": return "목표가 도달"
+        case "sold_out": return "품절"
         case "target_price": return "목표가"
         default: return type
         }

@@ -5,6 +5,16 @@ import AppKit
 struct ShopWiseBarManagerApp: App {
     @State private var model = AppModel.shared
 
+    /// 단일 인스턴스 가드 — 이미 실행 중이면 해당 창을 앞으로 가져오고 종료
+    init() {
+        guard let bundleID = Bundle.main.bundleIdentifier else { return }
+        let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        if let existing = running.first(where: { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }) {
+            existing.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+            exit(0)
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -50,6 +60,7 @@ struct ContentView: View {
         case .deals: DealsView()
         case .collect: CollectView()
         case .crawler: CrawlerView()
+        case .settings: SettingsView()
         }
     }
 }

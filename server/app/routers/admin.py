@@ -12,10 +12,11 @@ from sqlalchemy.orm import Session
 
 from crawlers.oliveyoung import fetch_goods_diag
 from app.config import APP_VERSION
-from app.database import engine, get_db
+from app.database import get_db
 from app.datetimeutil import KST, kst_date
 from app.models import (
     Alert,
+    CrawlTarget,
     CrawlerConfig,
     CrawlerRun,
     Device,
@@ -169,6 +170,12 @@ def admin_insight(days: int = 30, db: Session = Depends(get_db)) -> dict:
     recent = db.execute(
         select(Alert).where(Alert.created_at >= since).order_by(Alert.created_at.desc()).limit(20)
     ).scalars().all()
+    # v0.16.16 (T-127) — 상품 메타 조인: 알림 product_id → 상품명/이미지/URL/몰 (N+1 방지 단일 조회)
+    alert_products = {
+        p.id: p for p in db.execute(
+            select(Product).where(Product.id.in_({a.product_id for a in recent}))
+        ).scalars().all()
+    }
     recent_alerts = [
         {
             "product_id": a.product_id,
@@ -176,6 +183,10 @@ def admin_insight(days: int = 30, db: Session = Depends(get_db)) -> dict:
             "price": a.price,
             "previous_price": a.previous_price,
             "created_at": a.created_at.astimezone(KST).isoformat(),
+            "name": (alert_products.get(a.product_id).name if alert_products.get(a.product_id) else None),
+            "image": (alert_products.get(a.product_id).image if alert_products.get(a.product_id) else None),
+            "url": (alert_products.get(a.product_id).url if alert_products.get(a.product_id) else None),
+            "mall": (alert_products.get(a.product_id).mall if alert_products.get(a.product_id) else None),
         }
         for a in recent
     ]
@@ -204,11 +215,24 @@ def admin_insight(days: int = 30, db: Session = Depends(get_db)) -> dict:
                 "drop_pct": round((1 - last_price / prev) * 100, 1),
             })
     drops.sort(key=lambda x: x["drop_pct"], reverse=True)
+    drops = drops[:20]
+    # v0.16.16 (T-127) — 하락 TOP 상품 메타 조인
+    drop_products = {
+        p.id: p for p in db.execute(
+            select(Product).where(Product.id.in_({d["product_id"] for d in drops}))
+        ).scalars().all()
+    }
+    for d in drops:
+        p = drop_products.get(d["product_id"])
+        d["name"] = p.name if p else None
+        d["image"] = p.image if p else None
+        d["url"] = p.url if p else None
+        d["mall"] = p.mall if p else None
 
     return {
         "alert_distribution": alert_distribution,
         "recent_alerts": recent_alerts,
-        "top_drops": drops[:20],
+        "top_drops": drops,
     }
 
 
@@ -628,3 +652,64 @@ def admin_price_compare(limit: int = 30, db: Session = Depends(get_db)) -> dict:
         })
     items.sort(key=lambda g: g["rows"][-1]["diff_pct"], reverse=True)  # 최대 차이순
     return {"groups": items[:limit], "total_groups": len(items)}
+
+
+# ── 수집 대상 페이지 (v0.16.16, T-127) ────────────────────────────────────────
+
+
+class CrawlTargetIn(BaseModel):
+    mall: str
+    label: str
+    url: str
+    enabled: bool = True
+
+
+_CRAWL_TARGET_MALLS = ("naver", "oliveyoung", "custom")
+
+
+@router.get("/admin/crawl/targets")
+def admin_crawl_targets(db: Session = Depends(get_db)) -> dict:
+    """수집 대상 목록 페이지 조회 — enabled 우선 정렬."""
+    rows = db.execute(select(CrawlTarget).order_by(CrawlTarget.enabled.desc(), CrawlTarget.id.asc())).scalars().all()
+    return {"targets": [
+        {"id": t.id, "mall": t.mall, "label": t.label, "url": t.url, "enabled": t.enabled,
+         "created_at": t.created_at.astimezone(KST).isoformat()}
+        for t in rows
+    ]}
+
+
+@router.post("/admin/crawl/targets")
+def admin_crawl_targets_create(body: CrawlTargetIn, db: Session = Depends(get_db)) -> dict:
+    """수집 대상 페이지 등록 — mall/url 검증, 중복 url은 409."""
+    mall = body.mall.strip().lower()
+    if mall not in _CRAWL_TARGET_MALLS:
+        raise HTTPException(422, f"mall는 {', '.join(_CRAWL_TARGET_MALLS)} 중 하나여야 합니다.")
+    url = body.url.strip()
+    if not (url.startswith("http://") or url.startswith("https://")):
+        raise HTTPException(422, "url은 http(s)로 시작해야 합니다.")
+    label = body.label.strip()
+    if not label:
+        raise HTTPException(422, "label은 비어 있을 수 없습니다.")
+
+    exists = db.execute(select(CrawlTarget).where(CrawlTarget.url == url)).scalar_one_or_none()
+    if exists:
+        raise HTTPException(409, "이미 등록된 수집 대상입니다.")
+    target = CrawlTarget(mall=mall, label=label, url=url, enabled=body.enabled)
+    db.add(target)
+    db.commit()
+    db.refresh(target)
+    return {"targets": [
+        {"id": t.id, "mall": t.mall, "label": t.label, "url": t.url, "enabled": t.enabled,
+         "created_at": t.created_at.astimezone(KST).isoformat()}
+        for t in db.execute(select(CrawlTarget).order_by(CrawlTarget.id.asc())).scalars().all()
+    ]}
+
+
+@router.delete("/admin/crawl/targets/{target_id}")
+def admin_crawl_targets_delete(target_id: int, db: Session = Depends(get_db)) -> dict:
+    """수집 대상 삭제 — 없으면 204 idempotent."""
+    target = db.get(CrawlTarget, target_id)
+    if target is not None:
+        db.delete(target)
+        db.commit()
+    return {"status": "deleted"}

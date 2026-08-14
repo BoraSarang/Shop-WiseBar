@@ -71,6 +71,10 @@ struct AlertItem: Decodable {
     let price: Int
     let previousPrice: Int?
     let createdAt: String
+    let name: String?
+    let image: String?
+    let url: String?
+    let mall: String?
 
     enum CodingKeys: String, CodingKey {
         case price
@@ -78,6 +82,7 @@ struct AlertItem: Decodable {
         case alertType = "alert_type"
         case previousPrice = "previous_price"
         case createdAt = "created_at"
+        case name, image, url, mall
     }
 }
 
@@ -91,11 +96,16 @@ struct DropItem: Decodable {
     let price: Int
     let previous: Int
     let dropPct: Double
+    let name: String?
+    let image: String?
+    let url: String?
+    let mall: String?
 
     enum CodingKeys: String, CodingKey {
         case price, previous
         case productId = "product_id"
         case dropPct = "drop_pct"
+        case name, image, url, mall
     }
 }
 
@@ -126,9 +136,9 @@ struct DealItem: Decodable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case mall, name, url
         case productId = "product_id"
-        case price = "current_price"
-        case lastPrice = "last_price"
-        case dropRate = "drop_rate"
+        case price = "last_price"
+        case lastPrice = "previous_price"
+        case dropRate = "drop_percent"
     }
 }
 
@@ -219,11 +229,15 @@ struct ServerHealth: Decodable {
     let lastCaptureAt: String?
     let lastCrawlerRunAt: String?
 
+    struct DBStatus: Decodable {
+        let ok: Bool
+        let error: String?
+    }
+
     enum CodingKeys: String, CodingKey {
         case status, version
         case startedAt = "started_at"
-        case dbOk = "db"
-        case dbError = "error"
+        case db = "db"
         case lastCaptureAt = "last_capture_at"
         case lastCrawlerRunAt = "last_crawler_run_at"
     }
@@ -235,9 +249,9 @@ struct ServerHealth: Decodable {
         startedAt = try c.decode(String.self, forKey: .startedAt)
         lastCaptureAt = try c.decodeIfPresent(String.self, forKey: .lastCaptureAt)
         lastCrawlerRunAt = try c.decodeIfPresent(String.self, forKey: .lastCrawlerRunAt)
-        let db = try c.nestedContainer(keyedBy: CodingKeys.self, forKey: .dbOk)
-        dbOk = try db.decodeIfPresent(Bool.self, forKey: .dbOk) ?? true
-        dbError = try db.decodeIfPresent(String.self, forKey: .dbError)
+        let db = try c.decodeIfPresent(DBStatus.self, forKey: .db)
+        dbOk = db?.ok ?? false
+        dbError = db?.error
     }
 }
 
@@ -323,7 +337,9 @@ struct ProductsTopResponse: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case mostCollected = "most_collected"
-        case recent, soldOut, restocked
+        case recent
+        case soldOut = "sold_out"
+        case restocked
     }
 }
 
@@ -491,7 +507,7 @@ private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async
     func insight(days: Int = 30) async throws -> InsightResponse {
         try await get("/api/v1/admin/insight", query: [URLQueryItem(name: "days", value: String(days))])
     }
-    func deals() async throws -> DealsResponse { try await get("/api/v1/deals/public") }
+    func deals() async throws -> [DealItem] { try await get("/api/v1/deals/public") }
 
     // MARK: P0 관리 고도화 (v0.16.15)
 

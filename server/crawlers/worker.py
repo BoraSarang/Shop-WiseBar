@@ -13,11 +13,14 @@ import logging
 import time
 from datetime import datetime, timezone
 
+from sqlalchemy import select
+
 from app.database import SessionLocal
-from app.models import CrawlerConfig, CrawlerRun
+from app.models import CrawlTarget, CrawlerConfig, CrawlerRun
 from crawlers._browser import close_browser
 from crawlers.naver import run_once as naver_run_once
 from crawlers.oliveyoung import run_once as oliveyoung_run_once
+from crawlers.targets import run_target_once
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [CRAWLER] %(message)s")
 logger = logging.getLogger("crawler")
@@ -86,6 +89,35 @@ def _run_batch(trigger: str) -> None:
             close_browser()  # 다음 몰/틱을 위해 크로미움 리소스 해제
 
 
+def _run_targets(trigger: str) -> None:
+    """수집 대상 목록 페이지 순회 (v0.16.16, T-127) — enabled target만.
+
+    각 target 결과를 crawler_runs에 trigger="target"으로 기록. 개별 실패는 다음으로 진행.
+    """
+    with SessionLocal() as db:
+        targets = db.execute(
+            select(CrawlTarget).where(CrawlTarget.enabled.is_(True)).order_by(CrawlTarget.id.asc())
+        ).scalars().all()
+    if not targets:
+        return
+    for target in targets:
+        started = time.monotonic()
+        try:
+            result = run_target_once(target)
+            duration_ms = int((time.monotonic() - started) * 1000)
+            _record_run(target.mall, trigger, result["success"], result["count"],
+                        0, 0, result["error"], duration_ms)
+            logger.info("target %s(%s): %s (%d건, %.1fs)",
+                        target.label, target.mall,
+                        "성공" if result["success"] else "실패", result["count"], duration_ms / 1000)
+        except Exception as exc:  # noqa: BLE001 — target 1건 실패는 전체를 죽이지 않도록 격리
+            duration_ms = int((time.monotonic() - started) * 1000)
+            _record_run(target.mall, trigger, False, 0, 0, 0, f"target 예외: {type(exc).__name__}", duration_ms)
+            logger.exception("target %s 실행 실패", target.label)
+        finally:
+            close_browser()
+
+
 def _consume_trigger() -> bool:
     """run_requested 플래그를 새 세션으로 소비. 배치 후 저장된 트리거를 초기화한다."""
     try:
@@ -109,6 +141,7 @@ def _run_once_loop() -> None:
     _run_batch(trigger="manual" if requested else "schedule")
     if requested:
         _consume_trigger()
+    _run_targets(trigger="manual" if requested else "schedule")
 
 
 def main() -> None:
@@ -135,6 +168,7 @@ def main() -> None:
                 # 수동 트리거: 즉시 1배치 → 플래그 리셋 (다음 POST까지 중복 방지)
                 last_batch_run = time.time()
                 _run_batch(trigger="manual")
+                _run_targets(trigger="manual")
                 _consume_trigger()
             elif enabled and (
                 last_batch_run is None or (time.time() - last_batch_run) >= interval

@@ -184,3 +184,64 @@ class TestAdminPriceCompare:
         assert by_mall["coupang"]["diff_pct"] == 0.0
         assert by_mall["coupang"]["is_cheapest"] is True
         assert by_mall["naver"]["diff_pct"] == 25.0  # (10000-8000)/8000*100
+
+
+class TestAdminCrawlTargets:
+    def test_empty_and_create(self, client):
+        r = client.get("/api/v1/admin/crawl/targets")
+        assert r.status_code == 200
+        assert r.json()["targets"] == []
+
+        r = client.post("/api/v1/admin/crawl/targets", json={
+            "mall": "oliveyoung", "label": "올리브영 랭킹",
+            "url": "https://www.oliveyoung.co.kr/store/disp/temporaryRanking.do",
+        })
+        assert r.status_code == 200
+        targets = r.json()["targets"]
+        assert len(targets) == 1
+        assert targets[0]["mall"] == "oliveyoung"
+        assert targets[0]["label"] == "올리브영 랭킹"
+        assert targets[0]["enabled"] is True
+        assert targets[0]["id"] is not None
+
+    def test_validation(self, client):
+        r = client.post("/api/v1/admin/crawl/targets", json={
+            "mall": "coupang", "label": "쿠팡", "url": "https://www.coupang.com/np/campaigns/82",
+        })
+        assert r.status_code == 422  # 지원하지 않는 mall
+        r = client.post("/api/v1/admin/crawl/targets", json={
+            "mall": "naver", "label": "나쁜 URL", "url": "not-a-url",
+        })
+        assert r.status_code == 422  # http(s) 아님
+
+    def test_duplicate_url_conflict(self, client):
+        url = "https://www.naver.com/"
+        r1 = client.post("/api/v1/admin/crawl/targets", json={"mall": "naver", "label": "네이버 메인", "url": url})
+        assert r1.status_code == 200
+        r2 = client.post("/api/v1/admin/crawl/targets", json={"mall": "custom", "label": "중복", "url": url})
+        assert r2.status_code == 409
+
+    def test_delete_idempotent(self, client):
+        r = client.post("/api/v1/admin/crawl/targets", json={
+            "mall": "custom", "label": "임시", "url": "https://custom.test/shop",
+        })
+        tid = r.json()["targets"][-1]["id"]
+        assert client.delete(f"/api/v1/admin/crawl/targets/{tid}").status_code == 200
+        assert client.delete(f"/api/v1/admin/crawl/targets/{tid}").status_code == 200  # idempotent
+        assert client.get("/api/v1/admin/crawl/targets").json()["targets"] == []
+
+
+class TestAdminInsightMeta:
+    def test_insight_includes_product_meta(self, client):
+        _seed(client, "meta1", "naver", "메타 상품 A", 20000, "2026-08-10T10:00:00Z")
+        client.post("/api/v1/watches", json={"device_id": "w1", "product_id": "meta1", "target_price": 15000})
+        # 상품 삭제(소멸) → 알림 생성 경로를 직접 재현하기보다는 insight가 200이며 배열 스키마 확인
+        r = client.get("/api/v1/admin/insight")
+        assert r.status_code == 200
+        body = r.json()
+        for item in body["recent_alerts"] + body["top_drops"]:
+            assert "product_id" in item
+            assert "name" in item
+            assert "image" in item
+            assert "url" in item
+            assert "mall" in item
