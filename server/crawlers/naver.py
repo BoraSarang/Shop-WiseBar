@@ -8,11 +8,12 @@ import logging
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 from app.database import SessionLocal
 from app.models import PricePoint, Product
-from crawlers._browser import close_context, new_context
+from crawlers._browser import close_browser, close_context, new_context
 
 logger = logging.getLogger("crawler")
 
@@ -50,12 +51,12 @@ def fetch(url: str) -> dict | None:
             price = None
             body_text = ""
             try:
-                # v0.16.17: networkidle(45s) → domcontentloaded(30s) — 네이버 상품 페이지는
-                # 광고/추적 스크립트가 계속 로드되어 networkidle이 잘 뜨지 않아 상품당 10s+ 지연.
-                # 가격은 아래 스크롤 대기 루프가 커버 (JS 지연 렌더링 — 실측)
-                page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                # v0.16.17: networkidle 유지 — domcontentloaded 시도는 브랜드스토어 SPA
+                # 미로드로 가격 미발견 회귀(운영 실측: 기존 성공 상품까지 body 100자대 실패).
+                # 네이버 속도 병목은 networkidle이 아니라 컨텍스트 생성/페이지 로드 자체임(실측 9.6s→8.9s 무의미).
+                page.goto(url, wait_until="networkidle", timeout=45000)  # 가격 지연 로드 대기 (실측)
             except Exception:
-                page.goto(url, wait_until="domcontentloaded", timeout=30000)  # 타임아웃 폴백
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)  # networkidle 타임아웃 폴백
             # 가격 텍스트가 뜰 때까지 스크롤 대기
             for _ in range(MAX_PRICE_WAIT):
                 body_text = page.evaluate("document.body ? document.body.innerText : ''")
@@ -100,12 +101,69 @@ def fetch(url: str) -> dict | None:
     return {"status": "ok", "name": name, "image": image, "price": price, "checked_at": time.time()}
 
 
+def _parallel_workers() -> int:
+    """네이버 병렬 fetch 워커 수 — 기본 순차(1) (v0.16.17).
+
+    병렬(Chrome 다중 동시 접속) 시 네이버 IP 차단으로 실패율 급증 (운영 실측 2026-08-14:
+    CRAWLER_PARALLEL=3 → 30건 중 TimeoutError·가격 미발견 다발). 올리브영과 달리
+    네이버는 스마트스토어/브랜드스토어가 동시 접속을 강하게 제한한다.
+    명시적으로 CRAWLER_PARALLEL을 설정한 경우에만 병렬 허용.
+    """
+    return int(os.environ.get("CRAWLER_PARALLEL", "1"))
+
+
+def _process(product: Product, index: int, total: int) -> tuple[str, str, float]:
+    """단일 상품 fetch + DB 반영 — 병렬 워커 스레드에서 호출 (스레드 로컬 브라우저 + 새 세션이라 안전).
+
+    반환: (result_kind, detail, dt) — result_kind: "ok" / "gone" / "error".
+    """
+    logger.info("네이버 수집 시도 %d/%d %s", index, total, product.id)
+    t0 = time.monotonic()
+    result = fetch(product.url)
+    dt = time.monotonic() - t0
+    if result is None or result.get("status") is None:
+        err = result["error"] if result else "알 수 없는 오류"
+        logger.warning("네이버 수집 실패 %d/%d %s (%.1fs) — %s", index, total, product.id, dt, err)
+        return ("error", err, dt)
+    if result["status"] == "gone":
+        logger.info("네이버 소멸 %d/%d %s (%.1fs)", index, total, product.id, dt)
+        # last_checked_at만 갱신해 1시간마다 재시도 중단 (v0.16.7)
+        with SessionLocal() as db:
+            fresh = db.get(Product, product.id)
+            if fresh is None:
+                return ("error", "상품 삭제됨", dt)
+            fresh.last_checked_at = datetime.now(timezone.utc)
+            db.commit()
+        return ("gone", product.id, dt)
+    with SessionLocal() as db:
+        fresh = db.get(Product, product.id)
+        if fresh is None:
+            return ("error", "상품 삭제됨", dt)
+        point = PricePoint(
+            product_id=fresh.id,
+            price=result["price"],
+            source="crawler",
+            captured_at=datetime.now(timezone.utc),
+        )
+        db.add(point)
+        fresh.last_price = result["price"]
+        fresh.last_checked_at = point.captured_at
+        if result["name"] and not fresh.name:
+            fresh.name = result["name"]
+        if result["image"] and not fresh.image:
+            fresh.image = result["image"]
+        db.commit()
+        logger.info("네이버 수집 완료 %d/%d %s → %s원 (%.1fs)", index, total, fresh.id, result["price"], dt)
+    return ("ok", fresh.id, dt)
+
+
 def run_once() -> tuple[int, int, int, str | None]:
     """가격이 오래된 네이버 상품 1배치 수집.
 
     반환: (attempted, success, gone, error) — v0.16.8 (T-121):
       attempted 시도 / success 성공 / gone 상품없음 / error 실패 사유(없으면 None).
     대상 URL이 아닌 후보(brand.naver.com 외)는 시도 수에 포함하지 않는다.
+    로컬 워커는 CRAWLER_PARALLEL(기본 3) 병렬 fetch (v0.16.17) — 배치 시간 1/2~1/3 단축.
     """
     now = time.time()
     with SessionLocal() as db:
@@ -128,52 +186,45 @@ def run_once() -> tuple[int, int, int, str | None]:
     # 배치 크기 — 기본 3건(Render 512MB 메모리 예산, v0.16.5).
     # 로컬 워커는 CRAWLER_BATCH_LIMIT로 확대 (시스템 Chrome + 메모리 제약 없음, v0.16.16).
     batch_limit = int(os.environ.get("CRAWLER_BATCH_LIMIT", "3"))
-    attempted = 0
+    batch = [p for p in stale[:batch_limit] if p.url and "naver.com" in p.url and "brand.naver.com" in p.url]
+    logger.info("네이버 수집 대상 %d건 (스테일 %d건)", len(batch), len(stale))
+    if not batch:
+        return 0, 0, 0, None
+
+    workers = _parallel_workers()
+    indexed = list(enumerate(batch, start=1))
+    total = len(batch)
+    attempted = total
     success = 0
     gone = 0
     errors: list[str] = []
-    batch = [p for p in stale[:batch_limit] if p.url and "naver.com" in p.url and "brand.naver.com" in p.url]
-    logger.info("네이버 수집 대상 %d건 (스테일 %d건)", len(batch), len(stale))
-    for i, product in enumerate(batch, start=1):
-        attempted += 1  # 실제 fetch 시도 1건
-        logger.info("네이버 수집 시도 %d/%d %s", i, len(batch), product.id)
-        t0 = time.monotonic()
-        result = fetch(product.url)
-        dt = time.monotonic() - t0
-        if result is None or result.get("status") is None:
-            errors.append(result["error"] if result else "알 수 없는 오류")
-            logger.warning("네이버 수집 실패 %d/%d %s (%.1fs) — %s", i, len(batch), product.id, dt,
-                           result["error"] if result else "알 수 없는 오류")
-            continue
-        if result["status"] == "gone":
-            gone += 1  # 상품 삭제 — 실패로 취급하지 않음 (v0.16.8)
-            logger.info("네이버 소멸 %d/%d %s (%.1fs)", i, len(batch), product.id, dt)
-            # last_checked_at만 갱신해 1시간마다 재시도 중단 (v0.16.7)
-            with SessionLocal() as db:
-                fresh = db.get(Product, product.id)
-                if fresh is None:
-                    continue
-                fresh.last_checked_at = datetime.now(timezone.utc)
-                db.commit()
-            continue
-        with SessionLocal() as db:
-            fresh = db.get(Product, product.id)
-            if fresh is None:
-                continue
-            point = PricePoint(
-                product_id=fresh.id,
-                price=result["price"],
-                source="crawler",
-                captured_at=datetime.now(timezone.utc),
-            )
-            db.add(point)
-            fresh.last_price = result["price"]
-            fresh.last_checked_at = point.captured_at
-            if result["name"] and not fresh.name:
-                fresh.name = result["name"]
-            if result["image"] and not fresh.image:
-                fresh.image = result["image"]
-            db.commit()
-            logger.info("네이버 수집 완료 %d/%d %s → %s원 (%.1fs)", i, len(batch), fresh.id, result["price"], dt)
+
+    def _collect(kind: str, detail: str) -> None:
+        nonlocal success, gone
+        if kind == "ok":
             success += 1
+        elif kind == "gone":
+            gone += 1
+        else:
+            errors.append(detail)
+
+    if workers > 1:
+        # 라운드로빈 청크 분배 — 스레드마다 자체 브라우저가 뜨므로 브라우저는 재사용하고
+        # 청크 처리 후 해당 스레드의 리소스를 정리한다 (close_browser는 스레드 로컬).
+        chunks = [indexed[i::workers] for i in range(workers)]
+
+        def _run_chunk(chunk):
+            try:
+                return [_process(p, idx, total) for idx, p in chunk]
+            finally:
+                close_browser()  # 워커 스레드 브라우저 정리 (다음 배치에서 재생성)
+
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = [ex.submit(_run_chunk, c) for c in chunks if c]
+            for fut in futures:
+                for kind, detail, _dt in fut.result():
+                    _collect(kind, detail)
+    else:
+        for idx, product in indexed:
+            _collect(*_process(product, idx, total)[:2])
     return attempted, success, gone, "; ".join(dict.fromkeys(errors)) or None

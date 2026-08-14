@@ -9,11 +9,12 @@ import logging
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 from app.database import SessionLocal
 from app.models import PricePoint, Product
-from crawlers._browser import close_context, new_context
+from crawlers._browser import close_browser, close_context, new_context
 
 logger = logging.getLogger("crawler")
 
@@ -216,12 +217,69 @@ def fetch_goods_diag(goods_no: str) -> dict:
     }
 
 
+def _parallel_workers() -> int:
+    """병렬 fetch 워커 수 — 로컬 워커만 병렬 (Render 512MB 보호, v0.16.17).
+
+    스레드마다 별도 Chrome이 뜨므로(스레드 로컬 브라우저) 수는 메모리와 타협.
+    로컬 기본 3, Render 기본 1(순차).
+    """
+    if os.environ.get("LOCAL_WORKER") == "1":
+        return int(os.environ.get("CRAWLER_PARALLEL", "3"))
+    return 1
+
+
+def _process(product: Product, index: int, total: int) -> tuple[str, str, float]:
+    """단일 상품 fetch + DB 반영 — 병렬 워커 스레드에서 호출 (스레드 로컬 브라우저 + 새 세션이라 안전).
+
+    반환: (result_kind, detail, dt) — result_kind: "ok" / "gone" / "error".
+    """
+    logger.info("올리브영 수집 시도 %d/%d goodsNo=%s", index, total, product.id)
+    t0 = time.monotonic()
+    result = fetch_goods(product.id)
+    dt = time.monotonic() - t0
+    if result is None or result.get("status") is None:
+        err = result["error"] if result else "알 수 없는 오류"
+        logger.warning("올리브영 수집 실패 %d/%d %s (%.1fs) — %s", index, total, product.id, dt, err)
+        return ("error", err, dt)
+    if result["status"] == "gone":
+        logger.info("올리브영 소멸 %d/%d %s (%.1fs)", index, total, product.id, dt)
+        # 소멸 확정 상품은 7일 후에만 재확인 (v0.16.9) — 배치 점유 방지
+        with SessionLocal() as db:
+            fresh = db.get(Product, product.id)
+            if fresh is None:
+                return ("error", "상품 삭제됨", dt)
+            fresh.last_checked_at = datetime.now(timezone.utc) + timedelta(days=7)
+            db.commit()
+        return ("gone", product.id, dt)
+    with SessionLocal() as db:
+        fresh = db.get(Product, product.id)
+        if fresh is None:
+            return ("error", "상품 삭제됨", dt)
+        point = PricePoint(
+            product_id=fresh.id,
+            price=result["price"],
+            source="crawler",
+            captured_at=datetime.now(timezone.utc),
+        )
+        db.add(point)
+        fresh.last_price = result["price"]
+        fresh.last_checked_at = point.captured_at
+        if result["name"] and not fresh.name:
+            fresh.name = result["name"]
+        if result["image"] and not fresh.image:
+            fresh.image = result["image"]
+        db.commit()
+        logger.info("올리브영 수집 완료 %d/%d %s → %s원 (%.1fs)", index, total, fresh.id, result["price"], dt)
+    return ("ok", fresh.id, dt)
+
+
 def run_once() -> tuple[int, int, int, str | None]:
     """갱신 만료된 올리브영 상품 1배치 수집.
 
     반환: (attempted, success, gone, error) — v0.16.8 (T-121):
       attempted 시도 건수 / success 성공 건수 / gone 상품없음(소멸) 건수 / error 실패 사유(없으면 None).
     실패 = attempted - success - gone (fetch 불가·일시 오류 — 다음 배치에서 재시도).
+    로컬 워커는 CRAWLER_PARALLEL(기본 3) 병렬 fetch (v0.16.17) — 배치 시간 1/2~1/3 단축.
     """
     # 배치 크기 — 기본 2건(Render 512MB OOM 방지, 운영 실측 2026-08-10).
     # 로컬 워커는 CRAWLER_BATCH_LIMIT로 확대 (시스템 Chrome + 메모리 제약 없음, v0.16.16).
@@ -242,54 +300,45 @@ def run_once() -> tuple[int, int, int, str | None]:
         if now - p.last_checked_at.timestamp() > 60 * 60:
             stale.append(p)
 
-    attempted = 0
+    batch = [p for p in stale[:batch_limit] if not p.id.startswith("oyrun:")]
+    logger.info("올리브영 수집 대상 %d건 (스테일 %d건)", len(batch), len(stale))
+    if not batch:
+        return 0, 0, 0, None
+
+    workers = _parallel_workers()
+    indexed = list(enumerate(batch, start=1))
+    total = len(batch)
+    attempted = total
     success = 0
     gone = 0
     errors: list[str] = []
-    batch = [p for p in stale[:batch_limit] if not p.id.startswith("oyrun:")]
-    logger.info("올리브영 수집 대상 %d건 (스테일 %d건)", len(batch), len(stale))
-    for i, product in enumerate(batch, start=1):
-        attempted += 1  # 실제 fetch 시도 1건
-        logger.info("올리브영 수집 시도 %d/%d goodsNo=%s", i, len(batch), product.id)
-        t0 = time.monotonic()
-        result = fetch_goods(product.id)
-        dt = time.monotonic() - t0
-        if result is None or result.get("status") is None:
-            errors.append(result["error"] if result else "알 수 없는 오류")
-            logger.warning("올리브영 수집 실패 %d/%d %s (%.1fs) — %s", i, len(batch), product.id, dt,
-                           result["error"] if result else "알 수 없는 오류")
-            continue  # 일시 오류 — 다음 배치에서 재시도
-        if result["status"] == "gone":
-            gone += 1  # 소멸(판매종료) 건수 — 실패로 취급하지 않음 (v0.16.8)
-            logger.info("올리브영 소멸 %d/%d %s (%.1fs)", i, len(batch), product.id, dt)
-            # 소멸 확정 상품은 7일 후에만 재확인 (v0.16.9) — 
-            #   기존 60분마다 스테일로 부활해 소멸 상품이 배치를 계속 점유하는 문제 해결.
-            #   판매 재개 시 7일 내 자동 감지된다 (fetch → ok 가격 수집 → last_checked_at 갱신).
-            with SessionLocal() as db:
-                fresh = db.get(Product, product.id)
-                if fresh is None:
-                    continue
-                fresh.last_checked_at = datetime.now(timezone.utc) + timedelta(days=7)
-                db.commit()
-            continue
-        with SessionLocal() as db:
-            fresh = db.get(Product, product.id)
-            if fresh is None:
-                continue
-            point = PricePoint(
-                product_id=fresh.id,
-                price=result["price"],
-                source="crawler",
-                captured_at=datetime.now(timezone.utc),
-            )
-            db.add(point)
-            fresh.last_price = result["price"]
-            fresh.last_checked_at = point.captured_at
-            if result["name"] and not fresh.name:
-                fresh.name = result["name"]
-            if result["image"] and not fresh.image:
-                fresh.image = result["image"]
-            db.commit()
-            logger.info("올리브영 수집 완료 %d/%d %s → %s원 (%.1fs)", i, len(batch), fresh.id, result["price"], dt)
+
+    def _collect(kind: str, detail: str) -> None:
+        nonlocal success, gone
+        if kind == "ok":
             success += 1
+        elif kind == "gone":
+            gone += 1
+        else:
+            errors.append(detail)
+
+    if workers > 1:
+        # 라운드로빈 청크 분배 — 스레드마다 자체 브라우저가 뜨므로 브라우저는 재사용하고
+        # 청크 처리 후 해당 스레드의 리소스를 정리한다 (close_browser는 스레드 로컬).
+        chunks = [indexed[i::workers] for i in range(workers)]
+
+        def _run_chunk(chunk):
+            try:
+                return [_process(p, idx, total) for idx, p in chunk]
+            finally:
+                close_browser()  # 워커 스레드 브라우저 정리 (다음 배치에서 재생성)
+
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = [ex.submit(_run_chunk, c) for c in chunks if c]
+            for fut in futures:
+                for kind, detail, _dt in fut.result():
+                    _collect(kind, detail)
+    else:
+        for idx, product in indexed:
+            _collect(*_process(product, idx, total)[:2])
     return attempted, success, gone, "; ".join(dict.fromkeys(errors)) or None
