@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// 크롤러 — 설정(주기/활성화/즉시수집) + 배치 실행 이력. v0.16.1 (서버 API v0.16.0)
 struct CrawlerView: View {
@@ -109,6 +110,14 @@ struct CrawlerView: View {
                 Text("로컬 배치")
                     .font(DS.Font.md.weight(.semibold))
                 Spacer()
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(model.localBatchLog, forType: .string)
+                } label: {
+                    Label("로그 복사", systemImage: "doc.on.doc")
+                }
+                .buttonStyle(.bordered)
+                .help("전체 로그를 클립보드에 복사")
                 statusDot
             }
             Text("이 맥에서 run-local-crawler.sh로 수집합니다. 수동으로 시작/종료하며, 수집 대상 목록 페이지도 함께 파싱합니다.")
@@ -144,15 +153,23 @@ struct CrawlerView: View {
                 Spacer()
             }
 
-            // 로그 뷰어
-            ScrollView {
-                Text(model.localBatchLog)
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
+            // 로그 뷰어 — 실시간 스트리밍 + 자동 스크롤
+            ScrollViewReader { proxy in
+                ScrollView {
+                    Text(model.localBatchLog)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                        .id("logBottom")
+                }
+                .frame(maxHeight: 160)
+                .onChange(of: model.localBatchLog) {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        proxy.scrollTo("logBottom", anchor: .bottom)
+                    }
+                }
             }
-            .frame(maxHeight: 160)
             .padding(DS.Space.s2)
             .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: DS.Radius.md))
         }
