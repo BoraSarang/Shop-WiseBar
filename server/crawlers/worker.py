@@ -177,7 +177,12 @@ def main() -> None:
                 last_batch_run = time.time()
                 _run_batch(trigger="schedule")
             else:
-                logger.debug("다음 틱 대기 (enabled=%s interval=%ss)", enabled, interval)
+                # 비활성/대기 사유를 INFO로 노출 (INFO 레벨 로그로는 안 보이던 문제 해결)
+                reason = "수집 비활성 (enabled=false — 설정 탭에서 활성화 또는 1회 실행)"
+                if enabled and last_batch_run is not None:
+                    remaining = max(0, int(interval - (time.time() - last_batch_run)))
+                    reason = f"예약 대기 (다음 배치 {remaining//60}분 후)"
+                logger.info("워커 대기: %s", reason)
         except Exception:  # noqa: BLE001 — 배치 실패가 루프를 죽이지 않도록 최상위 격리
             logger.exception("루프 오류")
         time.sleep(TICK_SECONDS)

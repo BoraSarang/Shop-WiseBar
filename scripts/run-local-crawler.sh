@@ -33,4 +33,4 @@ else
   echo "[local-crawler] 상시 워커 시작 (30s 틱 루프)"
 fi
 
-exec .venv/bin/python -m crawlers.worker "${ARGS[@]}"
+exec .venv/bin/python -m crawlers.worker ${ARGS[@]+"${ARGS[@]}"}
