@@ -26,6 +26,10 @@ UA = (
 # 소멸 페이지 표식 (운영·로컬 실측): og:title="올리브영 온라인몰" + body "찾을 수 없"
 _GONE_TITLE = "올리브영 온라인몰"
 
+# 가격 오탐 방어 (v0.16.17) — body 첫 "N원" 매칭이 적립금/포인트 등 4원 같은
+# 실제가 아닌 값을 잡는 사례(운영 실측 2026-08-14)가 있어 1,000원 미만은 폐기한다.
+MIN_PRICE = 1_000
+
 
 def _open_goods_page(goods_no: str, url: str) -> tuple | None:
     """상품 페이지를 열고 (context, page, body_text) 반환 — goto 실패해도 렌더 대기 지속.
@@ -127,6 +131,11 @@ def fetch_goods(goods_no: str) -> dict | None:
         tx = re.search(r'<em class="tx_num">([0-9,]+)</em>', body_text)
         if tx:
             price = int(tx.group(1).replace(",", ""))
+    if price is not None and price < MIN_PRICE:
+        # 오탐 가격(1,000원 미만)은 저장하지 않는다 — 실제가 아님 (v0.16.17)
+        logger.warning("올리브영 가격 오탐 goodsNo=%s: %s원 (1,000원 미만) → 폐기 (%s)",
+                       goods_no, price, body_text[:60].replace("\n", " "))
+        return {"status": None, "error": f"가격 오탐(1,000원 미만): {price}원"}
     if not price:
         # 소멸/차단 판별: body가 180자 미만(헤더만 렌더)이면 상품 본문이 없는 페이지 →
         #   운영(미국 IP) 실측 body=160자로 "찾을 수 없" 문구가 잘려 없음 → 소멸로 판정 (v0.16.7)
@@ -185,7 +194,11 @@ def fetch_goods_diag(goods_no: str) -> dict:
             tx = re.search(r'<em class="tx_num">([0-9,]+)</em>', body_text)
             if tx:
                 price = int(tx.group(1).replace(",", ""))
-        if not price:
+        if price is not None and price < MIN_PRICE:
+            # 오탐 가격(1,000원 미만) — 저장 대상이 아님 (v0.16.17)
+            logger.warning("올리브영 가격 오탐 goodsNo=%s: %s원 (1,000원 미만) → 폐기", goods_no, price)
+            status, error = None, f"가격 오탐(1,000원 미만): {price}원"
+        elif not price:
             tiny = len(body_text) < 180
             status, error = (("gone", None) if tiny else (None, f"가격 미발견 body={len(body_text)}자"))
         else:

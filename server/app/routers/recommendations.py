@@ -23,6 +23,10 @@ from fastapi import APIRouter, Depends
 
 router = APIRouter(tags=["recommendations"])
 
+# 가격 오탐 방어 (v0.16.17) — 크롤러가 저장한 4원 같은 비정상 포인트가 하락/최저가 계산을
+# 왜곡하는 것을 방어. 크롤러 저장 시 이미 차단하지만, 기존 쌓인 오탐 데이터에도 안전장치.
+MIN_PRICE = 1_000
+
 # 복합 인덱스 — 기존 테이블엔 create_all이 못 만들므로 시작 시 IF NOT EXISTS로 생성 (main.py on_startup)
 # v0.10.1: stats/추이/추천이 price_daily_stats를 (product_id, stat_date>=) 로 조회하므로
 #          복합 인덱스 추가. product_relations는 source OR target 양방향 조회용 복합 추가.
@@ -94,6 +98,7 @@ def _deals(db: Session, limit: int, days: int) -> list[Row]:
               ) pp
               JOIN products p ON p.id = pp.product_id
               WHERE pp.rn2 = 1
+                AND pp.price >= :min_price
                 AND (p.mall <> 'coupang' OR pp.variant IS NOT NULL)
             ),
             ranked AS (
@@ -113,6 +118,7 @@ def _deals(db: Session, limit: int, days: int) -> list[Row]:
                                         ORDER BY (prev_price - price) * 100.0 / prev_price DESC) AS prn
               FROM ranked
               WHERE rn = 1 AND prev_price IS NOT NULL AND price < prev_price
+                AND prev_price >= :min_price
                 AND (prev_price - price) * 100.0 / prev_price >= :min_drop
             )
             SELECT p.id, p.mall, p.url, p.name, p.image, p.last_checked_at,
@@ -124,7 +130,7 @@ def _deals(db: Session, limit: int, days: int) -> list[Row]:
             LIMIT :limit
             """
         ),
-        {"cutoff": cutoff, "limit": limit, "min_drop": 5.0},
+        {"cutoff": cutoff, "limit": limit, "min_drop": 5.0, "min_price": MIN_PRICE},
     ).mappings().all()
     filled = [dict(r) for r in rows]
 
@@ -144,6 +150,7 @@ def _deals(db: Session, limit: int, days: int) -> list[Row]:
                   ) pp
                   JOIN products p ON p.id = pp.product_id
                   WHERE pp.rn2 = 1
+                    AND pp.price >= :min_price
                     AND (p.mall <> 'coupang' OR pp.variant IS NOT NULL)
                 ),
                 cur AS (
@@ -157,6 +164,7 @@ def _deals(db: Session, limit: int, days: int) -> list[Row]:
                   SELECT pp.product_id, MIN(pp.price) AS before_low
                   FROM price_points pp
                   WHERE pp.captured_at < :cutoff
+                    AND pp.price >= :min_price
                   GROUP BY pp.product_id
                 )
                 SELECT p.id, p.mall, p.url, p.name, p.image, p.last_checked_at,
@@ -169,7 +177,7 @@ def _deals(db: Session, limit: int, days: int) -> list[Row]:
                 LIMIT :limit
                 """
             ),
-            {"cutoff": cutoff, "limit": limit},
+            {"cutoff": cutoff, "limit": limit, "min_price": MIN_PRICE},
         ).mappings().all()
         filled_ids = {r["id"] for r in filled}
         for row in low_rows:

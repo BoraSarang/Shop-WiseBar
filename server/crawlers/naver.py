@@ -25,6 +25,10 @@ UA = (
 MAX_PRICE_WAIT = 5
 PRICE_RE = re.compile(r"([0-9][0-9,]*)\s*원")
 
+# 가격 오탐 방어 (v0.16.17) — body 첫 "N원" 매칭이 결제 금액·적립 등 실제가 아닌 값을
+# 잡는 사례(운영 실측 2026-08-14, 6자리 오탐)가 있어 1,000원 미만은 폐기한다.
+MIN_PRICE = 1_000
+
 
 def _extract_price(text: str) -> int | None:
     m = PRICE_RE.search(text)
@@ -61,6 +65,10 @@ def fetch(url: str) -> dict | None:
             if any(k in body_text for k in ("보안 확인", "완료하세요", "캡차")) or "captcha" in body_text.lower():
                 logger.warning("네이버 챌린지 차단 %s", url)
                 return {"status": None, "error": "챌린지/캡차 차단"}
+            # 오탐 가격(1,000원 미만)은 저장하지 않는다 — 실제가 아님 (v0.16.17)
+            if price is not None and price < MIN_PRICE:
+                logger.warning("네이버 가격 오탐 %s: %s원 (1,000원 미만) → 폐기", url, price)
+                price = None
             if not price:
                 gone = "존재하지 않습니다" in body_text  # 상품 삭제/변경 (운영 실측)
                 logger.warning(
