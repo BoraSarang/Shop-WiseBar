@@ -176,6 +176,17 @@ const Extractor = {
   // → 몰별 섹션명/구조가 바뀌어도 동작, MallParser 규약으로 productID/몰 판별
   // 반환: [{ productID, mall, url, name, image, price|null }] (가격 없으면 카탈로그 등록만)
   // v0.8.0: currentProductID null 허용 — 검색/목록 페이지(현재 상품 없음)에서 전체 카드 수집
+  // v0.16.17: 카드 링크의 네이버 검색 추적 파라미터(nl-query/NaPm 등) 제거 —
+  //   검색 카드 href를 그대로 저장하면 537건 오염(운영 실측). 상품 페이지는 products/{id} 경로만 필요.
+  cleanCardUrl(href) {
+    try {
+      const u = new URL(href);
+      if (u.hostname.includes("naver.com") && u.pathname.includes("/products/")) {
+        return u.origin + u.pathname;
+      }
+    } catch {}
+    return href;
+  },
   extractRelated(mall, currentProductID) {
     if (mall === "oliveyoung") return this.extractRelatedOliveyoung(currentProductID);
     const items = [];
@@ -246,7 +257,7 @@ const Extractor = {
       items.push({
         productID: parsed.productID,
         mall: parsed.mall,
-        url: href,
+        url: this.cleanCardUrl(href),
         name,
         image,
         price,
