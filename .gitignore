@@ -52,3 +52,9 @@ scripts/store-capture/node_modules/
 scripts/e2e/node_modules/
 scripts/e2e/.e2e-server.log
 extension/popup/preview-verify.html
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/

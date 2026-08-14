@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "shopwisebar",
+  "project_id": "743ab8f5-7c8f-44d9-8c06-8b05a7912825"
+}
